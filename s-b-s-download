@@ -1,0 +1,214 @@
+#!/bin/sh
+
+# Функция для поиска директории root в директории /mnt и всех поддиректориях
+find_root_directory() {
+    find /mnt/ -depth -type d -name root
+}
+
+# Функция для создания директории с правами 775
+create_directory() {
+    local dir_path="$1"
+    mkdir -p "$dir_path"
+    chmod 775 "$dir_path"  # Установка прав доступа 775
+    echo "Директория $dir_path создана."
+}
+
+# Функция для проверки существования директории
+check_directory_existence() {
+    local dir_path="$1"
+    if [ -d "$dir_path" ]; then
+        return 0 # Директория существует
+    else
+        return 1 # Директория не существует
+    fi
+}
+
+# Функция для проверки наличия файла и предоставления выбора
+check_file_existence_and_download() {
+    local file_path="$1"
+    local file_url="$2"
+    local file_name=$(basename "$file_path")
+
+    if [ -f "$file_path" ]; then
+        echo "Файл $file_name уже существует. Что вы хотите сделать?"
+        echo "1. Пропустить скачивание"
+        echo "2. Заменить файл"
+
+        # Цикл для предоставления выбора до корректного ввода
+        while true; do
+            read -p "Введите номер вашего выбора: " choice
+
+            case $choice in
+                1)
+                    echo "Пропускаем скачивание $file_name."
+                    return 0
+                    ;;
+                2)
+                    echo "Заменяем файл $file_name."
+                    curl -s -L -o "$file_path" "$file_url"
+                    return 0
+                    ;;
+                *)
+                    echo "Неверный выбор. Попробуйте еще раз."
+                    ;;
+            esac
+        done
+    else
+        echo "Скачиваем $file_name..."
+        curl -s -L -o "$file_path" "$file_url"
+    fi
+}
+
+# Поиск директории root
+root_dir=$(find_root_directory)
+
+if [ -n "$root_dir" ]; then
+    # Если директория root найдена
+    sing_box_dir="$root_dir/sing-box"
+    
+    if check_directory_existence "$sing_box_dir"; then
+        echo "Директория $sing_box_dir уже существует. Что вы хотите сделать?"
+        echo "1. Завершить работу"
+        echo "2. Использовать существующую директорию"
+        
+        # Цикл для предоставления выбора до корректного ввода
+        while true; do
+            read -p "Введите номер вашего выбора: " choice
+            
+            case $choice in
+                1)
+                    echo "Работа скрипта завершена."
+                    exit 0
+                    ;;
+                2)
+                    echo "Используем существующую директорию $sing_box_dir."
+                    break
+                    ;;
+                *)
+                    echo "Неверный выбор. Попробуйте еще раз."
+                    ;;
+            esac
+        done
+        
+    else
+        create_directory "$sing_box_dir"
+    fi
+else
+    # Если директория root не найдена
+    echo "Директория 'root' не найдена в /mnt. Похоже, что в вашем роутере отсутствует USB флешка, или на ней не установлен Entware. Операция отменена."
+    exit 1
+fi
+
+# URL страницы с релизами (API для получения информации о релизах)
+URL="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
+
+# Имя файла архива
+ARCHIVE_FILE="sing-box-linux-arm64.tar.gz"
+
+# Путь к директории для скачивания
+DOWNLOAD_DIR="$sing_box_dir/sing-box-download"
+
+# Проверяем существование директории для скачивания, иначе создаем её
+if [ ! -d "$DOWNLOAD_DIR" ]; then
+    mkdir -p "$DOWNLOAD_DIR"
+    chmod 775 "$DOWNLOAD_DIR"  # Установка прав доступа 775
+fi
+
+# Используем curl для получения информации о последнем релизе
+RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" "$URL")
+
+# Извлекаем URL для скачивания архива
+DOWNLOAD_URL=$(echo "$RESPONSE" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
+
+if [ -z "$DOWNLOAD_URL" ]; then
+    echo "Не удалось найти ссылку на скачивание архива."
+    exit 1
+fi
+
+# Полный путь к файлу архива
+FULL_PATH="$DOWNLOAD_DIR/$ARCHIVE_FILE"
+
+# Скачиваем архив
+echo "Скачиваем архив..."
+curl -s -L -o "$FULL_PATH" "$DOWNLOAD_URL"
+
+# Распаковка архива
+echo "Распаковываем архив..."
+tar -xzf "$FULL_PATH" -C "$DOWNLOAD_DIR"
+
+# Поиск файла sing-box в полученной при распаковке поддиректории
+sing_box_file=$(find "$DOWNLOAD_DIR" -name "sing-box" -type f)
+
+if [ -z "$sing_box_file" ]; then
+    echo "Не удалось найти файл sing-box в распакованном архиве."
+    exit 1
+fi
+
+# Проверяем существование файла sing-box в директории sing-box_dir
+sing_box_path="$sing_box_dir/sing-box"
+if [ -f "$sing_box_path" ]; then
+    echo "Файл sing-box уже существует. Что вы хотите сделать?"
+    echo "1. Оставить существующий файл"
+    echo "2. Заменить файл на новый"
+
+    # Цикл для предоставления выбора до корректного ввода
+    while true; do
+        read -p "Введите номер вашего выбора: " choice
+
+        case $choice in
+            1)
+                echo "Оставляем существующий файл sing-box."
+                ;;
+            2)
+                echo "Заменяем файл sing-box на новый."
+                cp "$sing_box_file" "$sing_box_dir/"
+                chmod 775 $sing_box_path
+                ;;
+            *)
+                echo "Неверный выбор. Попробуйте еще раз."
+                continue
+                ;;
+        esac
+        break
+    done
+else
+    echo "Сохраняем файл sing-box..."
+    cp "$sing_box_file" "$sing_box_dir/"
+fi
+
+# Удаление директории /mnt/entware/entware/root/sing-box/sing-box-download
+rm -rf "$DOWNLOAD_DIR"
+
+# Скачивание config.json
+CONFIG_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/config.json"
+CONFIG_PATH="$sing_box_dir/config.json"
+check_file_existence_and_download "$CONFIG_PATH" "$CONFIG_URL"
+chmod 664 $CONFIG_PATH
+
+# Скачивание sing-box.sh
+SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sing-box.sh"
+SCRIPT_PATH="$sing_box_dir/sing-box.sh"
+check_file_existence_and_download "$SCRIPT_PATH" "$SCRIPT_URL"
+chmod 775 $SCRIPT_PATH
+
+echo "
+*********************
+Установка завершена.
+*********************
+Следующим шагом вы должны вручную отредактировать под себя 
+файл config.json, расположенный по пути $CONFIG_PATH
+например с помощью WinSCP или в консоли командой:
+nano $CONFIG_PATH
+И только после этого можете выполнить в консоли следующие команды:
+
+Для начала выполните для настройки скрипта sing-box:
+$SCRIPT_PATH setup
+
+Для старта sing-box:
+$SCRIPT_PATH start
+
+Для остановки sing-box:
+$SCRIPT_PATH stop
+
+Для перезапуска sing-box:
+$SCRIPT_PATH restart"
