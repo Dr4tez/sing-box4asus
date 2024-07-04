@@ -1,1 +1,1 @@
-My configuration file template for sing-box on Asus router.
+My configuration file template and script for using sing-box on Asus router.
