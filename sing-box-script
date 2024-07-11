@@ -1,0 +1,248 @@
+#!/bin/sh
+
+# Script for launching sing-box on Asus routers with Merlin firmware and Entware installed on a USB drive.
+
+# Static variables
+SB_CONFIG="/jffs/addons/sing-box/config.json"
+SCRIPT_PATH="/jffs/addons/sing-box/sing-box-script"
+SCRIPT_CONF="/jffs/addons/sing-box/script-conf"
+SB_PATH="/opt/root/sing-box/sing-box"
+SS_SCRIPT="/jffs/scripts/services-start"
+SS_LINES="sleep 30
+/jffs/addons/sing-box/sing-box-script start"
+FW_SCRIPT="/jffs/scripts/firewall-start"
+
+# Connecting the configuration file
+source "$SCRIPT_CONF"
+
+# Firewall rules
+FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
+FORWARD -o $TUN_INTERFACE -j ACCEPT
+INPUT -i $TUN_INTERFACE -j ACCEPT
+OUTPUT -o $TUN_INTERFACE -j ACCEPT"
+
+# Functions
+log_msg() {
+    echo "$1"
+    logger -t "sing-box" "$1"
+}
+
+ensure_script() {
+    [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
+}
+
+update_script() {
+    ensure_script "$1"
+    echo "$2" | while read -r line; do
+        grep -qF "$line" "$1" || echo "$line" >> "$1"
+    done
+}
+
+remove_script_content() {
+    [ -f "$1" ] && echo "$2" | while read -r line; do
+        sed -i "/$(echo "$line" | sed 's/[\/&]/\\&/g')/d" "$1"
+    done
+}
+
+manage_iptables() {
+    if [ "$1" = "add" ]; then
+        iptables -C $2 2>/dev/null || iptables -I $2 || log_msg "Error adding iptables rule: $2"
+    elif [ "$1" = "remove" ]; then
+        iptables -C $2 2>/dev/null && iptables -D $2 || log_msg "Error removing iptables rule: $2"
+    fi
+}
+
+is_running() {
+    ps | grep -v grep | grep -q "$SB_PATH"
+}
+
+update_tun() {
+    if [ -f "$SB_CONFIG" ]; then
+        local config_content=$(cat "$SB_CONFIG")
+        local new_iface=$(echo "$config_content" | grep '"interface_name":' | sed -n 's/.*"interface_name": "\(.*\)".*/\1/p')
+        if [ -n "$new_iface" ] && [ "$new_iface" != "$TUN_INTERFACE" ]; then
+            TUN_INTERFACE="$new_iface"
+            sed -i "s|^TUN_INTERFACE=\".*\"$|TUN_INTERFACE=\"$TUN_INTERFACE\"|" "$SCRIPT_CONF"
+            log_msg "TUN interface name updated to: $TUN_INTERFACE"
+        elif [ -z "$new_iface" ]; then
+            log_msg "Error: Failed to retrieve TUN interface name from $SB_CONFIG"
+            exit 1
+        fi
+    else
+        log_msg "Error: $SB_CONFIG file not found"
+        exit 1
+    fi
+
+    echo "Settings have been saved."
+
+    while true; do
+        read -p "Launch sing-box? (1-No 2-Yes): " choice
+        case "$choice" in
+            1) echo "sing-box is not running." ; break ;;
+            2) start_sing_box ; break ;;
+            *) echo "Incorrect input: Enter 1 or 2." ;;
+        esac
+    done
+}
+
+setup_sing_box() {
+    read -p "Change script settings? If sing-box is running, selecting option 2 will stop it. (1-No 2-Yes): " choice
+    case "$choice" in
+        1) echo "Exit the settings menu." ; exit 0 ;;
+        2) if is_running; then stop_sing_box ; echo "Go to script settings." ; fi ;;
+        *) echo "Incorrect input: Enter 1 or 2." ;;
+    esac
+
+    echo "Current IP addresses of devices: $DEVICE_IPS"
+    while true; do
+        read -p "Change IP addresses of devices? (1-No 2-Yes): " choice
+        case "$choice" in
+            1) break ;;
+            2) read -p "Enter new IP addresses of devices: " new_ips
+               DEVICE_IPS="$new_ips"
+               sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$new_ips\"|" "$SCRIPT_CONF"
+               log_msg "IP addresses of devices have been changed." ; break ;;
+            *) echo "Incorrect input: Enter 1 or 2." ;;
+        esac
+    done
+
+    echo "Current routing table number: $ROUTE_TABLE"
+    while true; do
+        read -p "Change routing table number? (1-No 2-Yes): " choice
+        case "$choice" in
+            1) break ;;
+            2) read -p "Enter the new routing table number: " new_table
+               ROUTE_TABLE="$new_table"
+               sed -i "s|^ROUTE_TABLE=\".*\"$|ROUTE_TABLE=\"$new_table\"|" "$SCRIPT_CONF"
+               log_msg "Routing table number changed." ; break ;;
+            *) echo "Incorrect input: Enter 1 or 2." ;;
+        esac
+    done
+
+    update_tun
+}
+
+start_sing_box() {
+    log_msg "Launch sing-box..."
+    is_running && { log_msg "Error: sing-box is already running"; exit 1; }
+
+    lsmod | grep -q "^tun " || { log_msg "Loading TUN module..."; modprobe tun; }
+
+    $SB_PATH run -c $SB_CONFIG &
+    sleep 3
+
+    ip link show $TUN_INTERFACE >/dev/null 2>&1 || { log_msg "Error: TUN interface $TUN_INTERFACE not found"; exit 1; }
+
+    log_msg "Setting up the routing table..."
+    ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE
+    for IP in $DEVICE_IPS; do ip rule add from $IP table $ROUTE_TABLE; done
+
+    log_msg "Adding Firewall Rules..."
+    echo "$FW_RULES" | while read -r rule; do
+        manage_iptables "add" "$rule"
+    done
+
+    log_msg "Updating firewall-start script..."
+    echo "$FW_RULES" | while read -r rule; do
+        update_script "$FW_SCRIPT" "iptables -I $rule"
+    done
+
+    log_msg "Updating the services-start script..."
+    update_script "$SS_SCRIPT" "$SS_LINES"
+    log_msg "sing-box launched."
+
+    /jffs/addons/sing-box/monitor-routes &
+}
+
+stop_sing_box() {
+    log_msg "Stop sing-box..."
+
+    pids=$(pidof "monitor-routes")
+    if [ -z "$pids" ]; then
+      break
+    fi
+    for pid in $pids; do
+      kill "$pid"
+    done
+
+    PIDS=$(pidof "sing-box")
+    if [ -z "$PIDS" ]; then
+      break
+    fi
+    for pid in $PIDS; do
+      kill "$pid"
+    done
+
+    log_msg "Deleting routing rules..."
+    for IP in $DEVICE_IPS; do ip rule del from $IP table $ROUTE_TABLE; done
+    ip route del default dev $TUN_INTERFACE table $ROUTE_TABLE 2>/dev/null || true
+
+    log_msg "Removing firewall rules..."
+    log_msg "Updating firewall-start script..."
+    echo "$FW_RULES" | while read -r rule; do
+        manage_iptables "remove" "$rule"
+        remove_script_content "$FW_SCRIPT" "iptables -I $rule"
+    done
+
+    log_msg "Updating the services-start script..."
+    remove_script_content "$SS_SCRIPT" "$SS_LINES"
+    log_msg "sing-box stopped."
+}
+
+edit_sing_box() {
+    read -p "Edit sing-box config.json file with nano editor? If sing-box is running, selecting option 2 will stop it.
+(1-No 2-Yes): " choice
+    case "$choice" in
+        1) echo "Exit." ; exit 0 ;;
+        2) if is_running; then stop_sing_box ; echo "Opening config.json in nano editor" ; nano $SB_CONFIG ; update_tun ; fi ;;
+        *) echo "Incorrect input: Enter 1 or 2." ;;
+    esac
+}
+
+remove_sing_box() {
+    read -p "Delete all directories and files of the sing-box script? If sing-box is running, selecting option 2 will stop it first.
+(1-No 2-Yes): " choice
+    case "$choice" in
+        1) echo "Exit." ; exit 0 ;;
+        2) if is_running; then stop_sing_box ; echo "Deleting all directories and files of the sing-box script." ; rm -rf /opt/root/sing-box /jffs/addons/sing-box /opt/bin/sbs ; echo "All directories and files of the sing-box script have been deleted." ; fi ;;
+        *) echo "Incorrect input: Enter 1 or 2." ;;
+    esac
+}
+
+show_menu() {
+    echo "To run the sing-box script, you can run the sbs command with the parameters listed below directly in the console, for example sbs start, or you can run it from this menu by the parameter number."
+    echo "Enter the number of the parameter to launch or exit this menu:"
+    echo "1) start (start sing-box)"
+    echo "2) stop (stop sing-box)"
+    echo "3) restart (restart sing-box)"
+    echo "4) setup (script setup)"
+    echo "5) edit (edit config.json - sing-box configuration file)"
+    echo "6) remove (!!!Remove all directories and files of the sing-box script!!!)"
+    echo "7) Exit the menu."
+}
+
+# Menu
+case "$1" in
+    start) start_sing_box ;;
+    stop) stop_sing_box ;;
+    restart) stop_sing_box && start_sing_box ;;
+    setup) setup_sing_box ;;
+    edit) edit_sing_box ;;
+    remove) remove_sing_box ;;
+    *)
+        while true; do
+            show_menu
+            read -p "Enter your choice [1-7]: " choice
+            case $choice in
+                1) start_sing_box; break ;;
+                2) stop_sing_box; break ;;
+                3) stop_sing_box && start_sing_box; break ;;
+                4) setup_sing_box; break ;;
+                5) edit_sing_box; break ;;
+                6) remove_sing_box; break ;;
+                7) exit 0 ;;
+                *) echo "Incorrect input, try again." ;;
+            esac
+        done
+        ;;
+esac
