@@ -386,7 +386,7 @@ update_sing_box() {
     chmod 775 "$SCRIPT_PATH"
     echo "Скрипт успешно обновлён."
 
-    create_sbs_monitor
+    create_sbs_monitor "$JFFS_SB_DIR/sbs-monitor"
     echo "sbs-monitor успешно обновлён."
 
     create_dir "$SB_DOWNLOAD_DIR"
