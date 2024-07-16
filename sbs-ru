@@ -61,8 +61,6 @@ create_sbs_monitor() {
     cat << EOF > "$1"
 #!/bin/sh
 
-echo "УУУРРРРРАААААААА"
-
 source "$SBS_CONF"
 
 log_msg() {
