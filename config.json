@@ -118,11 +118,11 @@
   "experimental": {
       "cache_file": {
           "enabled": true,
-          "path": "/mnt/entware/entware/root/sing-box/cache.db"
+          "path": "/opt/root/sing-box/cache.db"
       },
       "clash_api": {
           "external_controller": "0.0.0.0:9090",
-          "external_ui": "/mnt/entware/entware/root/sing-box/ui",
+          "external_ui": "/opt/root/sing-box/ui",
           "secret": "3194"
       }
   }
