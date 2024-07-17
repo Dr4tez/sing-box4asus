@@ -71,7 +71,7 @@
       "local_address": "10.73.105.11/32",
       "private_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=",
       "server": "XX.XX.XX.XX",
-      "server_port": XXXXX,
+      "server_port": XXXX,
       "peer_public_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=",
       "pre_shared_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=",
       "mtu": 1376
