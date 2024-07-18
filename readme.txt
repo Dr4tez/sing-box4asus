@@ -3,7 +3,7 @@ Script to run sing-box on Asus routers with Merlin firmware and a flash drive wi
 I. Nuances.
 1. You must be able to create, or at least edit for yourself, configurations for sing-box. Documentation is available at https://sing-box.sagernet.org/. A template of my config is installed along with the sing-box script.
 2. Your router must have a mounted flash drive with Entware installed on it. The sing-box core will be installed in it, and during its operation, a directory with UI and a cache file will be created there as well. Installing these components into the router's internal memory is undesirable and often impossible due to its limitations, and is not considered.
-3. Specifying DNS servers in the sing-box configuration on the router breaks the routing rules specified in this configuration. However, it works fine for me without specifying DNS servers in the config, while using the DNS set up in the router.
+3. In general, in the config for sing-box (config.json file), in a special section, you can specify DNS servers and rules for them. But, for some reason, they are ignored on my router. As a result, all DNS requests from devices, whose traffic is directed through sing-box, always go to the DNS server, specified in the router settings. I suspect, that this happens on all similar routers. Therefore, I did not include a section for DNS settings in my config. But, in principle, for me personally, this does not matter. But, purely for science, it would be nice to find a way to fix this.
 4. If you notice bugs in the script's operation and/or can improve/optimize the script, please share this information with me here.
 
 II. Installing sing-box.
