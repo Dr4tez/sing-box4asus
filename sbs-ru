@@ -417,7 +417,7 @@ updmonandcore_sing_box() {
     tar -xzvf "$SB_ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
     sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -type f)
 
-    echo "ООбновить файл ядра sing-box?"
+    echo "Обновить файл ядра sing-box?"
     while true; do
         read -p "1-Нет, 2-Да: " choice
         case $choice in
