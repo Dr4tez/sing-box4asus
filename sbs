@@ -1,0 +1,836 @@
+#!/bin/sh
+
+# Version 0.7
+# Script for running Sing-Box on Asus routers with Merlin firmware and Entware installed on a USB drive.
+
+# Variables
+JFFS_SB_DIR="/jffs/addons/sing-box-script"
+SB_CONFIG="$JFFS_SB_DIR/config.json"
+SCRIPT_PATH="$JFFS_SB_DIR/sbs"
+SBS_CONF="$JFFS_SB_DIR/sbs-conf"
+SBS_MON="$JFFS_SB_DIR/sbs-monitor"
+TEMP_UPDATE="$JFFS_SB_DIR/temp-update"
+ROOT_DIR="/opt/root"
+SB_DIR="$ROOT_DIR/sing-box"
+SB_PATH="$SB_DIR/sing-box"
+SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
+SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
+SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs"
+SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
+SB_DOWNLOAD_URL=$(curl -s -H "Accept: application/vnd.github.v3+json" "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
+SS_DIR="/jffs/scripts"
+FW_SCRIPT="$SS_DIR/firewall-start"
+SS_SCRIPT="$SS_DIR/services-start"
+SS_LINES="sleep 30 # sbs
+$SCRIPT_PATH start # sbs"
+LN_PATH="/opt/bin/sbs"
+
+# Functions
+log_msg() {
+    echo "$1"
+    logger -t "sbs" "$1"
+}
+
+create_dir() {
+    mkdir -p "$1"
+    chmod 775 "$1"
+    echo "Directory $1 created."
+}
+
+dir_exists() {
+    [ -d "$1" ]
+}
+
+create_sbs_conf() {
+    cat << EOF > "$1"
+# Version 0.7
+# This file is created automatically and the values are entered via the command line when executing the 'sbs setup' command.
+# If you want to change the values here using an editor bypassing the 'sbs setup' command, then before doing so, be sure to stop sing-box with the 'sbs stop' command in the command line.
+
+# Values TUN_INTERFACE is determined automatically. It is here because it is needed for sbs-monitor to work.
+# In the DEVICE_IPS field, enter the IP addresses of the devices, whose traffic you want to route through the corresponding TUN_INTERFACE. IP addresses must be inside quotation marks, on one line, separated by spaces.
+# If the specified ROUTE_TABLE values (routing table numbers) on your router are already taken, which is unlikely, assign other numbers that are not taken.
+
+DEVICE_IPS1=""
+ROUTE_TABLE1="555"
+TUN_INTERFACE1=""
+
+DEVICE_IPS2=""
+ROUTE_TABLE2="556"
+TUN_INTERFACE2=
+EOF
+    chmod 664 "$1"
+}
+
+create_sbs_monitor() {
+    cat << EOF > "$1"
+#!/bin/sh
+
+# Version 0.7
+
+source "$SBS_CONF"
+
+log_msg() {
+    echo "\$1"
+    logger -t "sbs" "\$1"
+}
+
+add_rr() {
+    TUN_INTERFACE=\$1
+    ROUTE_TABLE=\$2
+    DEVICE_IPS=\$3
+
+    existing_route=\$(ip route show table "\$ROUTE_TABLE" | grep "default dev \$TUN_INTERFACE")
+    if [ -z "\$existing_route" ]; then
+        if ip route add default dev "\$TUN_INTERFACE" table "\$ROUTE_TABLE"; then
+            log_msg "Route added: ip route add default dev \$TUN_INTERFACE table \$ROUTE_TABLE"
+        else
+            log_msg "Error adding route: ip route add default dev \$TUN_INTERFACE table \$ROUTE_TABLE"
+        fi
+    fi
+
+    existing_rule=\$(ip rule show | grep "lookup \$ROUTE_TABLE")
+    if [ -z "\$existing_rule" ]; then
+        for IP in \$DEVICE_IPS; do
+            if ip rule add from "\$IP" table "\$ROUTE_TABLE"; then
+                log_msg "ip rule for \$IP added to routing table \$ROUTE_TABLE"
+            else
+                log_msg "Error adding ip rule for \$IP to routing table \$ROUTE_TABLE"
+            fi
+        done
+    fi
+}
+
+sbs_monitor_rr() {
+    ip monitor route | while read -r line; do
+        log_msg "Change detected: \$line"
+
+        if echo "\$line" | grep -q "dev \$TUN_INTERFACE1 table"; then
+            if [ -n "\$TUN_INTERFACE1" ] && [ -n "\$ROUTE_TABLE1" ] && [ -n "\$DEVICE_IPS1" ]; then
+                add_rr "\$TUN_INTERFACE1" "\$ROUTE_TABLE1" "\$DEVICE_IPS1"
+            fi
+        fi
+
+        if echo "\$line" | grep -q "dev \$TUN_INTERFACE2 table"; then
+            if [ -n "\$TUN_INTERFACE2" ] && [ -n "\$ROUTE_TABLE2" ] && [ -n "\$DEVICE_IPS2" ]; then
+                add_rr "\$TUN_INTERFACE2" "\$ROUTE_TABLE2" "\$DEVICE_IPS2"
+            fi
+        fi
+    done
+}
+
+trap '' SIGHUP
+
+sbs_monitor_rr
+EOF
+    chmod 775 "$1"
+}
+
+check_file_existence_and_download() {
+    local file_path="$1"
+    local file_url="$2"
+    local file_name=$(basename "$file_path")
+
+    if [ -f "$file_path" ]; then
+    echo "The file $file_name already exists. What do you want to do?"
+        while true; do
+            read -p "1-Skip download, 2-Download and replace file: " choice
+            case $choice in
+                1) echo "Download of $file_name skipped."; return 0 ;;
+                2) echo "Download and replace the file $file_name"; curl -s -L -o "$file_path" "$file_url"; return 0 ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        echo "Downloading $file_name..."
+        curl -s -L -o "$file_path" "$file_url"
+    fi
+}
+
+delete_if_not_current_dir() {
+  local current_dir=$(dirname "$(readlink -f "$0")")
+  if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
+    rm -f "$(readlink -f "$0")"
+  fi
+}
+
+create_or_use_existing() {
+    local dir_path="$1"
+    if dir_exists "$dir_path"; then
+    echo "The directory $dir_path already exists. What do you want to do?"
+        while true; do
+            read -p "1-Quit, 2-Use current directory: " choice
+            case $choice in
+                1) delete_if_not_current_dir; echo "The script has completed its work."; exit 0 ;;
+                2) echo "Use current directory $dir_path"; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        create_dir "$dir_path"
+    fi
+}
+
+handle_existing_file() {
+    local file_path="$1"
+    local create_function="$2"
+    if [ -f "$file_path" ]; then
+    echo "The file $file_path already exists. What do you want to do?"
+        while true; do
+            read -p "1-Leave the current file, 2-Replace the file: " choice
+            case $choice in
+                1) echo "We leave the current file."; break ;;
+                2) echo "Replace the $file_path file"; "$create_function" "$file_path"; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        "$create_function" "$file_path"
+    fi
+}
+
+ensure_script() {
+    [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
+}
+
+update_script() {
+    ensure_script "$1"
+    echo "$2" | while read -r line; do
+        grep -qF "$line" "$1" || echo "$line" >> "$1"
+    done
+}
+
+remove_script_content() {
+    [ -f "$1" ] && echo "$2" | while read -r line; do
+        sed -i "/$(echo "$line" | sed 's/[\/&]/\\&/g')/d" "$1"
+    done
+}
+
+manage_iptables() {
+    if [ "$1" = "add" ]; then
+        iptables -C $2 2>/dev/null || iptables -I $2 || log_msg "Error adding iptables rule: $2"
+    elif [ "$1" = "remove" ]; then
+        iptables -C $2 2>/dev/null && iptables -D $2 || log_msg "Error removing iptables rule: $2"
+    fi
+}
+
+is_running() {
+    ps | grep -v grep | grep -q "$SB_PATH"
+}
+
+self_copy() {
+    local destination="$1"
+    cp "$0" "$destination"
+}
+
+sing_box_start() {
+    echo "Launch sing-box?"
+    while true; do
+        read -p "1-No, 2-Yes: " choice
+        case "$choice" in
+            1) echo "sing-box is not running."; break ;;
+            2) start_sing_box; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+}
+
+update_sbs_interfaces() {
+    INTERFACES=$(awk -F'"' '/"interface_name":/ {print $4}' "$SB_CONFIG")
+    TUN_INTERFACE1=$(grep 'TUN_INTERFACE1=' "$SBS_CONF" | cut -d '"' -f 2)
+    TUN_INTERFACE2=$(grep 'TUN_INTERFACE2=' "$SBS_CONF" | cut -d '"' -f 2)
+    DEVICE_IPS1=$(grep 'DEVICE_IPS1=' "$SBS_CONF" | cut -d '"' -f 2)
+    DEVICE_IPS2=$(grep 'DEVICE_IPS2=' "$SBS_CONF" | cut -d '"' -f 2)
+    FOUND1=false
+    FOUND2=false
+    NEW_INTERFACE1=""
+    NEW_INTERFACE2=""
+    for INTERFACE in $INTERFACES; do
+        if [ "$INTERFACE" = "$TUN_INTERFACE1" ]; then
+            FOUND1=true
+        elif [ "$INTERFACE" = "$TUN_INTERFACE2" ]; then
+            FOUND2=true
+        else
+            if [ -z "$NEW_INTERFACE1" ]; then
+                NEW_INTERFACE1="$INTERFACE"
+            elif [ -z "$NEW_INTERFACE2" ]; then
+                NEW_INTERFACE2="$INTERFACE"
+            fi
+        fi
+    done
+
+    update_sbs_conf() {
+        sed -i "s|TUN_INTERFACE1=\"[^\"]*\"|TUN_INTERFACE1=\"$1\"|" "$SBS_CONF"
+        sed -i "s|DEVICE_IPS1=\"[^\"]*\"|DEVICE_IPS1=\"$2\"|" "$SBS_CONF"
+        sed -i "s|TUN_INTERFACE2=\"[^\"]*\"|TUN_INTERFACE2=\"$3\"|" "$SBS_CONF"
+        sed -i "s|DEVICE_IPS2=\"[^\"]*\"|DEVICE_IPS2=\"$4\"|" "$SBS_CONF"
+    }
+
+    if $FOUND1 && $FOUND2; then
+        return 0
+    elif ! $FOUND1 && ! $FOUND2; then
+        update_sbs_conf "$NEW_INTERFACE1" "" "$NEW_INTERFACE2" ""
+    elif $FOUND1 && ! $FOUND2; then
+        update_sbs_conf "$TUN_INTERFACE1" "$DEVICE_IPS1" "$NEW_INTERFACE1" ""
+    elif ! $FOUND1 && $FOUND2; then
+        update_sbs_conf "$NEW_INTERFACE1" "" "$TUN_INTERFACE2" "$DEVICE_IPS2"
+    fi
+}
+
+start_sing_box() {
+    log_msg "Launch sing-box..."
+
+    is_running && { log_msg "Error: sing-box is already running."; exit 1; }
+
+    source "$SBS_CONF"
+
+    update_sbs_interfaces
+
+    source "$SBS_CONF"
+
+    FW_RULES1="FORWARD -i $TUN_INTERFACE1 -j ACCEPT
+    FORWARD -o $TUN_INTERFACE1 -j ACCEPT
+    INPUT -i $TUN_INTERFACE1 -j ACCEPT
+    OUTPUT -o $TUN_INTERFACE1 -j ACCEPT"
+
+    FW_RULES2="FORWARD -i $TUN_INTERFACE2 -j ACCEPT
+    FORWARD -o $TUN_INTERFACE2 -j ACCEPT
+    INPUT -i $TUN_INTERFACE2 -j ACCEPT
+    OUTPUT -o $TUN_INTERFACE2 -j ACCEPT"
+
+    lsmod | grep -q "^tun " || { log_msg "Loading TUN module"; modprobe tun; }
+
+    $SB_PATH run -c $SB_CONFIG &
+    sleep 3
+
+    interface1_exists=false
+    interface2_exists=false
+    if ip link show "$TUN_INTERFACE1" >/dev/null 2>&1; then
+        log_msg "TUN interface $TUN_INTERFACE1 detected."
+        interface1_exists=true
+    else
+        interface1_exists=false
+    fi
+    if ip link show "$TUN_INTERFACE2" >/dev/null 2>&1; then
+        log_msg "TUN interface $TUN_INTERFACE2 detected."
+        interface2_exists=true
+    else
+        interface2_exists=false
+    fi
+    if [ "$interface1_exists" = false ] && [ "$interface2_exists" = false ]; then
+        log_msg "TUN interfaces not found."
+    fi
+
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+        log_msg "Adding routing rules for interface $TUN_INTERFACE1"
+        ip route add default dev $TUN_INTERFACE1 table $ROUTE_TABLE1
+        for IP in $DEVICE_IPS1; do ip rule add from $IP table $ROUTE_TABLE1
+        done
+    fi
+    if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+        log_msg "Adding routing rules for interface $TUN_INTERFACE2"
+        ip route add default dev $TUN_INTERFACE2 table $ROUTE_TABLE2
+        for IP in $DEVICE_IPS2; do ip rule add from $IP table $ROUTE_TABLE2
+        done
+    fi
+
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+        log_msg "Adding firewall rules and updating firewall-start script for $TUN_INTERFACE1 interface"
+        echo "$FW_RULES1" | while read -r rule; do
+            manage_iptables "add" "$rule"
+            update_script "$FW_SCRIPT" "iptables -I $rule"
+        done
+    fi
+    if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+        log_msg "Adding firewall rules and updating firewall-start script for $TUN_INTERFACE2 interface"
+        echo "$FW_RULES2" | while read -r rule; do
+            manage_iptables "add" "$rule"
+            update_script "$FW_SCRIPT" "iptables -I $rule"
+        done
+    fi
+
+    log_msg "Updating the services-start script"
+    update_script "$SS_SCRIPT" "$SS_LINES"
+
+    log_msg "sing-box is running."
+
+    $SBS_MON &
+    log_msg "sbs-monitor is running."
+}
+
+stop_sing_box() {
+    log_msg "Stop sing-box..."
+
+    source "$SBS_CONF"
+
+    FW_RULES1="FORWARD -i $TUN_INTERFACE1 -j ACCEPT
+    FORWARD -o $TUN_INTERFACE1 -j ACCEPT
+    INPUT -i $TUN_INTERFACE1 -j ACCEPT
+    OUTPUT -o $TUN_INTERFACE1 -j ACCEPT"
+
+    FW_RULES2="FORWARD -i $TUN_INTERFACE2 -j ACCEPT
+    FORWARD -o $TUN_INTERFACE2 -j ACCEPT
+    INPUT -i $TUN_INTERFACE2 -j ACCEPT
+    OUTPUT -o $TUN_INTERFACE2 -j ACCEPT"
+
+    pids=$(pidof "sbs-monitor")
+    if [ -z "$pids" ]; then
+      break
+    fi
+    for pid in $pids; do
+      kill "$pid"
+    done
+    log_msg "sbs-monitor has stopped."
+
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+        log_msg "Removing routing rules for interface $TUN_INTERFACE1"
+        for IP in $DEVICE_IPS1; do ip rule del from $IP table $ROUTE_TABLE1
+        ip route del default dev $TUN_INTERFACE1 table $ROUTE_TABLE1 2>/dev/null || true
+        done
+    fi
+    if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+        log_msg "Removing routing rules for interface $TUN_INTERFACE2"
+        for IP in $DEVICE_IPS2; do ip rule del from $IP table $ROUTE_TABLE2
+        ip route del default dev $TUN_INTERFACE2 table $ROUTE_TABLE2 2>/dev/null || true
+        done
+    fi
+
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+        log_msg "Removing firewall rules and updating firewall-start script for $TUN_INTERFACE1 interface"
+        echo "$FW_RULES1" | while read -r rule; do
+            manage_iptables "remove" "$rule"
+            remove_script_content "$FW_SCRIPT" "iptables -I $rule"
+        done
+    fi
+    if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+        log_msg "Removing firewall rules and updating firewall-start script for $TUN_INTERFACE2 interface"
+        echo "$FW_RULES2" | while read -r rule; do
+            manage_iptables "remove" "$rule"
+            remove_script_content "$FW_SCRIPT" "iptables -I $rule"
+        done
+    fi
+
+    log_msg "Updating the services-start script"
+    remove_script_content "$SS_SCRIPT" "$SS_LINES"
+
+    PIDS=$(pidof "sing-box")
+    if [ -z "$PIDS" ]; then
+      break
+    fi
+    for pid in $PIDS; do
+      kill "$pid"
+    done
+
+    log_msg "sing-box has stopped."
+}
+
+setup_sing_box() {
+    echo "Change script settings? If sing-box is running, selecting option 2 will stop it."
+    while true; do
+        read -p "1-No, 2-Yes: " choice
+        case "$choice" in
+            1) echo "Exit the setup menu."; exit 0 ;;
+            2) if is_running; then stop_sing_box; fi; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+    echo "Go to script setup."
+
+    source "$SBS_CONF"
+
+    echo "Edit config.json (sing-box configuration file) using nano editor?"
+    while true; do
+        read -p "1-No, 2-Yes: " choice
+        case "$choice" in
+            1) echo "Refusing to editing config.json."; break ;;
+            2) echo "Opening config.json in nano editor."; nano $SB_CONFIG; echo "config.json saved."; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+    if [ -n "$TUN_INTERFACE1" ]; then
+        echo "Current device IP addresses for $TUN_INTERFACE1: $DEVICE_IPS1 Change them? Selecting 2 will replace the existing IP addresses with the ones you entered."
+        while true; do
+            read -p "1-No, 2-Yes: " choice
+            case "$choice" in
+                1) echo "Refusing to replace IP addresses."; break ;;
+                2) read -p "Enter new IP addresses of devices: " new_ips1
+                   DEVICE_IPS1="$new_ips1"
+                   sed -i "s|^DEVICE_IPS1=\".*\"$|DEVICE_IPS1=\"$new_ips1\"|" "$SBS_CONF"
+                   log_msg "IP addresses of devices for $TUN_INTERFACE1 have been changed."; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    fi
+
+    if [ -n "$TUN_INTERFACE2" ]; then
+        echo "Current device IP addresses for $TUN_INTERFACE2: $DEVICE_IPS2 Change them? Selecting 2 will replace the existing IP addresses with the ones you entered."
+        while true; do
+            read -p "1-No, 2-Yes: " choice
+            case "$choice" in
+                1) echo "Refusing to replace IP addresses."; break ;;
+                2) read -p "Enter new IP addresses of devices: " new_ips2
+                   DEVICE_IPS2="$new_ips2"
+                   sed -i "s|^DEVICE_IPS2=\".*\"$|DEVICE_IPS2=\"$new_ips2\"|" "$SBS_CONF"
+                   log_msg "IP addresses of devices for $TUN_INTERFACE2 have been changed."; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    fi
+
+    if [ -n "$TUN_INTERFACE1" ]; then
+        echo "The current routing table number for $TUN_INTERFACE1 is $ROUTE_TABLE1. Change it?"
+        while true; do
+            read -p "1-No, 2-Yes: " choice
+            case "$choice" in
+                1) echo "Refusing to change the routing table number."; break ;;
+                2) read -p "Enter the new routing table number: " new_table1
+                   ROUTE_TABLE1="$new_table1"
+                   sed -i "s|^ROUTE_TABLE1=\".*\"$|ROUTE_TABLE1=\"$new_table1\"|" "$SBS_CONF"
+                   log_msg "The routing table number for $TUN_INTERFACE1 has been changed to $ROUTE_TABLE1."; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    fi
+
+    if [ -n "$TUN_INTERFACE2" ]; then
+        echo "The current routing table number for $TUN_INTERFACE2 is $ROUTE_TABLE2. Change it?"
+        while true; do
+            read -p "1-No, 2-Yes: " choice
+            case "$choice" in
+                1) echo "Refusing to change the routing table number."; break ;;
+                2) read -p "Enter the new routing table number: " new_table2
+                   ROUTE_TABLE2="$new_table2"
+                   sed -i "s|^ROUTE_TABLE2=\".*\"$|ROUTE_TABLE2=\"$new_table2\"|" "$SBS_CONF"
+                   log_msg "The routing table number for $TUN_INTERFACE2 has been changed to $ROUTE_TABLE2."; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    fi
+
+    echo "Settings have been saved."
+
+    sing_box_start
+}
+
+edit_sing_box() {
+    echo "Edit sbs-conf (script settings file) with nano editor? If sing-box is running, selecting 2 will stop it."
+    while true; do
+        read -p "1-No, 2-Yes: " choice
+        case "$choice" in
+            1) echo "Exit."; exit 0 ;;
+            2) if is_running; then stop_sing_box; fi; echo "Opening sbs-conf in nano editor."; nano $SBS_CONF; echo "sbs-conf saved."; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+    sing_box_start
+}
+
+update_sing_box() {
+    echo "Update sing-box script? If sing-box is running, selecting 2 will stop it."
+    while true; do
+        read -p "1-No, 2-Yes: " choice
+        case "$choice" in
+            1) echo "The sing-box script update has been cancelled."; exit 0 ;;
+            2) if is_running; then stop_sing_box; fi; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+    echo "Updating sing-box script..."
+
+    curl -s -L -o "$SCRIPT_PATH" "$SCRIPT_URL"
+    if [ $? -ne 0 ]; then
+      echo "Error: failed to download file from $SCRIPT_URL"
+      exit 1
+    fi
+    chmod 775 "$SCRIPT_PATH"
+    echo "The main script has been updated successfully."
+
+    cat << EOF > $TEMP_UPDATE
+#!/bin/sh
+rm -f $TEMP_UPDATE
+exec $SCRIPT_PATH updmonandcore
+EOF
+    chmod 775 $TEMP_UPDATE
+
+    exec $TEMP_UPDATE
+}
+
+updmonandcore_sing_box() {
+    create_sbs_monitor "$SBS_MON"
+    echo "The sbs-monitor script has been updated successfully."
+
+    create_dir "$SB_DOWNLOAD_DIR"
+    curl -s -L -o "$SB_ARCHIVE_PATH" "$SB_DOWNLOAD_URL"
+    tar -xzvf "$SB_ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
+    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -type f)
+
+    echo "Update sing-box core file?"
+    while true; do
+        read -p "1-No, 2-Yes: " choice
+        case $choice in
+            1) echo "$SB_PATH file update cancelled."; break ;;
+            2) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "The $SB_PATH file has been updated successfully."; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+    
+    rm -rf "$SB_DOWNLOAD_DIR"
+    echo "The $SB_DOWNLOAD_DIR directory has been deleted."
+
+    sing_box_start
+}
+
+check_sing_box() {
+    echo "Checking sing-box configuration file for errors..."
+    if ! output=$($SB_PATH check -c $SB_CONFIG 2>&1); then
+        echo "An error was found in the configuration file:"
+        echo "$output"
+        echo "Edit the configuration file in the nano editor?
+If sing-box is running, choosing option 2 will stop it."
+        while true; do
+            echo "1-No, 2-Yes"
+            read choice
+            case "$choice" in
+                1) echo "We complete the check without correcting the errors."; exit 0 ;;
+                2) if is_running; then 
+                        stop_sing_box
+                    fi 
+                    echo "Open the configuration file in the nano editor..."
+                    nano $SB_CONFIG
+                    echo "Configuration file editing is complete."
+                    check_sing_box
+                    return 0
+                    ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        echo "No errors were found in the configuration file."
+        if [ "$choice" = "2" ]; then
+            echo "Launch sing-box? 1-No, 2-Yes"
+            while true; do
+                read start_choice
+                case "$start_choice" in
+                    1) echo "You have chosen not to run sing-box."; break ;;
+                    2) start_sing_box; break ;;
+                    *) echo "Incorrect input. Please try again." ;;
+                esac
+            done
+        fi
+    fi
+}
+
+format_sing_box() {
+    echo "Do you want to format the sing-box configuration file? If sing-box is running, choosing option 2 will stop it."
+    while true; do
+        read -p "1-No, 2-Yes: " choice
+        case "$choice" in
+            1) echo "format of sing-box configuration file has been deprecated."; exit 0 ;;
+            2) 
+                if is_running; then 
+                    stop_sing_box
+                fi
+                break 
+                ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+    while true; do
+        if ! output=$($SB_PATH format -c $SB_CONFIG 2>&1); then
+            echo "An error was found in the configuration file:"
+            echo "$output"
+            echo "Edit the configuration file in the nano editor?"
+            while true; do
+                read -p "1-No, 2-Yes: " edit_choice
+                case "$edit_choice" in
+                    1) echo "We complete the check without correcting the errors."; exit 0 ;;
+                    2) echo "Open the configuration file in the nano editor..."
+                        nano $SB_CONFIG
+                        echo "Configuration file editing is complete."
+                        break
+                        ;;
+                    *) echo "Incorrect input. Please try again." ;;
+                esac
+            done
+        else
+            echo "No more errors found."
+            echo "Result of executing format:"
+            echo "$output"
+
+            while true; do
+                read -p "Save this output of format to your sing-box configuration file?
+1-No, 2-Yes: " save_choice
+                case "$save_choice" in
+                    1) echo "You have chosen not to save the output of format."
+                        break
+                        ;;
+                    2) $SB_PATH format -w -c $SB_CONFIG
+                        echo "Changes have been saved to the configuration file."
+                        break
+                        ;;
+                    *) echo "Incorrect input. Please try again." 
+                        ;;
+                esac
+            done
+            break
+        fi
+    done
+
+    sing_box_start
+}
+
+
+install_sing_box() {
+    echo "Install sing-box script?"
+    while true; do
+        read -p "1-No, 2-Yes: " choice
+        case $choice in
+            1) delete_if_not_current_dir; echo "Installation of sing-box script has been cancelled."; exit 0 ;;
+            2) if is_running; then
+                echo "The sing-box script has already been installed and started. Continue the installation? If choosing 2, the sing-box will be pre-stopped."
+                while true; do
+                   read -p "1-No, 2-Yes: " continue_choice
+                   case "$continue_choice" in
+                       1) delete_if_not_current_dir; echo "Installation of sing-box script has been cancelled."; exit 0 ;;
+                       2) stop_sing_box; break ;;
+                       *) echo "Incorrect input. Please try again." ;;
+                   esac
+                done
+               else break; fi; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+    echo "Let's start installing the sing-box script..."
+
+    create_or_use_existing "$JFFS_SB_DIR"
+
+    handle_existing_file "$SCRIPT_PATH" self_copy
+
+    ln -sf $SCRIPT_PATH $LN_PATH
+
+    handle_existing_file "$JFFS_SB_DIR/sbs-conf" create_sbs_conf
+
+    handle_existing_file "$SBS_MON" create_sbs_monitor
+
+    check_file_existence_and_download "$SB_CONFIG" "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/config.json"
+    chmod 664 "$SB_CONFIG"
+
+    if [ -n "$ROOT_DIR" ]; then
+        create_or_use_existing "$SB_DIR"
+    else
+        echo "Directory $ROOT_DIR not found. Apparently the router does not have a USB drive with Entware installed. Operation cancelled."
+        delete_if_not_current_dir
+        exit 1
+    fi
+
+    create_dir "$SB_DOWNLOAD_DIR"
+    echo "Download the archive with the file sing-box..."
+    curl -s -L -o "$SB_ARCHIVE_PATH" "$SB_DOWNLOAD_URL"
+    echo "Unpack the archive..."
+    tar -xzvf "$SB_ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
+    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -type f)
+
+    if [ -f "$SB_PATH" ]; then
+        echo "The file sing-box already exists. What do you want to do?"
+        while true; do
+            read -p "1-Leave the current file, 2-Replace the file: " choice
+            case $choice in
+                1) echo "Leave the current file."; break ;;
+                2) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "The $SB_PATH file has been replaced."; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        cp "$sing_box_file" "$SB_DIR"; echo "The sing-box file has been moved to the $SB_DIR directory."
+    fi
+
+    local current_dir=$(dirname "$(readlink -f "$0")")
+    if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
+      rm -rf "$SB_DOWNLOAD_DIR" "$(readlink -f "$0")"
+    else
+      rm -rf "$SB_DOWNLOAD_DIR"
+    fi
+
+    echo "The $SB_DOWNLOAD_DIR directory has been removed."
+
+    echo "
+
+*********************
+Installation completed.
+*********************
+1. Before starting sing-box for the first time, be sure to run the command
+sbs setup
+During its execution, you can edit config.json (sing-box configuration file) in the nano editor, then enter the IP addresses of the devices whose traffic you want to route through sing-box, and change the routing table numbers (optional).
+2. You can start sing-box with the command:
+sbs start
+
+Hints for all commands can be seen by running the command in the router console:
+sbs"
+}
+
+remove_sing_box() {
+    echo "Remove all directories and files of the sing-box script? If sing-box is running, choosing 2 will stop it first."
+    while true; do
+        read -p "1-No, 2-Yes: " choice
+        case $choice in
+            1) echo "Exit."; exit 0 ;;
+            2) if is_running; then stop_sing_box; fi; echo "Removing all sing-box script directories and files."; rm -rf $SB_DIR $JFFS_SB_DIR $LN_PATH; echo "All sing-box script directories and files have been removed."; exit 0 ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+}
+
+show_menu() {
+    echo "To run the sing-box script, you can run the 'sbs' command with the parameters listed below directly in the console, for example 'sbs start', or you can run it from this menu by the parameter number."
+    echo "Enter the number of the parameter to run or exit this menu:"
+    echo "1) start (Start sing-box)"
+    echo "2) stop (Stop sing-box)"
+    echo "3) restart (Restart sing-box)"
+    echo "4) setup (Step-by-step script setup)"
+    echo "5) edit (Edit sbs-conf -script settings file)"
+    echo "6) check (Check sing-box configuration file for errors)"
+    echo "7) format (Optimize the structure of the sing-box configuration file)"
+    echo "8) update (Update script file, sbs-monitor file and sing-box core file)"
+    echo "123) remove (!!!Remove sing-box completely!!!)"
+    echo "0) Exit the menu."
+}
+
+# Menu
+case "$1" in
+    install) install_sing_box ;;
+    setup) setup_sing_box ;;
+    start) start_sing_box ;;
+    stop) stop_sing_box ;;
+    restart) stop_sing_box; sleep 1; start_sing_box ;;
+    edit) edit_sing_box ;;
+    check) check_sing_box ;;
+    format) format_sing_box; break ;;
+    update) update_sing_box ;;
+    remove) remove_sing_box ;;
+    updmonandcore) updmonandcore_sing_box ;;
+    *)
+        while true; do
+            show_menu
+            read -p "Enter your choice [0-8 or 123]: " choice
+            case $choice in
+                1) start_sing_box; break ;;
+                2) stop_sing_box; break ;;
+                3) stop_sing_box; sleep 1; start_sing_box; break ;;
+                4) setup_sing_box; break ;;
+                5) edit_sing_box; break ;;
+                6) check_sing_box; break ;;
+                7) format_sing_box; break ;;
+                8) update_sing_box; break ;;
+                123) remove_sing_box; break ;;
+                0) exit 0 ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done ;;
+esac
