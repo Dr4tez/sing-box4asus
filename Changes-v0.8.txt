@@ -1,0 +1,7 @@
+Version 0.8
+Added the command
+sbs status
+which shows whether sing-box is running, as well as the versions of the installed SBS script and sing-box core.
+
+To update from version 0.7 to version 0.8, run the following command in the router's command line:
+sbs update
