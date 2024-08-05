@@ -863,7 +863,7 @@ show_menu() {
     echo "7) format (Оптимизировать структуру конфигурационного файла sing-box)"
     echo "8) update (Обновить файл скрипта, файл sbs-monitor и файл ядра sing-box)"
     echo "9) status (Узнать статус sing-box и версии скрипта SBS и ядра sing-box)"
-    echo "123) remove (!!!Удалить sing-box полностью!!!)"
+    echo "10) remove (!!!Удалить sing-box полностью!!!)"
     echo "0) Выход из меню."
 }
 
@@ -884,7 +884,7 @@ case "$1" in
     *)
         while true; do
             show_menu
-            read -p "Введите нужный номер [0-9 или 123]: " choice
+            read -p "Введите нужный номер [0-10]: " choice
             case $choice in
                 1) start_sing_box; break ;;
                 2) stop_sing_box; break ;;
@@ -895,7 +895,7 @@ case "$1" in
                 7) format_sing_box; break ;;
                 8) update_sing_box; break ;;
                 9) status_sing_box; break ;;
-                123) remove_sing_box; break ;;
+                10) remove_sing_box; break ;;
                 0) exit 0 ;;
                 *) echo "Некорректный ввод, попробуйте ещё." ;;
             esac
