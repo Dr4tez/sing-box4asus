@@ -3,6 +3,46 @@
     "level": "error",
     "timestamp": true
   },
+  "dns": {
+    "servers": [
+      {
+        "tag": "dns-ag-ipv4_only",
+        "address": "https://dns.adguard-dns.com/dns-query",
+        "address_resolver": "dns-resolver",
+        "strategy": "ipv4_only"
+      },
+      {
+        "tag": "dns-ag",
+        "address": "https://dns.adguard-dns.com/dns-query",
+        "address_resolver": "dns-resolver",
+        "detour": "Proxy"
+      },
+      {
+        "tag": "dns-resolver",
+        "address": "8.8.8.8",
+        "strategy": "ipv4_only"
+      }
+    ],
+    "rules": [
+      {
+        "clash_mode": "Global",
+        "server": "dns-ag"
+      },
+      {
+        "clash_mode": "Direct",
+        "server": "dns-ag-ipv4_only"
+      },
+      {
+        "rule_set": "my_domains",
+        "server": "dns-ag"
+      },
+      {
+        "inbound": "mixed-in-global",
+        "server": "dns-ag"
+      }
+    ],
+    "independent_cache": true
+  },
   "inbounds": [
     {
       "type": "tun",
@@ -84,10 +124,18 @@
       "peer_public_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=",
       "pre_shared_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=",
       "mtu": 1376
+    },
+    {
+      "type": "dns",
+      "tag": "dns-out"
     }
   ],
   "route": {
     "rules": [
+      {
+        "protocol": "dns",
+        "outbound": "dns-out"
+      },
       {
         "clash_mode": "Global",
         "outbound": "Proxy"
