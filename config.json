@@ -48,8 +48,8 @@
       "type": "tun",
       "tag": "tun-in-rule",
       "interface_name": "sbtun-rule",
-      "mtu": 1492,
-      "inet4_address": "172.19.0.1/28",
+      "mtu": 1500,
+      "inet4_address": "172.19.0.1/24",
       "endpoint_independent_nat": true,
       "stack": "mixed",
       "sniff": true
@@ -58,8 +58,8 @@
       "type": "tun",
       "tag": "tun-in-global",
       "interface_name": "sbtun-global",
-      "mtu": 1492,
-      "inet4_address": "172.19.1.1/28",
+      "mtu": 1500,
+      "inet4_address": "172.19.1.1/24",
       "endpoint_independent_nat": true,
       "stack": "mixed",
       "sniff": true
@@ -88,14 +88,14 @@
       "type": "selector",
       "tag": "Proxy",
       "outbounds": [
-        "1. VLESS-AEZA",
-        "2. WG-AEZA"
+        "1. My-VLESS",
+        "2. My-WG"
       ],
       "interrupt_exist_connections": true
     },
     {
       "type": "vless",
-      "tag": "1. VLESS-AEZA",
+      "tag": "1. My-VLESS",
       "server": "XX.XX.XX.XX",
       "server_port": 443,
       "uuid": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
@@ -116,7 +116,7 @@
     },
     {
       "type": "wireguard",
-      "tag": "2. WG-AEZA",
+      "tag": "2. My-WG",
       "local_address": "10.73.105.11/32",
       "private_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=",
       "server": "XX.XX.XX.XX",
