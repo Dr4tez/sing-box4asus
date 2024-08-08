@@ -606,7 +606,6 @@ updmonandcore_sing_box() {
     create_sbs_monitor "$SBS_MON"
     echo "Скрипт sbs-monitor успешно обновлён."
 
-    opkg install findutils
     export PATH=/opt/bin:$PATH
 
     create_dir "$SB_DOWNLOAD_DIR"
@@ -800,7 +799,6 @@ install_sing_box() {
         exit 1
     fi
 
-    opkg install findutils
     export PATH=/opt/bin:$PATH
 
     create_dir "$SB_DOWNLOAD_DIR"
