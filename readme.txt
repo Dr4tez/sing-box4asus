@@ -3,8 +3,9 @@ A script to run sing-box on Asus routers with Merlin firmware and a flash drive 
 I. Nuances.
 1. You should be able to create or at least edit sing-box configs for yourself. Documentation: https://sing-box.sagernet.org/. A template of my config is installed with the sing-box script.
 2. Your router must have a mounted flash drive with Entware installed on it. The sing-box core will be installed on it, and during its operation, a directory with UI and a cache file will be created there. Installing these components in the router's internal memory is not desirable and often impossible due to its limitations, and is not considered.
-3. In general, at the beginning of the sing-box configuration file (config.json file), DNS servers and rules for them are specified. But, in the router for the sing-box tun interface, they are ignored due to the router's dnsmasq, which intercepts DNS requests. As a result, all DNS requests from devices whose traffic is directed through the sing-box tun interface always go to the DNS server specified in the router settings. But these DNS settings are still necessary for the correct operation of mixed inbounds, which use them.
-4. If you notice bugs in the script or can improve/optimize the script, please share this information with me.
+3. If IPv6 is enabled in your router settings, it is not recommended to use this script, as it will likely not function as intended in most cases.
+4. In general, at the beginning of the sing-box configuration file (config.json file), DNS servers and rules for them are specified. But, in the router for the sing-box tun interface, they are ignored due to the router's dnsmasq, which intercepts DNS requests. As a result, all DNS requests from devices whose traffic is directed through the sing-box tun interface always go to the DNS server specified in the router settings. But these DNS settings are still necessary for the correct operation of mixed inbounds, which use them.
+5. If you notice bugs in the script or can improve/optimize the script, please share this information with me.
 
 II. Installing sing-box.
 Run the following command in the router's console:
