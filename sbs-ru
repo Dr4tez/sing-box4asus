@@ -476,8 +476,6 @@ setup_sing_box() {
 
     echo "Переход к настройкам скрипта."
 
-    source "$SBS_CONF"
-
     echo "Редактировать config.json (конфигурационный файл sing-box) с помощью редактора nano?"
     while true; do
         read -p "1-Нет, 2-Да: " choice
@@ -487,6 +485,12 @@ setup_sing_box() {
             *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
         esac
     done
+
+    source "$SBS_CONF"
+
+    update_sbs_interfaces
+
+    source "$SBS_CONF"
 
     if [ -n "$TUN_INTERFACE1" ]; then
         echo "Текущие IP адреса устройств для $TUN_INTERFACE1: $DEVICE_IPS1. Изменить их? При выборе 2 существующие IP адреса будут заменены на введённые."
