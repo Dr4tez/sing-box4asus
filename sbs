@@ -57,7 +57,7 @@ TUN_INTERFACE1=""
 
 DEVICE_IPS2=""
 ROUTE_TABLE2="556"
-TUN_INTERFACE2=
+TUN_INTERFACE2=""
 EOF
     chmod 664 "$1"
 }
@@ -575,8 +575,6 @@ updmonandcore_sing_box() {
     create_sbs_monitor "$SBS_MON"
     echo "The sbs-monitor script has been updated successfully."
 
-    export PATH=/opt/bin:$PATH
-
     create_dir "$SB_DOWNLOAD_DIR"
     curl -s -L -o "$SB_ARCHIVE_PATH" "$SB_DOWNLOAD_URL"
     tar -xzvf "$SB_ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
@@ -763,8 +761,6 @@ install_sing_box() {
         delete_if_not_current_dir
         exit 1
     fi
-
-    export PATH=/opt/bin:$PATH
 
     create_dir "$SB_DOWNLOAD_DIR"
     echo "Download the archive with the file sing-box..."
