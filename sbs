@@ -445,8 +445,6 @@ setup_sing_box() {
 
     echo "Go to script setup."
 
-    source "$SBS_CONF"
-
     echo "Edit config.json (sing-box configuration file) using nano editor?"
     while true; do
         read -p "1-No, 2-Yes: " choice
@@ -456,6 +454,12 @@ setup_sing_box() {
             *) echo "Incorrect input. Please try again." ;;
         esac
     done
+
+    source "$SBS_CONF"
+
+    update_sbs_interfaces
+
+    source "$SBS_CONF"
 
     if [ -n "$TUN_INTERFACE1" ]; then
         echo "Current device IP addresses for $TUN_INTERFACE1: $DEVICE_IPS1 Change them? Selecting 2 will replace the existing IP addresses with the ones you entered."
