@@ -43,7 +43,7 @@ dir_exists() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Version 0.7
+# Version 0.8
 # This file is created automatically and the values are entered via the command line when executing the 'sbs setup' command.
 # If you want to change the values here using an editor bypassing the 'sbs setup' command, then before doing so, be sure to stop sing-box with the 'sbs stop' command in the command line.
 
@@ -66,7 +66,7 @@ create_sbs_monitor() {
     cat << EOF > "$1"
 #!/bin/sh
 
-# Version 0.7
+# Version 0.8
 
 source "$SBS_CONF"
 
