@@ -606,8 +606,6 @@ updmonandcore_sing_box() {
     create_sbs_monitor "$SBS_MON"
     echo "Скрипт sbs-monitor успешно обновлён."
 
-    export PATH=/opt/bin:$PATH
-
     create_dir "$SB_DOWNLOAD_DIR"
     curl -s -L -o "$SB_ARCHIVE_PATH" "$SB_DOWNLOAD_URL"
     tar -xzvf "$SB_ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
@@ -798,8 +796,6 @@ install_sing_box() {
         delete_if_not_current_dir
         exit 1
     fi
-
-    export PATH=/opt/bin:$PATH
 
     create_dir "$SB_DOWNLOAD_DIR"
     echo "Скачиваем архив с файлом sing-box..."
