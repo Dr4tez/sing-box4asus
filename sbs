@@ -762,6 +762,9 @@ install_sing_box() {
         exit 1
     fi
 
+    opkg install findutils
+    export PATH=/opt/bin:$PATH
+
     create_dir "$SB_DOWNLOAD_DIR"
     echo "Download the archive with the file sing-box..."
     curl -s -L -o "$SB_ARCHIVE_PATH" "$SB_DOWNLOAD_URL"
