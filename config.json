@@ -25,14 +25,6 @@
     ],
     "rules": [
       {
-        "clash_mode": "Global",
-        "server": "dns-ag"
-      },
-      {
-        "clash_mode": "Direct",
-        "server": "dns-ag-ipv4_only"
-      },
-      {
         "rule_set": "my_domains",
         "server": "dns-ag"
       },
