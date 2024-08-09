@@ -14,7 +14,8 @@
       {
         "tag": "dns-ag",
         "address": "https://dns.adguard-dns.com/dns-query",
-        "address_resolver": "dns-resolver"
+        "address_resolver": "dns-resolver",
+        "detour": "Proxy"
       },
       {
         "tag": "dns-resolver",
