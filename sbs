@@ -574,7 +574,7 @@ updmonandcore_sing_box() {
     create_dir "$SB_DOWNLOAD_DIR"
     curl -s -L -o "$SB_ARCHIVE_PATH" "$SB_DOWNLOAD_URL"
     tar -xzvf "$SB_ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
-    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -type f)
+    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
 
     echo "Update sing-box core file?"
     while true; do
@@ -763,7 +763,7 @@ install_sing_box() {
     curl -s -L -o "$SB_ARCHIVE_PATH" "$SB_DOWNLOAD_URL"
     echo "Unpack the archive..."
     tar -xzvf "$SB_ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
-    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -type f)
+    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
 
     if [ -f "$SB_PATH" ]; then
         echo "The file sing-box already exists. What do you want to do?"
