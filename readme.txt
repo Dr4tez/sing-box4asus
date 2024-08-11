@@ -9,10 +9,10 @@ I. Basics.
 
 II. Features of configuring sing-box on a router.
 1. Generally, DNS servers and their rules are specified at the beginning of the sing-box configuration file (config.json). However, on a router, these settings are ignored for the sing-box tun interface due to the router's dnsmasq, which intercepts DNS requests. As a result, all DNS requests from devices whose traffic is routed through the sing-box tun interface are always directed to the DNS server specified in the router's settings. Nevertheless, DNS settings in the configuration file are still necessary for the proper functioning of inbounds, which act as proxy servers, such as mixed, they rely on these DNS settings.
-2. Do not specify the entire subnet of the router, such as 192.168.50.0/24, instead of the IP addresses of individual devices, as this disrupts the normal operation of the router.
-3. It is not recommended to include clash_mods in the DNS rules within config.json. Under certain settings and actions, this can cause the sing-box process to quickly consume all available RAM and lead to the router freezing.
-4. Do not use the '"auto_route": true' setting in config.json, it does not function correctly on the router and disrupts routing.
-5. Do not use the '"strict_route": true' setting in config.json; it is pointless without '"auto_route": true' and can also cause loss of access to the router's command line and routing issues.
+2. It is not recommended to include clash_mods in the DNS rules within config.json. Under certain settings and actions, this can cause the sing-box process to quickly consume all available RAM and lead to the router freezing.
+3. Do not use the '"auto_route": true' setting in config.json, it does not function correctly on the router and disrupts routing.
+4. Do not use the '"strict_route": true' setting in config.json; it is pointless without '"auto_route": true' and can also cause loss of access to the router's command line and routing issues.
+5. When configuring the script with the 'sbs setup' command, do not specify the entire router subnet instead of the device IP addresses, for example 192.168.50.0/24, this will disrupt the normal operation of the router.
 
 III. Installing sing-box.
 Run the following command in the router's command line:
