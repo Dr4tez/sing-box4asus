@@ -1,0 +1,74 @@
+Version 0.1 from 06/29/24
+Basic functionality - the minimum required for launching, proper operation, and stopping sing-box.
+
+Version 0.2 from 07/01/24
+1. Added a command to restart the script:
+sbs restart
+2. Added automatic creation of system scripts firewall-start and services-start, as well as checking for their existence, automatic adding and deleting of records and rules in them, as well as checking for their existence, to prevent their duplication. This is necessary to prevent sudden incorrect termination of the script during some events in the system, as well as for the correct autostart of the script when rebooting the router.
+3. Added a check for the existence of the sing-box process to prevent duplication of some functions. Now, when trying to run the script twice in a row, it will not allow it.
+4. Fixed the found errors.
+
+Version 0.3 from 07/03/24
+1. Added a command for setting up the script:
+sbs setup
+The setting is made in the router command line - some settings are made semi-automatically - confirmation is required, it is recommended to confirm, and a couple are entered into the console in response to requests with prompts.
+2. Partially prepared for the transition to fully automatic installation.
+
+Version 0.4 from 07/04/24
+Automatic installation of the script and everything you need with one command in the router command line:
+wget -O /jffs/scripts/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs && chmod 775 /jffs/scripts/sbs && /jffs/scripts/sbs install
+
+Version 0.5 from 07/11/24
+1. The list of device IP addresses, the routing table number, and the TUN interface name have been moved to a separate configuration file—script-conf.
+2. Changes in the code due to the relocation of the script to the /jffs/addons/sing-box directory.
+3. The script can now be started with the command:
+sbs
+—when executed without additional parameters or with invalid parameters, a list of supported parameters will be displayed with their brief description and the ability to run by number.
+4. New commands have been added:
+sbs edit
+-to edit the config.json file using the nano editor,
+sbs remove
+-after a single confirmation request, stops all script processes, rolls back changes made to system scripts, and performs a complete removal of all script files and directories.
+5. Now, after starting the script in the console, you do not need to restart the router, script will continue to work correctly after closing the console.
+6. Many optimizations.
+7. The script has become more user-friendly.
+
+Version 0.6 from 07/17/24
+1. Added automatic restoration of IP rules for the script's routing table after system events that cause their deletion. For example, such an event is triggered by clicking the "Apply" button in the "WAN" section of the router's web interface.
+2. Changed script file names and directories.
+3. The installer and main script have been combined into one script.
+4. Editing config.json in the nano editor is now moved to the command
+sbs setup
+5. The command
+sbs edit
+now edits the sbs-conf settings file in the nano editor.
+6. Added command:
+sbs update
+for updating the main script file, monitor script, and sing-box core. This command will allow us to avoid manual migration to new versions in the future. It will be enough to simply execute this command in the router console.
+7. Fixes for errors and bugs found in the previous version.
+
+Version 0.7 from 07/25/24
+1. Support for simultaneous operation of up to two TUN interfaces. This will be useful if, for example, you want to direct the traffic of some devices through sing-box according to the rules specified in the sing-box configuration file, while directing the traffic of other devices entirely to the proxy tunnel.
+2. Added command:
+sbs check
+This function is built into the sing-box core and is used to check the correctness of the sing-box configuration file (config.json). It does not detect all errors, but in most cases, it helps a lot in finding them. As a result, it shows the first found error with its line and column number in config.json. Then, to fix the error, you are prompted to open config.json in the nano editor. After fixing and finishing editing, the next error, if any, is found, and you are again prompted to fix it in the nano editor. This repeats until you fix all errors or decide to stop by refusing to edit the next error.
+3. Added command:
+sbs format
+This function is built into the sing-box core and is used to give config.json a readable structure as intended by the sing-box developer. First, like sbs check, the sbs format command checks config.json for errors. If errors are found, formatting will be impossible until you fix them all. After fixing all errors, the configuration file structure will be optimized, the result will be displayed in the console, and you will be prompted to save it to your config.json.
+4. Minor bug fixes.
+
+Version 0.8 from 08/04/24
+Added the command:
+sbs status
+which shows whether sing-box is running, as well as the versions of the installed SBS script and sing-box core.
+
+Version 0.9 from 08/09/24
+1. Fixes for discovered issues.
+2. Added support for routers with ARMv7/AArch32 processor architecture. Previously, only ARMv8/AArch64 architecture was supported.
+
+Version 1.0 from 08/13/24
+1. The output of the 'sbs status' command now includes the sing-box core architecture and the router's CPU architecture.
+2. For devices whose traffic is routed through sing-box, the script now adds routing rules to the system that direct their local traffic to bypass sing-box. This improves the interaction of these devices with each other and with other devices on the local network.
+3. Improved the logic of the sbs-monitor script.
+
+To upgrade from version 0.9 to version 1.0, run the "sbs update" command in the router command line.
