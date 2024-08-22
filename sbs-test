@@ -638,15 +638,15 @@ update_menu() {
 
     echo "
 Выберите действие. Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
-    echo "1-Обновить скрипт sbs. Текущая версия "$sbs_vers", доступная версия $sbs_vers_new"
-    echo "2-Обновить ядро sing-box. Текущая версия "$sb_vers", доступная версия $sb_vers_new"
-    echo "0-Выйти из меню обновления."
     while true; do
-        read -p "Введите номер пункта (0-2): " choice
+        read -p "1-Обновить скрипт sbs. Текущая версия "$sbs_vers", доступная версия $sbs_vers_new
+2-Обновить ядро sing-box. Текущая версия "$sb_vers", доступная версия $sb_vers_new
+0-Выйти из меню обновления.
+:"      choice
         case "$choice" in
             1) if is_running; then stop_sing_box; fi; update_sbs; break ;;
             2) if is_running; then stop_sing_box; fi; updcore_sing_box; break ;;
-            0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Выход из меню обновления."; exit 0 ;;
+            0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Выход из меню обновления."; sing_box_start; exit 0 ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
         esac
     done
