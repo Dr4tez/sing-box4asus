@@ -653,7 +653,8 @@ update_menu() {
 }
 
 update_sbs() {
-    echo "Обновление скрипта sbs..."
+    echo "
+Обновление скрипта sbs..."
     cp "$SCRIPT_PATH"-tmp $SCRIPT_PATH
     chmod 775 $SCRIPT_PATH
     echo "Основной скрипт успешно обновлён."
@@ -675,7 +676,8 @@ update_sbs_monitor() {
 }
 
 updcore_sing_box() {
-    echo "Обновление ядра sing-box..."
+    echo "
+Обновление ядра sing-box..."
     cp "$singbox_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено."
     update_menu
 }
