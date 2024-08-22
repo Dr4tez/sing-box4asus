@@ -632,8 +632,8 @@ update_menu() {
     sbs_vers=$(get_sbs_version $SCRIPT_PATH)
     sb_vers=$(get_sb_version $SB_PATH)
     sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
-    sb_vers_new=$(get_sb_version $sing_box_file)
     echo "Где же эта ошибка?"
+    sb_vers_new=$(get_sb_version $sing_box_file)
 
     echo "Выберите действие. Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
     echo "1-Обновить скрипт sbs. Текущая версия "$sbs_vers", доступная версия $sbs_vers_new"
