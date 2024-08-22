@@ -641,7 +641,7 @@ update_menu() {
     echo "2-Обновить ядро sing-box. Текущая версия "$sb_vers", доступная версия $sb_vers_new"
     echo "0-Выйти из меню обновления"
     while true; do
-        read -p "Выберите пункт (0-2): " choice
+        read -p "Введите номер пункта (0-2): " choice
         case "$choice" in
             1) if is_running; then stop_sing_box; fi; update_sbs; break ;;
             2) if is_running; then stop_sing_box; fi; updcore_sing_box; break ;;
