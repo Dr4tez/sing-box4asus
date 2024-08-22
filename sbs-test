@@ -646,7 +646,7 @@ update_menu() {
         case "$choice" in
             1) if is_running; then stop_sing_box; fi; update_sbs; break ;;
             2) if is_running; then stop_sing_box; fi; updcore_sing_box; break ;;
-            0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Выход из меню обновления."; sing_box_start; exit 0 ;;
+            0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Выход из меню обновления."; is_running || sing_box_start; exit 0 ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
         esac
     done
