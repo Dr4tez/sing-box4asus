@@ -671,14 +671,14 @@ EOF
 
 update_sbs_monitor() {
     create_sbs_monitor "$SBS_MON"
-    echo "Скрипт sbs-monitor успешно обновлён."
+    echo "Скрипт sbs-monitor успешно обновлён. Возврат в меню обновления."
     update_menu
 }
 
 updcore_sing_box() {
     echo "
 Обновление ядра sing-box..."
-    cp "$singbox_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено."
+    cp "$singbox_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено. Возврат в меню обновления."
     update_menu
 }
 
