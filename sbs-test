@@ -625,11 +625,10 @@ update_menu() {
         fi
         curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
         tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
-        singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
-        chmod 775 $singbox_file
     fi
 
     singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+    chmod 775 $singbox_file
 
     sbs_vers=$(get_sbs_version $SCRIPT_PATH)
     sb_vers=$(get_sb_version $SB_PATH)
