@@ -636,7 +636,8 @@ update_menu() {
     sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
     sb_vers_new=$(get_sb_version $singbox_file)
 
-    echo "Выберите действие. Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
+    echo "
+Выберите действие. Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
     echo "1-Обновить скрипт sbs. Текущая версия "$sbs_vers", доступная версия $sbs_vers_new"
     echo "2-Обновить ядро sing-box. Текущая версия "$sb_vers", доступная версия $sb_vers_new"
     echo "0-Выйти из меню обновления."
