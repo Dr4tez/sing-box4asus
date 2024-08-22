@@ -626,6 +626,7 @@ update_menu() {
         curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
         tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
         sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+        chmod 775 $sing_box_file
     fi
 
     sbs_vers=$(get_sbs_version $SCRIPT_PATH)
@@ -672,8 +673,7 @@ update_sbs_monitor() {
 
 updcore_sing_box() {
     echo "Обновление ядра sing-box..."
-    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
-    cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "Ядро sing-box успешно обновлено."
+    cp "$sing_box_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено."
     update_menu
 }
 
