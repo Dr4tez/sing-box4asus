@@ -608,7 +608,7 @@ edit_sing_box() {
     sing_box_start
 }
 
-update_menu() {
+update_sing_box() {
     echo "Проверка версий скрипта sbs и ядра sing-box..."
     if [ ! -e "$SCRIPT_PATH"-tmp ]; then
       curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
@@ -671,14 +671,14 @@ EOF
 update_sbs_monitor() {
     create_sbs_monitor "$SBS_MON"
     echo "Скрипт sbs-monitor успешно обновлён. Возврат в меню обновления."
-    update_menu
+    update_sing_box
 }
 
 updcore_sing_box() {
     echo "
 Обновление ядра sing-box..."
     cp "$singbox_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено. Возврат в меню обновления."
-    update_menu
+    update_sing_box
 }
 
 check_sing_box() {
@@ -945,7 +945,7 @@ case "$1" in
     edit) edit_sing_box ;;
     check) check_sing_box ;;
     format) format_sing_box ;;
-    update) update_menu ;;
+    update) update_sing_box ;;
     status) status_sing_box ;;
     remove) remove_sing_box ;;
     updmon) update_sbs_monitor ;;
@@ -961,7 +961,7 @@ case "$1" in
                 5) edit_sing_box; break ;;
                 6) check_sing_box; break ;;
                 7) format_sing_box; break ;;
-                8) update_menu; break ;;
+                8) update_sing_box; break ;;
                 9) status_sing_box; break ;;
                 10) remove_sing_box; break ;;
                 0) exit 0 ;;
