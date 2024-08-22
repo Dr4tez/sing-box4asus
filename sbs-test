@@ -625,14 +625,14 @@ update_menu() {
         fi
         curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
         tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
-        sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
-        chmod 775 $sing_box_file
+        singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+        chmod 775 $singbox_file
     fi
 
     sbs_vers=$(get_sbs_version $SCRIPT_PATH)
     sb_vers=$(get_sb_version $SB_PATH)
     sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
-    sb_vers_new=$(get_sb_version $sing_box_file)
+    sb_vers_new=$(get_sb_version $singbox_file)
 
     echo "Выберите действие. Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
     echo "1-Обновить скрипт sbs. Текущая версия "$sbs_vers", доступная версия $sbs_vers_new"
@@ -673,7 +673,7 @@ update_sbs_monitor() {
 
 updcore_sing_box() {
     echo "Обновление ядра sing-box..."
-    cp "$sing_box_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено."
+    cp "$singbox_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено."
     update_menu
 }
 
