@@ -629,6 +629,8 @@ update_menu() {
         chmod 775 $singbox_file
     fi
 
+    singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+
     sbs_vers=$(get_sbs_version $SCRIPT_PATH)
     sb_vers=$(get_sb_version $SB_PATH)
     sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
