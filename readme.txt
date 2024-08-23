@@ -4,8 +4,9 @@ I. Basics.
 1. You should be able to create or at least edit sing-box configs for yourself. Documentation: https://sing-box.sagernet.org/. A template of my config is installed with the sing-box script.
 2. Only routers with the following processor architectures are supported: ARMv8/AArch64 and ARMv7/AArch32.
 3. If IPv6 is enabled in your router settings, it is not recommended to use this script, as it will likely not function as intended in most cases.
-4. Your router must have a mounted flash drive with Entware installed on it. The sing-box core will be installed on it, and during its operation, a directory with UI and a cache file will be created there. Installing these components in the router's internal memory is not desirable and often impossible due to its limitations, and is not considered.
-5. If you notice bugs in the script or can improve/optimize the script, please share this information with me.
+4. If you need access from the Internet to any device in your router's network via port forwarding, do not add the IP address of this device when configuring the script, otherwise there will be no access.
+5. Your router must have a mounted flash drive with Entware installed on it. The sing-box core will be installed on it, and during its operation, a directory with UI and a cache file will be created there. Installing these components in the router's internal memory is not desirable and often impossible due to its limitations, and is not considered.
+6. If you notice bugs in the script or can improve/optimize the script, please share this information with me.
 
 II. Features of configuring sing-box on a router.
 1. Generally, DNS servers and their rules are specified at the beginning of the sing-box configuration file (config.json). However, on a router, these settings are ignored for the sing-box tun interface due to the router's dnsmasq, which intercepts DNS requests. As a result, all DNS requests from devices whose traffic is routed through the sing-box tun interface are always directed to the DNS server specified in the router's settings. Nevertheless, DNS settings in the configuration file are still necessary for the proper functioning of inbounds, which act as proxy servers, such as mixed, they rely on these DNS settings.
@@ -14,7 +15,7 @@ II. Features of configuring sing-box on a router.
 4. Do not use the '"strict_route": true' setting in config.json; it is pointless without '"auto_route": true' and can also cause loss of access to the router's command line and routing issues.
 5. When configuring the script with the 'sbs setup' command, do not specify the entire router subnet instead of the device IP addresses, for example 192.168.50.0/24, this will disrupt the normal operation of the router.
 
-III. Installing sing-box.
+III. Installing the script.
 Run the following command in the router's command line:
 wget -O /jffs/scripts/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs && chmod 775 /jffs/scripts/sbs && /jffs/scripts/sbs install
 At the end of the installation, instructions for further actions will be displayed.
@@ -31,17 +32,12 @@ sbs setup
 3. In the last step, if your config.json specifies one or two TUN interfaces, you will be prompted to change the routing table numbers for each of these interfaces. It is recommended to decline changing them, as the numbers indicated there are likely not used by your router. They may already be occupied only if you have set it up that way yourself, which means you understand how best to proceed in this case.
 4. After this, you will be prompted to run the sing-box script. If you are ready, agree.
 
-VI. Update.
-To start the update, run the following command in the router's command line:
-sbs update
-When executed, the main sbs script and the sbs-monitor* script files will be updated, as well as the sing-box core, if you confirm its update. Your config.json will remain untouched, as will the script settings, since they are stored in a separate sbs-conf file.
-
-VII. Management commands.
+VI. Script management commands.
 To start the sing-box script, run the following command in the router's command line:
 sbs start
-If you want to completely stop the script and do not want it to start automatically when the router reboots, run the following command in the command line:
+If you want to completely stop the script and do not want it to start automatically when the router reboots, run the following command:
 sbs stop
-You can see a complete list of commands with their descriptions by running the following command in the command line:
+To remove the script and all the results of its activity, run the following command:
+sbs remove
+You can see a complete list of commands with their descriptions by running the following command:
 sbs
-
-*sbs-monitor- an auxiliary script that is active only during the operation of sing-box. It monitors and restores rules and routes created by the main script if they were deleted during certain system events.
