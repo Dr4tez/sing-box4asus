@@ -661,14 +661,14 @@ update_sbs() {
     cat << EOF > $TEMP_UPDATE
 #!/bin/sh
 rm -f $TEMP_UPDATE
-exec $SCRIPT_PATH updmon
+exec $SCRIPT_PATH updmonandcore
 EOF
     chmod 775 $TEMP_UPDATE
 
     exec $TEMP_UPDATE
 }
 
-update_sbs_monitor() {
+updmonandcore_sing_box() {
     create_sbs_monitor "$SBS_MON"
     echo "Скрипт sbs-monitor успешно обновлён. Возврат в меню обновления."
     update_sing_box
@@ -948,7 +948,7 @@ case "$1" in
     update) update_sing_box ;;
     status) status_sing_box ;;
     remove) remove_sing_box ;;
-    updmon) update_sbs_monitor ;;
+    updmonandcore) updmonandcore_sing_box ;;
     *)
         while true; do
             show_menu
