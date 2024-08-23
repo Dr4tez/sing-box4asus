@@ -399,26 +399,26 @@ start_sing_box() {
     log_msg "Обновление скрипта services-start"
     update_script "$SS_SCRIPT" "$SS_LINES"
 
-# Добавление правил маршрутизации
-    # Проверка и добавление маршрутов для первого набора переменных
+# Добавление маршрутов и правил маршрутизации
+    # Проверка и добавление маршрутов и правил для первого набора переменных
     if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
-        log_msg "Добавление правил маршрутизации для интерфейса $TUN_INTERFACE1"
+        log_msg "Добавление маршрутов и правил для интерфейса $TUN_INTERFACE1"
         ip route add default dev $TUN_INTERFACE1 table $ROUTE_TABLE1
         ip route show table main | while read ROUTE; do ip route add $ROUTE table $ROUTE_TABLE1 2>/dev/null; done
         for IP in $DEVICE_IPS1; do
             ip rule add from $IP lookup $ROUTE_TABLE1
         done
     fi
-    # Проверка и добавление правил для второго набора переменных
+    # Проверка и добавление маршрутов и правил для второго набора переменных
     if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
-        log_msg "Добавление правил маршрутизации для интерфейса $TUN_INTERFACE2"
+        log_msg "Добавление маршрутов и правил для интерфейса $TUN_INTERFACE2"
         ip route add default dev $TUN_INTERFACE2 table $ROUTE_TABLE2
         ip route show table main | while read ROUTE; do ip route add $ROUTE table $ROUTE_TABLE2 2>/dev/null; done
         for IP in $DEVICE_IPS2; do
             ip rule add from $IP lookup $ROUTE_TABLE2
         done
     fi
-# Конец добавления правил маршрутизации
+# Конец добавления маршрутов и правил маршрутизации
 
     log_msg "sing-box запущен."
 
@@ -450,10 +450,10 @@ stop_sing_box() {
     done
     log_msg "sbs-monitor остановлен."
 
-# Удаление правил маршрутизации
-    # Проверка и удаление правил для первого набора переменных
+# Удаление маршрутов и правил маршрутизации
+    # Проверка и удаление маршрутов и правил для первого набора переменных
     if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
-        log_msg "Удаление правил маршрутизации для интерфейса $TUN_INTERFACE1"
+        log_msg "Удаление маршрутов и правил для интерфейса $TUN_INTERFACE1"
         for IP in $DEVICE_IPS1; do
             ip rule del from $IP lookup $ROUTE_TABLE1
         done
@@ -461,13 +461,13 @@ stop_sing_box() {
     fi
     # Проверка и удаление правил для второго набора переменных
     if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
-        log_msg "Удаление правил маршрутизации для интерфейса $TUN_INTERFACE2"
+        log_msg "Удаление маршрутов и правил для интерфейса $TUN_INTERFACE2"
         for IP in $DEVICE_IPS2; do
             ip rule del from $IP lookup $ROUTE_TABLE2
         done
         ip route flush table $ROUTE_TABLE2
     fi
-# Конец удаления правил маршрутизации
+# Конец удаления маршрутов и правил маршрутизации
 
 # Удаление правил файрвола и обновления скрипта firewall-start
     # Проверка и удаление правил для первого набора переменных
@@ -609,7 +609,7 @@ edit_sing_box() {
 }
 
 update_sing_box() {
-    echo "Проверка версий скрипта sbs и ядра sing-box..."
+    echo "Проверка версий скрипта и ядра sing-box..."
     if [ ! -e "$SCRIPT_PATH"-tmp ]; then
       curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
     fi
@@ -638,7 +638,7 @@ update_sing_box() {
     echo "
 Выберите действие. Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
     while true; do
-        read -p "1-Обновить скрипт sbs. Установленная версия "$sbs_vers", доступная версия $sbs_vers_new
+        read -p "1-Обновить скрипт. Установленная версия "$sbs_vers", доступная версия $sbs_vers_new
 2-Обновить ядро sing-box. Установленная версия "$sb_vers", доступная версия $sb_vers_new
 0-Выйти из меню обновления.
 :"      choice
@@ -653,7 +653,7 @@ update_sing_box() {
 
 update_sbs() {
     echo "
-Обновление скрипта sbs..."
+Обновление скрипта..."
     cp "$SCRIPT_PATH"-tmp $SCRIPT_PATH
     chmod 775 $SCRIPT_PATH
     echo "Основной скрипт успешно обновлён."
@@ -794,9 +794,9 @@ status_sing_box() {
 
     sbs_version=$(get_sbs_version $SCRIPT_PATH)
     if [ -n "$sbs_version" ]; then
-        echo "Версия скрипта SBS: $sbs_version"
+        echo "Версия скрипта: $sbs_version"
     else
-        echo "Версия скрипта SBS не найдена."
+        echo "Версия скрипта не найдена."
     fi
 
     sb_versplat=$(get_sb_versplat $SB_PATH)
