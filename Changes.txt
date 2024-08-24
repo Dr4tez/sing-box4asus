@@ -75,5 +75,6 @@ Version 1.1 from 08/23/24
 1. The routes and routing rules created by the script have been optimized.
 2. A simpler and more reliable method for removing the routing tables created by the script at startup has been implemented when the script is stopped.
 3. The 'sbs update' command now presents a menu that allows you to select components for updating and displays their installed and available versions.
+4. Now, when configuring the script with the 'sbs setup' command, you can enter the entire subnet of the router in the field for device IP addresses. The only downside to this is that access to the router's web interface from the WAN will be lost if it is allowed in the router settings. Additionally, access from the WAN through port forwarding to other devices on the router's network will also be lost. However, this was already the case for all devices whose IP addresses were entered during the script setup.
 
 To upgrade from version 0.9 or 1.0 to version 1.1, run the 'sbs update' command in the router command line.
