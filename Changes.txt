@@ -73,7 +73,7 @@ Version 1.0 from 08/13/24
 
 Version 1.1 from 08/23/24
 1. The routes and routing rules created by the script have been optimized.
-2. A simpler and more reliable method for removing the routing tables created by the script has been implemented when the script is stopped.
+2. A simpler and more reliable method for removing the routing tables created by the script at startup has been implemented when the script is stopped.
 3. The 'sbs update' command now presents a menu that allows you to select components for updating and displays their installed and available versions.
 
 To upgrade from version 0.9 or 1.0 to version 1.1, run the 'sbs update' command in the router command line.
