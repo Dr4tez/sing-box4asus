@@ -47,7 +47,7 @@ create_sbs_conf() {
 # In the DEVICE_IPS line, inside the quotation marks, enter the IP addresses of the devices whose traffic you want to route through the corresponding TUN_INTERFACE. The IP addresses must be entered on one line and separated by spaces. You can also enter a subnet in CIDR format, such as 192.168.50.0/24.
 # In the EXC_DEVICE_IPS line, you can enter the IP addresses of the devices whose traffic you want to exclude from the sing-box, if you entered a subnet in the DEVICE_IPS line.
 # If the specified ROUTE_TABLE values (routing table numbers) on your router are already taken, which is unlikely, assign other numbers that are not taken.
-# Values TUN_INTERFACE is determined automatically. It is here because it is needed for sbs-monitor to work.
+# TUN_INTERFACE values are determined automatically based on data from your sing-box configuration file.
 
 DEVICE_IPS1=""
 EXC_DEVICE_IPS1=""
