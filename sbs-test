@@ -879,13 +879,13 @@ edit_sb_conf() {
                    while true; do
                        read -p "1-Нет, 2-Да: " sub_choice
                        case "$sub_choice" in
-                           1) echo "Выход из меню. Изменения, если вы их внесли, будут применены при следующем перезапуске."; exit 0 ;;
+                           1) echo "Выход из меню. Изменения, если вы их внесли, будут применены при следующем перезапуске."; source "$SBS_CONF"; update_sbs_interfaces; exit 0 ;;
                            2) echo "Перезапуск sing-box и выход из меню."; stop_sing_box; sleep 2; start_sing_box; exit 0 ;;
                            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
                        esac
                    done
                else
-                   echo "Выход из меню."; exit 0
+                   echo "Выход из меню."; source "$SBS_CONF"; update_sbs_interfaces; exit 0
                fi ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
         esac
