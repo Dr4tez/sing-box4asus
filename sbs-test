@@ -569,6 +569,7 @@ setup_sing_box() {
 
     echo "Переход к настройкам скрипта."
 
+    source "$SBS_CONF"
     update_sbs_interfaces
     source "$SBS_CONF"
 
