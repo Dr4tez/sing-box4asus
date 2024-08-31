@@ -765,6 +765,7 @@ setup_sing_box() {
 }
 
 update_sing_box() {
+    echo ""
     echo "Проверка версий скрипта и ядра sing-box..."
     if [ ! -e "$SCRIPT_PATH"-tmp ]; then
       curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
@@ -790,6 +791,7 @@ update_sing_box() {
     sb_vers=$(get_sb_version $SB_PATH)
     sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
     sb_vers_new=$(get_sb_version $singbox_file)
+    echo "Проверка успешно выполнена."
 
     echo ""
     echo "Меню обновления."
