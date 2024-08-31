@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 1.2
+# Version 1.2.0
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -793,6 +793,10 @@ update_sing_box() {
     sb_vers_new=$(get_sb_version $singbox_file)
     echo "Проверка успешно выполнена."
 
+    update_sing_box_menu
+}
+
+update_sing_box_menu() {
     while true; do
         echo ""
         echo "Меню обновления."
@@ -829,7 +833,7 @@ EOF
 updmonandcore_sing_box() {
     create_sbs_monitor "$SBS_MON"
     echo "Скрипт успешно обновлён. Возврат в меню."
-    update_sing_box
+    update_sing_box_menu
 }
 
 updcore_sing_box() {
