@@ -1066,7 +1066,7 @@ case "$1" in
     *)
         while true; do
             show_menu
-            read -p "Введите номер пункта [0-8 или 10]: " choice
+            read -p "Введите номер пункта [0-7 или 10]: " choice
             case $choice in
                 1) start_sing_box; break ;;
                 2) stop_sing_box; break ;;
