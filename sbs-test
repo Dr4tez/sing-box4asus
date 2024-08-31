@@ -765,50 +765,48 @@ setup_sing_box() {
 }
 
 update_sing_box() {
+    echo ""
+    echo "Проверка версий скрипта и ядра sing-box..."
+    if [ ! -e "$SCRIPT_PATH"-tmp ]; then
+      curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
+    fi
+
+    if [ ! -d "$SB_DOWNLOAD_DIR" ]; then
+        silent_create_dir "$SB_DOWNLOAD_DIR"
+        if [ "$(uname -m)" = "aarch64" ]; then
+            DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
+            ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+        else
+            DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+            ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+        fi
+        curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+        tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
+    fi
+
+    singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+    chmod 775 $singbox_file
+
+    sbs_vers=$(get_sbs_version $SCRIPT_PATH)
+    sb_vers=$(get_sb_version $SB_PATH)
+    sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
+    sb_vers_new=$(get_sb_version $singbox_file)
+    echo "Проверка успешно выполнена."
+
     while true; do
-        echo ""
-        echo "Проверка версий скрипта и ядра sing-box..."
-        if [ ! -e "$SCRIPT_PATH"-tmp ]; then
-          curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
-        fi
-
-        if [ ! -d "$SB_DOWNLOAD_DIR" ]; then
-            silent_create_dir "$SB_DOWNLOAD_DIR"
-            if [ "$(uname -m)" = "aarch64" ]; then
-                DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
-                ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
-            else
-                DOWNLOAD_URL="$SB_DOWNLOAD_URL"
-                ARCHIVE_PATH="$SB_ARCHIVE_PATH"
-            fi
-            curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
-            tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
-        fi
-
-        singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
-        chmod 775 $singbox_file
-
-        sbs_vers=$(get_sbs_version $SCRIPT_PATH)
-        sb_vers=$(get_sb_version $SB_PATH)
-        sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
-        sb_vers_new=$(get_sb_version $singbox_file)
-        echo "Проверка успешно выполнена."
-
         echo ""
         echo "Меню обновления."
         echo "Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
-        while true; do
-            read -p "1-Обновить скрипт. Установленная версия "$sbs_vers", доступная версия $sbs_vers_new
+        read -p "1-Обновить скрипт. Установленная версия "$sbs_vers", доступная версия $sbs_vers_new
 2-Обновить ядро sing-box. Установленная версия "$sb_vers", доступная версия $sb_vers_new
 0-Выйти из меню.
 Введите номер пункта [0-2]: " choice
-            case "$choice" in
-                1) if is_running; then stop_sing_box; fi; update_sbs ;;
-                2) if is_running; then stop_sing_box; fi; updcore_sing_box; break ;;
-                0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Выход из меню обновления."; is_running || sing_box_start; exit 0 ;;
-                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-            esac
-        done
+        case "$choice" in
+            1) if is_running; then stop_sing_box; fi; update_sbs ;;
+            2) if is_running; then stop_sing_box; fi; updcore_sing_box ;;
+            0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Выход из меню обновления."; is_running || sing_box_start; exit 0 ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
     done
 }
 
