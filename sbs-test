@@ -23,8 +23,7 @@ SB_DOWNLOAD64_URL=$(curl -s -H "Accept: application/vnd.github.v3+json" "$SB_URL
 SB_DOWNLOAD_URL=$(curl -s -H "Accept: application/vnd.github.v3+json" "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
 FW_SCRIPT="/jffs/scripts/firewall-start"
 SS_SCRIPT="/jffs/scripts/services-start"
-SS_LINES="sleep 30 # sbs
-$SCRIPT_PATH start # sbs"
+SS_LINES="(sleep 30 && $SCRIPT_PATH start) &"
 LN_PATH="/opt/bin/sbs"
 
 # Функции
@@ -82,7 +81,6 @@ add_cidr_rule() {
             fi
         fi
     done
-
     for IP in \$exc_device_ips; do
         if ! ip rule show | grep -q "\$IP lookup main"; then
             ip rule add from \$IP lookup main
@@ -117,27 +115,23 @@ sbs_monitor_rr() {
 
     ip monitor rule | while read line; do
         lookup_found1=\$(echo "\$line" | grep -q "lookup \$ROUTE_TABLE1" && echo "yes" || echo "no")
+        lookup_found2=\$(echo "\$line" | grep -q "lookup \$ROUTE_TABLE2" && echo "yes" || echo "no")
 
         if [ "\$lookup_found1" = "yes" ]; then
             if [ -n "\$DEVICE_IPS1" ] && [ -n "\$ROUTE_TABLE1" ] && [ -n "\$TUN_INTERFACE1" ]; then
                 add_cidr_rule "\$DEVICE_IPS1" "\$EXC_DEVICE_IPS1" "\$ROUTE_TABLE1"
             fi
         fi
-
-        lookup_found2=\$(echo "\$line" | grep -q "lookup \$ROUTE_TABLE2" && echo "yes" || echo "no")
-
         if [ "\$lookup_found2" = "yes" ]; then
             if [ -n "\$DEVICE_IPS2" ] && [ -n "\$ROUTE_TABLE2" ] && [ -n "\$TUN_INTERFACE2" ]; then
                 add_cidr_rule "\$DEVICE_IPS2" "\$EXC_DEVICE_IPS2" "\$ROUTE_TABLE2"
             fi
         fi
-
         if [ "\$lookup_found1" = "yes" ]; then
             if [ -n "\$DEVICE_IPS1" ] && [ -n "\$ROUTE_TABLE1" ] && [ -n "\$TUN_INTERFACE1" ]; then
                 add_ip_rule "\$DEVICE_IPS1" "\$ROUTE_TABLE1"
             fi
         fi
-
         if [ "\$lookup_found2" = "yes" ]; then
             if [ -n "\$DEVICE_IPS2" ] && [ -n "\$ROUTE_TABLE2" ] && [ -n "\$TUN_INTERFACE2" ]; then
                 add_ip_rule "\$DEVICE_IPS2" "\$ROUTE_TABLE2"
@@ -147,7 +141,6 @@ sbs_monitor_rr() {
 }
 
 trap '' SIGHUP
-
 sbs_monitor_rr
 EOF
     chmod 775 "$1"
@@ -159,7 +152,7 @@ check_file_existence_and_download() {
     local file_name=$(basename "$file_path")
 
     if [ -f "$file_path" ]; then
-    echo "Файл $file_name уже существует. Что вы хотите сделать?"
+        echo "Файл $file_name уже существует. Что вы хотите сделать?"
         while true; do
             read -p "1-Пропустить скачивание, 2-Скачать и заменить файл: " choice
             case $choice in
@@ -176,6 +169,7 @@ check_file_existence_and_download() {
 
 delete_if_not_current_dir() {
   local current_dir=$(dirname "$(readlink -f "$0")")
+
   if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
     rm -f "$(readlink -f "$0")"
   fi
@@ -183,8 +177,9 @@ delete_if_not_current_dir() {
 
 create_or_use_existing() {
     local dir_path="$1"
+
     if [ -d "$dir_path" ]; then
-    echo "Директория $dir_path уже существует. Что вы хотите сделать?"
+        echo "Директория $dir_path уже существует. Что вы хотите сделать?"
         while true; do
             read -p "1-Завершить работу, 2-Использовать существующую директорию: " choice
             case $choice in
@@ -201,8 +196,9 @@ create_or_use_existing() {
 handle_existing_file() {
     local file_path="$1"
     local create_function="$2"
+
     if [ -f "$file_path" ]; then
-    echo "Файл $file_path уже существует. Что вы хотите сделать?"
+        echo "Файл $file_path уже существует. Что вы хотите сделать?"
         while true; do
             read -p "1-Оставить существующий файл, 2-Заменить файл: " choice
             case $choice in
@@ -247,6 +243,7 @@ get_sbs_version() {
 
 get_sb_versplat() {
     local vers plat
+
     vers=$("$1" version | awk '/^sing-box version/ {print $3}' | head -n 1)
     plat=$("$1" version | awk '/^Environment:/ {print $3}' | head -n 1)
     echo "$vers $plat"
@@ -254,12 +251,14 @@ get_sb_versplat() {
 
 get_sb_version() {
     local version
+
     version=$("$1" version | awk '/^sing-box version/ {print $3}' | head -n 1)
     echo "$version"
 }
 
 self_copy() {
     local destination="$1"
+
     cp "$0" "$destination"
 }
 
@@ -366,7 +365,6 @@ add_ip_rules() {
 start_sing_box() {
     echo ""
     log_msg "Запуск sing-box..."
-
     is_running && { log_msg "Ошибка: sing-box уже запущен."; exit 1; }
 
     source "$SBS_CONF"
@@ -557,7 +555,6 @@ configure_interface1() {
         echo "Текущие IP адреса устройств для интерфейса $TUN_INTERFACE1: $DEVICE_IPS1"
         echo "Ввести вместо них другие?"
     fi
-
     while true; do
         read -p "1-Нет, 2-Да: " choice
         case "$choice" in
@@ -612,7 +609,6 @@ configure_interface2() {
         echo "Текущие IP адреса устройств для интерфейса $TUN_INTERFACE2: $DEVICE_IPS2"
         echo "Ввести вместо них другие?"
     fi
-
     while true; do
         read -p "1-Нет, 2-Да: " choice
         case "$choice" in
@@ -767,23 +763,17 @@ setup_sing_box() {
 update_sing_box() {
     echo ""
     echo "Проверка версий скрипта и ядра sing-box..."
-    if [ ! -e "$SCRIPT_PATH"-tmp ]; then
-      curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
+    curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
+    silent_create_dir "$SB_DOWNLOAD_DIR"
+    if [ "$(uname -m)" = "aarch64" ]; then
+        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+    else
+        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
     fi
-
-    if [ ! -d "$SB_DOWNLOAD_DIR" ]; then
-        silent_create_dir "$SB_DOWNLOAD_DIR"
-        if [ "$(uname -m)" = "aarch64" ]; then
-            DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
-            ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
-        else
-            DOWNLOAD_URL="$SB_DOWNLOAD_URL"
-            ARCHIVE_PATH="$SB_ARCHIVE_PATH"
-        fi
-        curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
-        tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
-    fi
-
+    curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
     singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
     chmod 775 $singbox_file
 
@@ -968,17 +958,11 @@ install_sing_box() {
     done
 
     echo "Начинаем установку скрипта sing-box..."
-
     create_or_use_existing "$JFFS_SB_DIR"
-
     handle_existing_file "$SCRIPT_PATH" self_copy
-
     ln -sf $SCRIPT_PATH $LN_PATH
-
     handle_existing_file "$JFFS_SB_DIR/sbs-conf" create_sbs_conf
-
     handle_existing_file "$SBS_MON" create_sbs_monitor
-
     check_file_existence_and_download "$SB_CONFIG" "$SB_CONFIG_URL"
     chmod 664 "$SB_CONFIG"
 
@@ -991,7 +975,6 @@ install_sing_box() {
     fi
 
     create_dir "$SB_DOWNLOAD_DIR"
-
     if [ "$(uname -m)" = "aarch64" ]; then
         DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
         ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
@@ -1027,9 +1010,8 @@ install_sing_box() {
     fi
 
     echo "Директория $SB_DOWNLOAD_DIR удалена."
-
+    echo ""
     echo "
-
 *********************
 Установка завершена.
 *********************
