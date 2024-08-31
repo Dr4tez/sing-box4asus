@@ -800,8 +800,8 @@ update_sing_box() {
 0-Выйти из меню.
 Введите номер пункта [0-2]: " choice
         case "$choice" in
-            1) if is_running; then stop_sing_box; fi; update_sbs; break ;;
-            2) if is_running; then stop_sing_box; fi; updcore_sing_box; break ;;
+            1) if is_running; then stop_sing_box; fi; update_sbs ;;
+            2) if is_running; then stop_sing_box; fi; updcore_sing_box ;;
             0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Выход из меню обновления."; is_running || sing_box_start; exit 0 ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
         esac
@@ -813,7 +813,6 @@ update_sbs() {
 Обновление скрипта..."
     cp "$SCRIPT_PATH"-tmp $SCRIPT_PATH
     chmod 775 $SCRIPT_PATH
-    echo "Основной скрипт успешно обновлён."
 
     cat << EOF > $TEMP_UPDATE
 #!/bin/sh
@@ -827,15 +826,13 @@ EOF
 
 updmonandcore_sing_box() {
     create_sbs_monitor "$SBS_MON"
-    echo "Скрипт sbs-monitor успешно обновлён. Возврат в меню обновления."
-    update_sing_box
+    echo "Скрипт успешно обновлён. Возврат в меню."
 }
 
 updcore_sing_box() {
     echo "
 Обновление ядра sing-box..."
-    cp "$singbox_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено. Возврат в меню обновления."
-    update_sing_box
+    cp "$singbox_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено. Возврат в меню."
 }
 
 check_sing_box() {
