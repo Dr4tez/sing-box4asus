@@ -14,7 +14,7 @@ SBS_MON="$JFFS_SB_DIR/sbs-monitor"
 TEMP_UPDATE="$JFFS_SB_DIR/temp-update"
 ROOT_DIR="/opt/root"
 SB_DIR="$ROOT_DIR/sing-box"
-SB_PATH="$JFFS_SB_DIR/sing-box"
+SB_PATH="$SB_DIR/sing-box"
 SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
 SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
 SB_ARCHIVE64_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
@@ -364,6 +364,7 @@ add_ip_rules() {
 }
 
 start_sing_box() {
+    echo ""
     log_msg "Запуск sing-box..."
 
     is_running && { log_msg "Ошибка: sing-box уже запущен."; exit 1; }
@@ -390,21 +391,19 @@ start_sing_box() {
 # Проверка наличия tun интерфейсов
     interface1_exists=false
     interface2_exists=false
-    # Проверка наличия первого интерфейса
+
     if ip link show "$TUN_INTERFACE1" >/dev/null 2>&1; then
         log_msg "TUN интерфейс $TUN_INTERFACE1 обнаружен."
         interface1_exists=true
     else
         interface1_exists=false
     fi
-    # Проверка наличия второго интерфейса
     if ip link show "$TUN_INTERFACE2" >/dev/null 2>&1; then
         log_msg "TUN интерфейс $TUN_INTERFACE2 обнаружен."
         interface2_exists=true
     else
         interface2_exists=false
     fi
-    # Проверка на отсутствие обоих интерфейсов
     if [ "$interface1_exists" = false ] && [ "$interface2_exists" = false ]; then
         log_msg "TUN интерфейсы не обнаружены."
     fi
@@ -412,24 +411,20 @@ start_sing_box() {
 
 # Добавление правил файрвола и обновления скрипта firewall-start
     if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
-        log_msg "Добавление правил файрвола и обновление скрипта firewall-start для интерфейса $TUN_INTERFACE1"
+        log_msg "Добавление правил файрвола для интерфейса $TUN_INTERFACE1"
         echo "$FW_RULES1" | while read -r rule; do
             manage_iptables "add" "$rule"
             update_script "$FW_SCRIPT" "iptables -I $rule"
         done
     fi
-
     if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
-        log_msg "Добавление правил файрвола и обновление скрипта firewall-start для интерфейса $TUN_INTERFACE2"
+        log_msg "Добавление правил файрвола для интерфейса $TUN_INTERFACE2"
         echo "$FW_RULES2" | while read -r rule; do
             manage_iptables "add" "$rule"
             update_script "$FW_SCRIPT" "iptables -I $rule"
         done
     fi
 # Конец добавления правил файрвола и обновлений скрипта firewall-start
-
-    log_msg "Обновление скрипта services-start"
-    update_script "$SS_SCRIPT" "$SS_LINES"
 
 # Добавление маршрутов и правил маршрутизации
     if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
@@ -443,7 +438,6 @@ start_sing_box() {
             done
         fi
     fi
-
     if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
         log_msg "Добавление маршрутов и правил для интерфейса $TUN_INTERFACE2"
         ip route add default dev $TUN_INTERFACE2 table $ROUTE_TABLE2
@@ -455,23 +449,23 @@ start_sing_box() {
             done
         fi
     fi
-
     if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
         add_ip_rules "$DEVICE_IPS1" "$ROUTE_TABLE1"
     fi
-
     if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
         add_ip_rules "$DEVICE_IPS2" "$ROUTE_TABLE2"
     fi
 # Конец добавления маршрутов и правил маршрутизации
 
-    log_msg "sing-box запущен."
+    log_msg "Добавление скрипта в автостарт."
+    update_script "$SS_SCRIPT" "$SS_LINES"
 
     $SBS_MON &
-    log_msg "sbs-monitor запущен."
+    log_msg "sing-box запущен."
 }
 
 stop_sing_box() {
+    echo ""
     log_msg "Остановка sing-box..."
 
     source "$SBS_CONF"
@@ -486,6 +480,9 @@ stop_sing_box() {
     INPUT -i $TUN_INTERFACE2 -j ACCEPT
     OUTPUT -o $TUN_INTERFACE2 -j ACCEPT"
 
+    log_msg "Удаление скрипта из автостарта."
+    remove_script_content "$SS_SCRIPT" "$SS_LINES"
+
     pids=$(pidof "sbs-monitor")
     if [ -z "$pids" ]; then
       break
@@ -493,7 +490,6 @@ stop_sing_box() {
     for pid in $pids; do
       kill "$pid"
     done
-    log_msg "sbs-monitor остановлен."
 
 # Удаление маршрутов и правил маршрутизации
     if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
@@ -508,7 +504,6 @@ stop_sing_box() {
         fi
         ip route flush table $ROUTE_TABLE1
     fi
-    # Проверка и удаление правил для второго набора переменных
     if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
         log_msg "Удаление маршрутов и правил для интерфейса $TUN_INTERFACE2"
         for IP in $DEVICE_IPS2; do
@@ -523,27 +518,22 @@ stop_sing_box() {
     fi
 # Конец удаления маршрутов и правил маршрутизации
 
-# Удаление правил файрвола и обновления скрипта firewall-start
-    # Проверка и удаление правил для первого набора переменных
+# Удаление правил файрвола
     if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
-        log_msg "Удаление правил файрвола и обновление скрипта firewall-start для интерфейса $TUN_INTERFACE1"
+        log_msg "Удаление правил файрвола для интерфейса $TUN_INTERFACE1"
         echo "$FW_RULES1" | while read -r rule; do
             manage_iptables "remove" "$rule"
             remove_script_content "$FW_SCRIPT" "iptables -I $rule"
         done
     fi
-    # Проверка и удаление правил для второго набора переменных
     if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
-        log_msg "Удаление правил файрвола и обновление скрипта firewall-start для интерфейса $TUN_INTERFACE2"
+        log_msg "Удаление правил файрвола для интерфейса $TUN_INTERFACE2"
         echo "$FW_RULES2" | while read -r rule; do
             manage_iptables "remove" "$rule"
             remove_script_content "$FW_SCRIPT" "iptables -I $rule"
         done
     fi
-# Конец удаления правил файрвола и обновлений скрипта firewall-start
-
-    log_msg "Обновление скрипта services-start"
-    remove_script_content "$SS_SCRIPT" "$SS_LINES"
+# Конец удаления правил файрвола
 
     PIDS=$(pidof "sing-box")
     if [ -z "$PIDS" ]; then
@@ -556,181 +546,221 @@ stop_sing_box() {
     log_msg "sing-box остановлен."
 }
 
-setup_sing_box() {
-    echo "Изменить настройки скрипта? Если sing-box запущен, при выборе варианта 2 он будет остановлен."
+configure_interface1() {
+    source "$SBS_CONF"
+
+    if [ -z "$DEVICE_IPS1" ]; then
+        echo ""
+        echo "Ввести IP адреса устройств для интерфейса $TUN_INTERFACE1?"
+    else
+        echo ""
+        echo "Текущие IP адреса устройств для интерфейса $TUN_INTERFACE1: $DEVICE_IPS1"
+        echo "Ввести вместо них другие?"
+    fi
+
     while true; do
         read -p "1-Нет, 2-Да: " choice
         case "$choice" in
-            1) echo "Выход из меню настроек."; exit 0 ;;
+            1) echo "Отказ от ввода IP адресов."; break ;;
+            2) read -p "Введите IP адреса: " new_ips1
+               DEVICE_IPS1="$new_ips1"
+               sed -i "s|^DEVICE_IPS1=\".*\"$|DEVICE_IPS1=\"$new_ips1\"|" "$SBS_CONF"
+               log_msg "IP адреса устройств для интерфейса $TUN_INTERFACE1 введены."; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+
+    local cidrs=$(find_cidrs "$DEVICE_IPS1")
+    if [ -n "$cidrs" ]; then
+        if [ -z "$EXC_DEVICE_IPS1" ]; then
+            echo ""
+            echo "Для интерфейса $TUN_INTERFACE1 вами указаны следующие подсети: $cidrs"
+            echo "Ввести IP адреса устройств из этих подсетей для их исключения из интерфейса $TUN_INTERFACE1?"
+        else
+            echo ""
+            echo "Для $TUN_INTERFACE1 вами указаны следующие подсети: $cidrs"
+            echo "Текущие IP адреса устройств из этих подсетей для их исключения из интерфейса $TUN_INTERFACE1: $EXC_DEVICE_IPS1"
+            echo "Ввести вместо них другие?"
+        fi
+        while true; do
+            read -p "1-Нет, 2-Да: " choice_exc
+            case "$choice_exc" in
+                1) echo "Отказ от ввода IP адресов."; break ;;
+                2) read -p "Введите IP адреса: " exc_new_ips1
+                   EXC_DEVICE_IPS1="$exc_new_ips1"
+                   sed -i "s|^EXC_DEVICE_IPS1=\".*\"$|EXC_DEVICE_IPS1=\"$exc_new_ips1\"|" "$SBS_CONF"
+                   log_msg "IP адреса устройств для их исключения из интерфейса $TUN_INTERFACE1 введены."; break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    else
+        EXC_DEVICE_IPS1=""
+        sed -i "s|^EXC_DEVICE_IPS1=\".*\"$|EXC_DEVICE_IPS1=\"\"|" "$SBS_CONF"
+    fi
+
+    echo "Возврат в меню."
+}
+
+configure_interface2() {
+    source "$SBS_CONF"
+
+    if [ -z "$DEVICE_IPS2" ]; then
+        echo ""
+        echo "Ввести IP адреса устройств для интерфейса $TUN_INTERFACE2?"
+    else
+        echo ""
+        echo "Текущие IP адреса устройств для интерфейса $TUN_INTERFACE2: $DEVICE_IPS2"
+        echo "Ввести вместо них другие?"
+    fi
+
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "Отказ от ввода IP адресов."; break ;;
+            2) read -p "Введите IP адреса: " new_ips2
+               DEVICE_IPS2="$new_ips2"
+               sed -i "s|^DEVICE_IPS2=\".*\"$|DEVICE_IPS2=\"$new_ips2\"|" "$SBS_CONF"
+               log_msg "IP адреса устройств для интерфейса $TUN_INTERFACE2 введены."; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+
+    local cidrs=$(find_cidrs "$DEVICE_IPS2")
+    if [ -n "$cidrs" ]; then
+        if [ -z "$EXC_DEVICE_IPS2" ]; then
+            echo ""
+            echo "Для интерфейса $TUN_INTERFACE2 вами указаны следующие подсети: $cidrs"
+            echo "Ввести IP адреса устройств из этих подсетей для их исключения из интерфейса $TUN_INTERFACE2?"
+        else
+            echo ""
+            echo "Для $TUN_INTERFACE2 вами указаны следующие подсети: $cidrs"
+            echo "Текущие IP адреса устройств из этих подсетей для их исключения из интерфейса $TUN_INTERFACE2: $EXC_DEVICE_IPS2"
+            echo "Ввести вместо них другие?"
+        fi
+        while true; do
+            read -p "1-Нет, 2-Да: " choice_exc
+            case "$choice_exc" in
+                1) echo "Отказ от ввода IP адресов."; break ;;
+                2) read -p "Введите IP адреса: " exc_new_ips2
+                   EXC_DEVICE_IPS2="$exc_new_ips2"
+                   sed -i "s|^EXC_DEVICE_IPS2=\".*\"$|EXC_DEVICE_IPS2=\"$exc_new_ips2\"|" "$SBS_CONF"
+                   log_msg "IP адреса устройств для их исключения из интерфейса $TUN_INTERFACE2 введены."; break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    else
+        EXC_DEVICE_IPS2=""
+        sed -i "s|^EXC_DEVICE_IPS2=\".*\"$|EXC_DEVICE_IPS2=\"\"|" "$SBS_CONF"
+    fi
+
+    echo "Возврат в меню."
+}
+
+configure_table1() {
+    source "$SBS_CONF"
+
+    echo ""
+    echo "Текущий номер таблицы маршрутизации для интерфейса $TUN_INTERFACE1: $ROUTE_TABLE1"
+    echo "Изменить его?"
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "Отказ от изменения номера таблицы маршрутизации."; break ;;
+            2) read -p "Введите новый номер таблицы маршрутизации: " new_table1
+               ROUTE_TABLE1="$new_table1"
+               sed -i "s|^ROUTE_TABLE1=\".*\"$|ROUTE_TABLE1=\"$new_table1\"|" "$SBS_CONF"
+               log_msg "Номер таблицы маршрутизации для интерфейса $TUN_INTERFACE1 изменен на $ROUTE_TABLE1"; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+    echo "Возврат в меню."
+}
+
+configure_table2() {
+    source "$SBS_CONF"
+
+    echo ""
+    echo "Текущий номер таблицы маршрутизации для интерфейса $TUN_INTERFACE2: $ROUTE_TABLE2"
+    echo "Изменить его?"
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "Отказ от изменения номера таблицы маршрутизации."; break ;;
+            2) read -p "Введите новый номер таблицы маршрутизации: " new_table2
+               ROUTE_TABLE2="$new_table2"
+               sed -i "s|^ROUTE_TABLE2=\".*\"$|ROUTE_TABLE2=\"$new_table2\"|" "$SBS_CONF"
+               log_msg "Номер таблицы маршрутизации для интерфейса $TUN_INTERFACE2 изменен на $ROUTE_TABLE2"; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+    echo "Возврат в меню."
+}
+
+setup_sing_box() {
+    source "$SBS_CONF"
+    update_sbs_interfaces
+    source "$SBS_CONF"
+
+    if [ -z "$TUN_INTERFACE1" ] && [ -z "$TUN_INTERFACE2" ]; then
+        echo ""
+        echo "Ваш конфигурационный файл sing-box не содержит tun интерфейсов. Тут нечего настраивать. Выход."
+        exit 0
+    fi
+
+    echo ""
+    echo "Войти в меню настройки скрипта? Если sing-box запущен, при выборе варианта 2 он будет остановлен."
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "Выход."; exit 0 ;;
             2) if is_running; then stop_sing_box; fi; break ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
         esac
     done
 
-    echo "Переход к настройкам скрипта."
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$TUN_INTERFACE2" ]; then
+        while true; do
+            echo ""
+            echo "Меню настройки скрипта."
+            echo "При первой настройке выполнение пунктов 1 и 2 обязательно."
+            echo "1. Настройка IP адресов для $TUN_INTERFACE1."
+            echo "2. Настройка IP адресов для $TUN_INTERFACE2."
+            echo "3. Изменение номера таблицы маршрутизации для $TUN_INTERFACE1."
+            echo "4. Изменение номера таблицы маршрутизации для $TUN_INTERFACE2."
+            echo "5. Редактирование файла настроек скрипта редактором nano."
+            echo "0. Выход из меню."
+            read -p "Введите номер пункта [0-5]: " if_choice
+            case "$if_choice" in
+                1) configure_interface1; source "$SBS_CONF" ;;
+                2) configure_interface2; source "$SBS_CONF" ;;
+                3) configure_table1; source "$SBS_CONF" ;;
+                4) configure_table2; source "$SBS_CONF" ;;
+                5) nano $SBS_CONF; update_sbs_interfaces; source "$SBS_CONF"; echo "Редактирование завершено. Возврат в меню."; echo "" ;;
+                0) break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    else
+        while true; do
+            echo ""
+            echo "Меню настройки скрипта."
+            echo "При первой настройке выполнение пункта 1 обязательно."
+            echo "1. Настройка IP адресов для $TUN_INTERFACE1."
+            echo "2. Изменение номера таблицы маршрутизации для tun интерфейса."
+            echo "3. Редактирование файла настроек скрипта редактором nano."
+            echo "0. Выход из меню."
+            read -p "Введите номер пункта  [0-3]: " if_choice
+            case "$if_choice" in
+                1) configure_interface1; source "$SBS_CONF" ;;
+                2) configure_table1; source "$SBS_CONF" ;;
+                3) nano $SBS_CONF; update_sbs_interfaces; source "$SBS_CONF"; echo "Редактирование завершено. Возврат в меню."; echo "" ;;
+                0) break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    fi
 
-    source "$SBS_CONF"
     update_sbs_interfaces
-    source "$SBS_CONF"
-
-    if [ -n "$TUN_INTERFACE1" ]; then
-        if [ -z "$DEVICE_IPS1" ]; then
-            echo "
-Ввести IP адреса устройств для $TUN_INTERFACE1?"
-        else
-            echo "
-Текущие IP адреса устройств для $TUN_INTERFACE1: $DEVICE_IPS1.
-Ввести вместо них другие?"
-        fi
-        while true; do
-            read -p "1-Нет, 2-Да: " choice
-            case "$choice" in
-                1) echo "Отказ от ввода IP адресов."; break ;;
-                2) read -p "Введите IP адреса: " new_ips1
-                   DEVICE_IPS1="$new_ips1"
-                   sed -i "s|^DEVICE_IPS1=\".*\"$|DEVICE_IPS1=\"$new_ips1\"|" "$SBS_CONF"
-                   log_msg "IP адреса устройств для $TUN_INTERFACE1 введены."; break ;;
-                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-            esac
-        done
-    fi
-
-    source "$SBS_CONF"
-
-    if [ -n "$TUN_INTERFACE1" ]; then
-        cidrs=$(find_cidrs "$DEVICE_IPS1")
-        if [ -n "$cidrs" ]; then
-            if [ -z "$EXC_DEVICE_IPS1" ]; then
-                echo "
-Для $TUN_INTERFACE1 вами указаны следующие подсети: $cidrs
-Ввести IP адреса устройств для исключения из $TUN_INTERFACE1?"
-            else
-                echo "
-Для $TUN_INTERFACE1 вами указаны следующие подсети: $cidrs
-Текущие IP адреса устройств для исключения из $TUN_INTERFACE1: $EXC_DEVICE_IPS1
-Ввести вместо них другие?"
-            fi
-            while true; do
-                read -p "1-Нет, 2-Да: " choice
-                case "$choice" in
-                    1) echo "Отказ от ввода IP адресов."; break ;;
-                    2) read -p "Введите IP адреса: " exc_new_ips1
-                       EXC_DEVICE_IPS1="$exc_new_ips1"
-                       sed -i "s|^EXC_DEVICE_IPS1=\".*\"$|EXC_DEVICE_IPS1=\"$exc_new_ips1\"|" "$SBS_CONF"
-                       log_msg "IP адреса устройств для исключения из $TUN_INTERFACE1 введены."; break ;;
-                    *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-                esac
-            done
-        else
-            EXC_DEVICE_IPS1=""
-            sed -i "s|^EXC_DEVICE_IPS1=\".*\"$|EXC_DEVICE_IPS1=\"\"|" "$SBS_CONF"
-        fi
-    fi
-
-
-    if [ -n "$TUN_INTERFACE2" ]; then
-        if [ -z "$DEVICE_IPS2" ]; then
-            echo "
-Ввести IP адреса устройств для $TUN_INTERFACE2?"
-        else
-            echo "
-Текущие IP адреса устройств для $TUN_INTERFACE2: $DEVICE_IPS2.
-Ввести вместо них другие?"
-        fi
-        while true; do
-            read -p "1-Нет, 2-Да: " choice
-            case "$choice" in
-                1) echo "Отказ от ввода IP адресов."; break ;;
-                2) read -p "Введите IP адреса: " new_ips2
-                   DEVICE_IPS2="$new_ips2"
-                   sed -i "s|^DEVICE_IPS2=\".*\"$|DEVICE_IPS2=\"$new_ips2\"|" "$SBS_CONF"
-                   log_msg "IP адреса устройств для $TUN_INTERFACE2 введены."; break ;;
-                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-            esac
-        done
-    fi
-
-    source "$SBS_CONF"
-
-    if [ -n "$TUN_INTERFACE2" ]; then
-        cidrs=$(find_cidrs "$DEVICE_IPS2")
-        if [ -n "$cidrs" ]; then
-            if [ -z "$EXC_DEVICE_IPS2" ]; then
-                echo "
-Для $TUN_INTERFACE2 вами указаны следующие подсети: $cidrs
-Ввести IP адреса устройств для исключения из $TUN_INTERFACE2?"
-            else
-                echo "
-Для $TUN_INTERFACE2 вами указаны следующие подсети: $cidrs
-Текущие IP адреса устройств для исключения из $TUN_INTERFACE2: $EXC_DEVICE_IPS2
-Ввести вместо них другие?"
-            fi
-            while true; do
-                read -p "1-Нет, 2-Да: " choice
-                case "$choice" in
-                    1) echo "Отказ от замены IP адресов."; break ;;
-                    2) read -p "Введите IP адреса: " exc_new_ips2
-                       EXC_DEVICE_IPS2="$exc_new_ips2"
-                       sed -i "s|^EXC_DEVICE_IPS2=\".*\"$|EXC_DEVICE_IPS2=\"$exc_new_ips2\"|" "$SBS_CONF"
-                       log_msg "IP адреса устройств для исключения из $TUN_INTERFACE2 введены."; break ;;
-                    *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-                esac
-            done
-        else
-            EXC_DEVICE_IPS2=""
-            sed -i "s|^EXC_DEVICE_IPS2=\".*\"$|EXC_DEVICE_IPS2=\"\"|" "$SBS_CONF"
-        fi
-    fi
-
-    if [ -n "$TUN_INTERFACE1" ]; then
-        echo "
-Текущий номер таблицы маршрутизации для $TUN_INTERFACE1: $ROUTE_TABLE1. Изменить его?"
-        while true; do
-            read -p "1-Нет, 2-Да: " choice
-            case "$choice" in
-                1) echo "Отказ от изменения номера таблицы маршрутизации."; break ;;
-                2) read -p "Введите новый номер таблицы маршрутизации: " new_table1
-                   ROUTE_TABLE1="$new_table1"
-                   sed -i "s|^ROUTE_TABLE1=\".*\"$|ROUTE_TABLE1=\"$new_table1\"|" "$SBS_CONF"
-                   log_msg "Номер таблицы маршрутизации для $TUN_INTERFACE1 изменен на $ROUTE_TABLE1."; break ;;
-                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-            esac
-        done
-    fi
-
-    if [ -n "$TUN_INTERFACE2" ]; then
-        echo "
-Текущий номер таблицы маршрутизации для $TUN_INTERFACE2: $ROUTE_TABLE2. Изменить его?"
-        while true; do
-            read -p "1-Нет, 2-Да: " choice
-            case "$choice" in
-                1) echo "Отказ от изменения номера таблицы маршрутизации."; break ;;
-                2) read -p "Введите новый номер таблицы маршрутизации: " new_table2
-                   ROUTE_TABLE2="$new_table2"
-                   sed -i "s|^ROUTE_TABLE2=\".*\"$|ROUTE_TABLE2=\"$new_table2\"|" "$SBS_CONF"
-                   log_msg "Номер таблицы маршрутизации для $TUN_INTERFACE2 изменен на $ROUTE_TABLE2."; break ;;
-                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-            esac
-        done
-    fi
-
-    echo "
-Настройки сохранены."
-
-    sing_box_start
-}
-
-edit_sing_box() {
-    echo "Редактировать sbs-conf (файл настроек скрипта) с помощью редактора nano? Если sing-box запущен, при выборе варианта 2, он будет остановлен."
-    while true; do
-        read -p "1-Нет, 2-Да: " choice
-        case "$choice" in
-            1) echo "Выход."; exit 0 ;;
-            2) if is_running; then stop_sing_box; fi; echo "Открытие sbs-conf в редакторе nano"; nano $SBS_CONF; echo "sbs-conf сохранён."; break ;;
-            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-        esac
-    done
-
     sing_box_start
 }
 
@@ -761,9 +791,9 @@ update_sing_box() {
     sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
     sb_vers_new=$(get_sb_version $singbox_file)
 
-    echo "
-Меню обновления.
-Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
+    echo ""
+    echo "Меню обновления."
+    echo "Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
     while true; do
         read -p "1-Обновить скрипт. Установленная версия "$sbs_vers", доступная версия $sbs_vers_new
 2-Обновить ядро sing-box. Установленная версия "$sb_vers", доступная версия $sb_vers_new
@@ -804,55 +834,46 @@ updmonandcore_sing_box() {
 updcore_sing_box() {
     echo "
 Обновление ядра sing-box..."
-    cp "$singbox_file" "$JFFS_SB_DIR"; echo "Ядро sing-box успешно обновлено. Возврат в меню обновления."
+    cp "$singbox_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено. Возврат в меню обновления."
     update_sing_box
 }
 
-
-
-edit_conf_sb() {
-    echo "Открытие конфигурационного файла sing-box в редакторе nano..."; nano $SB_CONFIG; echo "Редактирование конфигурационного файла sing-box завершено. Возврат в меню."; edit_sb_conf
-}
-
 check_sing_box() {
-    echo "Проверка конфигурационного файла sing-box на ошибки..."
-    if ! output=$($SB_PATH check -c $SB_CONFIG 2>&1); then
-        echo "В конфигурационном файле обнаружена ошибка:"
-        echo "$output"
-        echo "Отредактировать конфигурационный файл в редакторе nano?"
-        while true; do
-            echo "1-Нет, 2-Да"
-            read choice
-            case "$choice" in
-                1) echo "Завершаем проверку, не исправив ошибки. Возврат в меню."; edit_sb_conf; return 0 ;;
-                2) echo "Открываем конфигурационный файл в редакторе nano..."
-                    nano $SB_CONFIG
-                    echo "Редактирование конфигурационного файла завершено."
-                    check_sing_box; return 0 ;;
-                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-            esac
-        done
-    else
-        echo "Ошибки в конфигурационном файле не найдены. Возврат в меню."; edit_sb_conf; return 0
-    fi
+    while true; do
+        echo ""; echo "Проверка конфигурационного файла sing-box на ошибки..."
+        if ! output=$($SB_PATH check -c $SB_CONFIG 2>&1); then
+            echo "В конфигурационном файле обнаружена ошибка:"
+            echo "$output"
+            echo "Отредактировать конфигурационный файл в редакторе nano?"
+            while true; do
+                read -p "1-Нет, 2-Да: " choice
+                case "$choice" in
+                    1) echo "Завершаем проверку, не исправив ошибки. Возврат в меню."; break 2 ;;
+                    2) echo ""; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; echo "Редактирование завершено."; break ;;
+                    *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+                esac
+            done
+        else
+            echo "Ошибки в конфигурационном файле не найдены. Возврат в меню."; break
+        fi
+    done
 }
 
 format_sing_box() {
     if ! output=$($SB_PATH format -c $SB_CONFIG 2>&1); then
-        echo "В конфигурационном файле обнаружена ошибка:"
+        echo ""; echo "В конфигурационном файле обнаружена ошибка:"
         echo "$output"
         echo "Сначала выполните проверку на ошибки и их исправление, выбрав пункт 2 меню настройки конфигурационного файла sing-box."
-        echo "Возврат в меню."; edit_sb_conf; return 0
+        echo "Возврат в меню."
     else
-        echo "Результат работы функции format:"
+        echo ""; echo "Результат работы функции format:"
         echo "$output"
         while true; do
             read -p "Сохранить результат работы функции format в конфигурационный файл sing-box?
 1-Нет, 2-Да: " save_choice
             case "$save_choice" in
-                1) echo "Вы выбрали не сохранять результат. Возврат в меню."; edit_sb_conf; return 0 ;;
-                2) $SB_PATH format -w -c $SB_CONFIG
-                   echo "Результат сохранён. Возврат в меню."; edit_sb_conf; return 0 ;;
+                1) echo "Вы выбрали не сохранять результат. Возврат в меню."; break ;;
+                2) $SB_PATH format -w -c $SB_CONFIG; echo "Результат сохранён. Возврат в меню."; break ;;
                 *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
             esac
         done
@@ -860,18 +881,17 @@ format_sing_box() {
 }
 
 edit_sb_conf() {
-    echo "Меню настройки конфигурационного файла sing-box."
-    echo "
-Выберите действие:"
-    echo "1-Открыть конфигурационный файл в редакторе nano."
-    echo "2-Проверить конфигурационный файл на ошибки."
-    echo "3-Привести в порядок структуру конфигурационного файла."
-    echo "0-Выйти из меню."
     while true; do
+        echo ""
+        echo "Меню настройки конфигурационного файла sing-box."
+        echo "1-Открыть конфигурационный файл в редакторе nano."
+        echo "2-Проверить конфигурационный файл на ошибки."
+        echo "3-Привести в порядок структуру конфигурационного файла."
+        echo "0-Выйти из меню."
         read -p "Введите номер пункта [0-3]: " choice
         case "$choice" in
-            1) edit_conf_sb ;;
-            2) check_sing_box ;;
+            1) echo ""; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; source "$SBS_CONF"; update_sbs_interfaces; echo "Редактирование завершено. Возврат в меню." ;;
+            2) check_sing_box; source "$SBS_CONF"; update_sbs_interfaces ;;
             3) format_sing_box ;;
             0) if is_running; then
                    echo "Рекомендуется перезапустить sing-box, если вы внесли в конфигурационный файл изменения."
@@ -885,7 +905,7 @@ edit_sb_conf() {
                        esac
                    done
                else
-                   echo "Выход из меню."; source "$SBS_CONF"; update_sbs_interfaces; exit 0
+                   echo "Выход из меню."; exit 0
                fi ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
         esac
@@ -981,12 +1001,12 @@ install_sing_box() {
             read -p "1-Оставить существующий файл, 2-Заменить файл: " choice
             case $choice in
                 1) echo "Оставляем существующий файл."; break ;;
-                2) cp "$sing_box_file" "$JFFS_SB_DIR"; chmod 775 "$SB_PATH"; echo "Файл $SB_PATH заменён."; break ;;
+                2) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "Файл $SB_PATH заменён."; break ;;
                 *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
             esac
         done
     else
-        cp "$sing_box_file" "$JFFS_SB_DIR"; echo "Файл ядра sing-box перемещён в директорию $JFFS_SB_DIR"
+        cp "$sing_box_file" "$SB_DIR"; echo "Файл ядра sing-box перемещён в директорию $SB_DIR"
     fi
 
     local current_dir=$(dirname "$(readlink -f "$0")")
@@ -1032,24 +1052,22 @@ show_menu() {
     echo "1) start (Запуск sing-box)"
     echo "2) stop (Остановка sing-box)"
     echo "3) restart (Перезапуск sing-box)"
-    echo "4) setup (Пошаговая настройка скрипта)"
-    echo "5) edit (Редактировать файл настроек скрипта)"
-    echo "6) json (Вызвать меню настройки конфигурационного файла sing-box - config.json)"
-    echo "7) update (Вызвать меню обновления скрипта и ядра sing-box)"
-    echo "8) status (Узнать статус sing-box, версии скрипта и ядра sing-box, архитектуру CPU роутера)"
+    echo "4) setup (Вызвать меню настройки скрипта)"
+    echo "5) edit (Вызвать меню настройки конфигурационного файла sing-box - config.json)"
+    echo "6) update (Вызвать меню обновления скрипта и ядра sing-box)"
+    echo "7) status (Узнать статус sing-box, версии скрипта и ядра sing-box, архитектуру CPU роутера)"
     echo "10) remove (!!!Удалить sing-box полностью!!!)"
     echo "0) Выход из меню."
 }
 
 case "$1" in
     install) install_sing_box ;;
-    setup) setup_sing_box ;;
     start) start_sing_box ;;
     stop) stop_sing_box ;;
     restart) stop_sing_box; sleep 2; start_sing_box ;;
-    edit) edit_sing_box ;;
+    setup) setup_sing_box ;;
+    edit) edit_sb_conf ;;
     update) update_sing_box ;;
-    json) edit_sb_conf ;;
     status) status_sing_box ;;
     remove) remove_sing_box ;;
     updmonandcore) updmonandcore_sing_box ;;
@@ -1060,12 +1078,11 @@ case "$1" in
             case $choice in
                 1) start_sing_box; break ;;
                 2) stop_sing_box; break ;;
-                3) stop_sing_box; sleep 1; start_sing_box; break ;;
+                3) stop_sing_box; sleep 2; start_sing_box; break ;;
                 4) setup_sing_box; break ;;
-                5) edit_sing_box; break ;;
+                5) edit_sb_conf; break ;;
                 6) update_sing_box; break ;;
-                7) edit_sb_conf; break ;;
-                8) status_sing_box; break ;;
+                7) status_sing_box; break ;;
                 10) remove_sing_box; break ;;
                 0) exit 0 ;;
                 *) echo "Некорректный ввод, попробуйте ещё." ;;
