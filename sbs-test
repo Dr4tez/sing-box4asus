@@ -803,7 +803,7 @@ update_sing_box() {
 0-Выйти из меню.
 Введите номер пункта [0-2]: " choice
             case "$choice" in
-                1) if is_running; then stop_sing_box; fi; update_sbs; exit 0 ;;
+                1) if is_running; then stop_sing_box; fi; update_sbs ;;
                 2) if is_running; then stop_sing_box; fi; updcore_sing_box; break ;;
                 0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Выход из меню обновления."; is_running || sing_box_start; exit 0 ;;
                 *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
