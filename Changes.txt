@@ -82,7 +82,7 @@ Version 1.2 from 09/01/24
 2. In the script configuration menu, when adding a subnet in CIDR format as a device's IP address (e.g., 192.168.50.0/24), the next step prompts you to enter exception IP addresses.
 3. A separate menu has been created for configuring the sing-box configuration file, accessible via the 'sbs edit' command. This menu combines functions previously performed by separate commands: checking the sing-box configuration file for errors and optimizing its structure. Additionally, this menu now includes the option to edit the sing-box configuration file using the nano editor, which was previously offered during the execution of the 'sbs setup' command.
 4. The main script and the sbs-monitor script have been improved to correctly add, remove, and restore rules and routes, taking into account subnets and exceptions.
-5. Code optimization and adjustments to console output messages.
+5. Code optimization and adjustments to command line output messages.
 
 Due to the addition of new functionality, it is not possible to update to version 1.2 correctly using the 'sbs update' command. Therefore, to upgrade from previous versions to version 1.2:
 1. Save your configuration file config.json from the /jffs/addons/sing-box-script directory somewhere safe.
