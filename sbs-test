@@ -381,7 +381,7 @@ start_sing_box() {
     INPUT -i $TUN_INTERFACE2 -j ACCEPT
     OUTPUT -o $TUN_INTERFACE2 -j ACCEPT"
 
-    lsmod | grep -q "^tun " || { log_msg "Загрузка модуля TUN"; modprobe tun; }
+    lsmod | grep -q "^tun " || { log_msg "Загрузка модуля TUN."; modprobe tun; }
 
     $SB_PATH run -c $SB_CONFIG &
     sleep 3
