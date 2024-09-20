@@ -54,22 +54,22 @@ V. Features of configuring sing-box on a router.
 Here are listed the conditions that must be observed when creating sing-box configuration files for the router, as well as the necessary settings in the router web interface.
 
  1. General conditions:
-  1.1 Either do not include a block like the following in the dns rules section of your sing-box configuration file (config.json), or use it with caution:
+  1.1 I do not recommend using clash_mod's in the dns rules section of your sing-box configuration file (config.json), for example:
     {
       "clash_mode": "Global",
       "server": "dns-ag"
     }
-  This block, when selecting Mode Global in the Config section of the external panel, accessible at http://192.168.50.1:9090/ui/, will direct all DNS requests to the specified DNS server, ignoring DNS rules. If access to this DNS server is determined by DNS rules through a proxy tunnel, then selecting Mode Global in the external panel will cause almost instant absorption of all RAM by the sing-box process and the router to freeze.
-  192.168.50.1 is the local IP address of the router, yours may be different.
-  The external panel is only available if your config.json contains a block of the following type:
-  "experimental": {
-    "clash_api": {
-      "external_controller": "0.0.0.0:9090",
-      "external_ui": "/opt/root/sing-box/ui",
-      "secret": "1809"
+  With some combinations of rules and selecting any Mode other than Rule in the Config section of the external panel*, this causes the sing-box process to almost instantly consume all of the RAM and the router to freeze.
+  *If your config.json, like my template, contains a block like this:
+    "experimental": {
+      "clash_api": {
+        "external_controller": "0.0.0.0:9090",
+        "external_ui": "/opt/root/sing-box/ui",
+        "secret": "1809"
+      }
     }
-  }
-  This block is present at the end of my config.json template, which is downloaded when installing the script.
+  then the external panel will be available at http://192.168.50.1:9090/ui/.
+  192.168.50.1 is the local IP address of the router, yours may be different.
   1.2 Do not use the '"auto_route": true' setting in config.json, it does not function correctly on the router and disrupts routing.
   1.3 Do not use the '"strict_route": true' setting in config.json, this may cause loss of access to the router's command line and routing problems.
   1.4 The script supports a maximum of two tun interfaces, so do not add more than two to the config.json.
