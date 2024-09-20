@@ -25,15 +25,15 @@
     ],
     "rules": [
       {
+        "clash_mode": "Direct",
+        "server": "dns-ag-ipv4_only"
+      },
+      {
         "inbound": [
           "mixed2global",
           "dns4tun2global"
         ],
         "server": "dns-ag"
-      },
-      {
-        "clash_mode": "Direct",
-        "server": "dns-ag-ipv4_only"
       },
       {
         "rule_set": "my_domains",
