@@ -26,7 +26,6 @@ NAT_SCRIPT="/jffs/scripts/nat-start"
 SS_SCRIPT="/jffs/scripts/services-start"
 SS_LINES="(sleep 30 && $SCRIPT_PATH start) &"
 LN_PATH="/opt/bin/sbs"
-BR0_IP=$(ip -o -f inet addr show br0 | awk '{split($4, a, "/"); print a[1]}')
 
 # Функции
 log_msg() {
@@ -477,10 +476,10 @@ start_sing_box() {
                     done
                 fi
             fi
-            NAT_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT1
-            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m udp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT1"
-            NAT_EXC_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT1
-            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m udp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT1"
+            NAT_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1
+            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1"
+            NAT_EXC_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1
+            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1"
             if ipset list sbsinc-ipset1 >/dev/null 2>&1; then
                 log_msg "Добавление правил nat для интерфейса $TUN_INTERFACE1"
                 if ipset list sbsexc-ipset1 >/dev/null 2>&1; then
@@ -519,10 +518,10 @@ start_sing_box() {
                     done
                 fi
             fi
-            NAT_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT2
-            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m udp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT2"
-            NAT_EXC_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT2
-            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m udp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT2"
+            NAT_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2
+            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2"
+            NAT_EXC_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2
+            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2"
             if ipset list sbsinc-ipset2 >/dev/null 2>&1; then
                 log_msg "Добавление правил nat для интерфейса $TUN_INTERFACE2"
                 if ipset list sbsexc-ipset2 >/dev/null 2>&1; then
@@ -637,10 +636,10 @@ stop_sing_box() {
 # Удаление правил nat и обновления скрипта nat-start
     if [ "$DNS_CHOICE" = "sing-box" ]; then
         if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ] && [ -n "$LISTEN_DNS_PORT1" ]; then
-            NAT_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT1
-            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m udp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT1"
-            NAT_EXC_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT1
-            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m udp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT1"
+            NAT_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1
+            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1"
+            NAT_EXC_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1
+            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1"
             if ipset list sbsinc-ipset1 >/dev/null 2>&1; then
                 log_msg "Удаление правил nat для интерфейса $TUN_INTERFACE1"
                 if ipset list sbsexc-ipset1 >/dev/null 2>&1; then
@@ -660,10 +659,10 @@ stop_sing_box() {
             fi
         fi
         if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ] && [ -n "$LISTEN_DNS_PORT2" ]; then
-            NAT_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT2
-            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m udp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT2"
-            NAT_EXC_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT2
-            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m udp --dport 53 -j DNAT --to-destination $BR0_IP:$LISTEN_DNS_PORT2"
+            NAT_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2
+            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2"
+            NAT_EXC_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2
+            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2"
             if ipset list sbsinc-ipset2 >/dev/null 2>&1; then
                 log_msg "Удаление правил nat для интерфейса $TUN_INTERFACE2"
                 if ipset list sbsexc-ipset2 >/dev/null 2>&1; then
