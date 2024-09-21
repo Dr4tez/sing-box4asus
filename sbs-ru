@@ -300,6 +300,8 @@ update_sbs_interfaces() {
     TUN_INTERFACE2=$(grep '^TUN_INTERFACE2=' "$SBS_CONF" | cut -d '"' -f 2)
     DEVICE_IPS1=$(grep '^DEVICE_IPS1=' "$SBS_CONF" | cut -d '"' -f 2)
     DEVICE_IPS2=$(grep '^DEVICE_IPS2=' "$SBS_CONF" | cut -d '"' -f 2)
+    EXC_DEVICE_IPS1=$(grep '^EXC_DEVICE_IPS1=' "$SBS_CONF" | cut -d '"' -f 2)
+    EXC_DEVICE_IPS2=$(grep '^EXC_DEVICE_IPS2=' "$SBS_CONF" | cut -d '"' -f 2)
     FOUND1=false
     FOUND2=false
     NEW_INTERFACE1=""
@@ -320,17 +322,20 @@ update_sbs_interfaces() {
     update_sbs_conf() {
         sed -i "s|^TUN_INTERFACE1=\"[^\"]*\"|TUN_INTERFACE1=\"$1\"|" "$SBS_CONF"
         sed -i "s|^DEVICE_IPS1=\"[^\"]*\"|DEVICE_IPS1=\"$2\"|" "$SBS_CONF"
-        sed -i "s|^TUN_INTERFACE2=\"[^\"]*\"|TUN_INTERFACE2=\"$3\"|" "$SBS_CONF"
-        sed -i "s|^DEVICE_IPS2=\"[^\"]*\"|DEVICE_IPS2=\"$4\"|" "$SBS_CONF"
+        sed -i "s|^EXC_DEVICE_IPS1=\"[^\"]*\"|EXC_DEVICE_IPS1=\"$3\"|" "$SBS_CONF"
+        sed -i "s|^TUN_INTERFACE2=\"[^\"]*\"|TUN_INTERFACE2=\"$4\"|" "$SBS_CONF"
+        sed -i "s|^DEVICE_IPS2=\"[^\"]*\"|DEVICE_IPS2=\"$5\"|" "$SBS_CONF"
+        sed -i "s|^EXC_DEVICE_IPS2=\"[^\"]*\"|EXC_DEVICE_IPS2=\"$6\"|" "$SBS_CONF"
     }
+
     if $FOUND1 && $FOUND2; then
         return 0
     elif ! $FOUND1 && ! $FOUND2; then
-        update_sbs_conf "$NEW_INTERFACE1" "" "$NEW_INTERFACE2" ""
+        update_sbs_conf "$NEW_INTERFACE1" "" "" "$NEW_INTERFACE2" "" ""
     elif $FOUND1 && ! $FOUND2; then
-        update_sbs_conf "$TUN_INTERFACE1" "$DEVICE_IPS1" "$NEW_INTERFACE1" ""
+        update_sbs_conf "$TUN_INTERFACE1" "$DEVICE_IPS1" "$EXC_DEVICE_IPS1" "$NEW_INTERFACE1" "" ""
     elif ! $FOUND1 && $FOUND2; then
-        update_sbs_conf "$NEW_INTERFACE1" "" "$TUN_INTERFACE2" "$DEVICE_IPS2"
+        update_sbs_conf "$NEW_INTERFACE1" "" "" "$TUN_INTERFACE2" "$DEVICE_IPS2" "$EXC_DEVICE_IPS2"
     fi
 }
 
