@@ -59,7 +59,7 @@ Here are listed the conditions that must be observed when creating sing-box conf
       "clash_mode": "Global",
       "server": "dns-ag"
     }
-  With some combinations of rules and selecting any Mode other than Rule in the Config section of the external panel*, this causes the sing-box process to almost instantly consume all of the RAM and the router to freeze.
+    With some combinations of rules in config.json with the selection in the external dashboard* in the Config section of any Mode other than Rule, this causes almost instant absorption of all RAM by the sing-box process and the router to freeze.
   *If your config.json, like my template, contains a block like this:
     "experimental": {
       "clash_api": {
