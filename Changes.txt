@@ -93,7 +93,7 @@ Version 1.3 from 09/19/24
 Version 1.4 from 09/23/24
 Optimizations, bugfixes and logic improvements for several script functions.
 
-To update from version 1.3 to version 1.4, execute the command 'sbs update' in the router's console and select the first item in the menu that appears.
+To update from version 1.3 to version 1.4, execute the command 'sbs update' in the router's command line and select the first item in the menu that appears.
 From versions older than 1.3 to version 1.4 you can only update by reinstalling the script according to the following instructions:
 1. Save your configuration file config.json from the /jffs/addons/sing-box-script directory somewhere safe.
 2. Remove the previous version by running the command 'sbs remove' in the router's command line.
