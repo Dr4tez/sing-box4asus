@@ -1,0 +1,1339 @@
+#!/bin/sh
+
+# Version 1.4
+# Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
+
+# Переменные
+JFFS_SB_DIR="/jffs/addons/sing-box-script"
+SB_CONFIG="$JFFS_SB_DIR/config.json"
+SCRIPT_PATH="$JFFS_SB_DIR/sbs-ru"
+SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-ru"
+SB_CONFIG_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/config.json"
+SBS_CONF="$JFFS_SB_DIR/sbs-conf"
+SBS_MON="$JFFS_SB_DIR/sbs-monitor"
+TEMP_UPDATE="$JFFS_SB_DIR/temp-update"
+ROOT_DIR="/opt/root"
+SB_DIR="$ROOT_DIR/sing-box"
+SB_PATH="$SB_DIR/sing-box"
+SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
+SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
+SB_ARCHIVE64_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
+SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
+SB_DOWNLOAD64_URL=$(curl -s -H "Accept: application/vnd.github.v3+json" "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
+SB_DOWNLOAD_URL=$(curl -s -H "Accept: application/vnd.github.v3+json" "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
+FW_SCRIPT="/jffs/scripts/firewall-start"
+NAT_SCRIPT="/jffs/scripts/nat-start"
+SS_SCRIPT="/jffs/scripts/services-start"
+SS_LINES="(sleep 30 && $SCRIPT_PATH start) &"
+LN_PATH="/opt/bin/sbs"
+
+# Функции
+log_msg() {
+    echo "$1"
+    logger -t "sbs" "$1"
+}
+
+create_dir() {
+    mkdir -p "$1"
+    chmod 775 "$1"
+    echo "Директория $1 создана."
+}
+
+create_sbs_conf() {
+    cat << EOF > "$1"
+# Since SBS version 1.3
+# This file is created automatically and the values are entered via the command line when executing the 'sbs setup' command.
+# If you want to change the values here using an editor bypassing the 'sbs setup' command, then before doing so, be sure to stop sing-box with the 'sbs stop' command in the command line.
+
+# In the DEVICE_IPS line, inside the quotation marks, enter the IP addresses of the devices whose traffic you want to route through the corresponding TUN_INTERFACE. The IP addresses must be entered on one line and separated by spaces. You can also enter a subnet in CIDR format, such as 192.168.50.0/24.
+# In the EXC_DEVICE_IPS line, you can enter the IP addresses of the devices whose traffic you want to exclude from the sing-box, if you entered a subnet in the DEVICE_IPS line.
+# If the specified ROUTE_TABLE values (routing table numbers) on your router are already taken, which is unlikely, assign other numbers that are not taken.
+# TUN_INTERFACE and LISTEN_DNS_PORT values are determined automatically based on data from your sing-box configuration file.
+# DNS_CHOICE values: router (default) - DNS specified in the router settings is used, sing-box - DNS specified in the sing-box configuration file is used.
+
+DEVICE_IPS1=""
+EXC_DEVICE_IPS1=""
+ROUTE_TABLE1="555"
+TUN_INTERFACE1=""
+LISTEN_DNS_PORT1=""
+
+DEVICE_IPS2=""
+EXC_DEVICE_IPS2=""
+ROUTE_TABLE2="556"
+TUN_INTERFACE2=""
+LISTEN_DNS_PORT2=""
+
+DNS_CHOICE="router"
+EOF
+    chmod 664 "$1"
+}
+
+create_sbs_monitor() {
+    cat << EOF > "$1"
+#!/bin/sh
+
+# SBS version 1.4
+
+source "$SBS_CONF"
+
+add_cidr_rule() {
+    local device_ips=\$1
+    local exc_device_ips=\$2
+    local route_table=\$3
+
+    for IP in \$device_ips; do
+        if echo \$IP | grep -q '/'; then
+            if ! ip rule show | grep -q "\$IP lookup \$route_table"; then
+                ip rule add from \$IP lookup \$route_table
+            fi
+        fi
+    done
+    for IP in \$exc_device_ips; do
+        if ! ip rule show | grep -q "\$IP lookup main"; then
+            ip rule add from \$IP lookup main
+        fi
+    done
+}
+
+add_ip_rule() {
+    local device_ips=\$1
+    local route_table=\$2
+
+    for IP in \$device_ips; do
+        if ! echo \$IP | grep -q '/'; then
+            if ! ip rule show | grep -q "\$IP lookup \$route_table"; then
+                ip rule add from \$IP lookup \$route_table
+            fi
+        fi
+    done
+}
+
+sbs_monitor_rr() {
+    { ip monitor route | while read _; do
+        if [ -n "\$DEVICE_IPS1" ] && [ -n "\$ROUTE_TABLE1" ] && [ -n "\$TUN_INTERFACE1" ]; then
+            ip route add default dev \$TUN_INTERFACE1 table \$ROUTE_TABLE1 2>/dev/null
+            ip route show table main | grep -v '^default' | while read ROUTE; do ip route add \$ROUTE table \$ROUTE_TABLE1 2>/dev/null; done
+            ip route show table \$ROUTE_TABLE1 | grep -v '^default' | while read ROUTE; do
+                if ! ip route show table main | grep -q "^\$ROUTE"; then
+                    ip route del \$ROUTE table \$ROUTE_TABLE1 2>/dev/null
+                fi
+            done
+        fi
+        if [ -n "\$DEVICE_IPS2" ] && [ -n "\$ROUTE_TABLE2" ] && [ -n "\$TUN_INTERFACE2" ]; then
+            ip route add default dev \$TUN_INTERFACE2 table \$ROUTE_TABLE2 2>/dev/null
+            ip route show table main | grep -v '^default' | while read ROUTE; do ip route add \$ROUTE table \$ROUTE_TABLE2 2>/dev/null; done
+            ip route show table \$ROUTE_TABLE2 | grep -v '^default' | while read ROUTE; do
+                if ! ip route show table main | grep -q "^\$ROUTE"; then
+                    ip route del \$ROUTE table \$ROUTE_TABLE2 2>/dev/null
+                fi
+            done
+        fi
+    done } &
+
+    ip monitor rule | while read line; do
+        if [ -n "\$DEVICE_IPS1" ] && [ -n "\$ROUTE_TABLE1" ] && [ -n "\$TUN_INTERFACE1" ]; then
+            add_cidr_rule "\$DEVICE_IPS1" "\$EXC_DEVICE_IPS1" "\$ROUTE_TABLE1"
+        fi
+        if [ -n "\$DEVICE_IPS2" ] && [ -n "\$ROUTE_TABLE2" ] && [ -n "\$TUN_INTERFACE2" ]; then
+            add_cidr_rule "\$DEVICE_IPS2" "\$EXC_DEVICE_IPS2" "\$ROUTE_TABLE2"
+        fi
+        if [ -n "\$DEVICE_IPS1" ] && [ -n "\$ROUTE_TABLE1" ] && [ -n "\$TUN_INTERFACE1" ]; then
+            add_ip_rule "\$DEVICE_IPS1" "\$ROUTE_TABLE1"
+        fi
+        if [ -n "\$DEVICE_IPS2" ] && [ -n "\$ROUTE_TABLE2" ] && [ -n "\$TUN_INTERFACE2" ]; then
+            add_ip_rule "\$DEVICE_IPS2" "\$ROUTE_TABLE2"
+        fi
+    done
+}
+
+trap '' SIGHUP
+sbs_monitor_rr 2>/dev/null
+EOF
+    chmod 775 "$1"
+}
+
+check_file_existence_and_download() {
+    local file_path="$1"
+    local file_url="$2"
+    local file_name=$(basename "$file_path")
+
+    if [ -f "$file_path" ]; then
+        echo "Файл $file_name уже существует. Что вы хотите сделать?"
+        while true; do
+            read -p "1-Пропустить скачивание, 2-Скачать и заменить файл: " choice
+            case $choice in
+                1) echo "Cкачивание $file_name пропущено."; return 0 ;;
+                2) echo "Скачиваем и заменяем файл $file_name"; curl -s -L -o "$file_path" "$file_url"; return 0 ;;
+                *) echo "Некорректный ввод. Попробуйте еще раз." ;;
+            esac
+        done
+    else
+        echo "Скачиваем $file_name..."
+        curl -s -L -o "$file_path" "$file_url"
+    fi
+}
+
+delete_if_not_current_dir() {
+  local current_dir=$(dirname "$(readlink -f "$0")")
+
+  if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
+    rm -f "$(readlink -f "$0")"
+  fi
+}
+
+create_or_use_existing() {
+    local dir_path="$1"
+
+    if [ -d "$dir_path" ]; then
+        echo "Директория $dir_path уже существует. Что вы хотите сделать?"
+        while true; do
+            read -p "1-Завершить работу, 2-Использовать существующую директорию: " choice
+            case $choice in
+                1) delete_if_not_current_dir; echo "Работа скрипта завершена."; exit 0 ;;
+                2) echo "Используем существующую директорию $dir_path"; break ;;
+                *) echo "Некорректный ввод. Попробуйте еще раз." ;;
+            esac
+        done
+    else
+        create_dir "$dir_path"
+    fi
+}
+
+handle_existing_file() {
+    local file_path="$1"
+    local create_function="$2"
+
+    if [ -f "$file_path" ]; then
+        echo "Файл $file_path уже существует. Что вы хотите сделать?"
+        while true; do
+            read -p "1-Оставить существующий файл, 2-Заменить файл: " choice
+            case $choice in
+                1) echo "Оставляем существующий файл."; break ;;
+                2) echo "Заменяем файл $file_path"; "$create_function" "$file_path"; break ;;
+                *) echo "Некорректный ввод. Попробуйте еще раз." ;;
+            esac
+        done
+    else
+        "$create_function" "$file_path"
+    fi
+}
+
+update_script() {
+    [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
+    echo "$2" | while IFS= read -r line; do
+        grep -qF "$line" "$1" || echo "$line" >> "$1"
+    done
+}
+
+remove_script_content() {
+    [ -f "$1" ] && echo "$2" | while read -r line; do
+        sed -i "/$(echo "$line" | sed 's/[\/&]/\\&/g')/d" "$1"
+    done
+}
+
+manage_iptables() {
+    if [ "$1" = "add" ]; then
+        iptables -C $2 2>/dev/null || iptables -I $2 || log_msg "Ошибка добавления правила iptables: $2"
+    elif [ "$1" = "remove" ]; then
+        iptables -C $2 2>/dev/null && iptables -D $2 || log_msg "Ошибка удаления правила iptables: $2"
+    fi
+}
+
+manage_iptables_nat() {
+    if [ "$1" = "add" ]; then
+        iptables -t nat -C $2 2>/dev/null || iptables -t nat -A $2 || log_msg "Ошибка добавления правила nat: $2"
+    elif [ "$1" = "remove" ]; then
+        iptables -t nat -C $2 2>/dev/null && iptables -t nat -D $2 || log_msg "Ошибка удаления правила nat: $2"
+    fi
+}
+
+is_running() {
+    ps | grep -v grep | grep -q "$SB_PATH"
+}
+
+get_sbs_version() {
+    sed -n '3s/^# Version //p' "$1"
+}
+
+get_sb_versplat() {
+    local vers plat
+
+    vers=$("$1" version | awk '/^sing-box version/ {print $3}' | head -n 1)
+    plat=$("$1" version | awk '/^Environment:/ {print $3}' | head -n 1)
+    echo "$vers $plat"
+}
+
+get_sb_version() {
+    local version
+
+    version=$("$1" version | awk '/^sing-box version/ {print $3}' | head -n 1)
+    echo "$version"
+}
+
+self_copy() {
+    local destination="$1"
+
+    cp "$0" "$destination"
+}
+
+silent_create_dir() {
+    mkdir -p "$1"
+    chmod 775 "$1"
+}
+
+sing_box_start() {
+    echo "Запустить sing-box?"
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "sing-box не запущен."; break ;;
+            2) start_sing_box; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+}
+
+# Функция обновления tun интерфейсов
+update_sbs_interfaces() {
+    interfaces=$(awk -F'"' '/"interface_name":/ {print $4}' "$SB_CONFIG")
+    interfaces_count=$(echo "$interfaces" | wc -w)
+
+    update_sbs_conf() {
+        sed -i "s|^TUN_INTERFACE1=\"[^\"]*\"|TUN_INTERFACE1=\"$1\"|" "$SBS_CONF"
+        sed -i "s|^DEVICE_IPS1=\"[^\"]*\"|DEVICE_IPS1=\"$2\"|" "$SBS_CONF"
+        sed -i "s|^EXC_DEVICE_IPS1=\"[^\"]*\"|EXC_DEVICE_IPS1=\"$3\"|" "$SBS_CONF"
+        sed -i "s|^LISTEN_DNS_PORT1=\"[^\"]*\"|LISTEN_DNS_PORT1=\"$4\"|" "$SBS_CONF"
+        sed -i "s|^TUN_INTERFACE2=\"[^\"]*\"|TUN_INTERFACE2=\"$5\"|" "$SBS_CONF"
+        sed -i "s|^DEVICE_IPS2=\"[^\"]*\"|DEVICE_IPS2=\"$6\"|" "$SBS_CONF"
+        sed -i "s|^EXC_DEVICE_IPS2=\"[^\"]*\"|EXC_DEVICE_IPS2=\"$7\"|" "$SBS_CONF"
+        sed -i "s|^LISTEN_DNS_PORT2=\"[^\"]*\"|LISTEN_DNS_PORT2=\"$8\"|" "$SBS_CONF"
+    }
+
+    if [ $interfaces_count -lt 1 ]; then
+        update_sbs_conf "" "" "" "" "" "" "" ""
+    elif [ $interfaces_count -eq 1 ]; then
+        new_interface=$interfaces
+        if [ "$new_interface" = "$TUN_INTERFACE1" ]; then
+            update_sbs_conf "$TUN_INTERFACE1" "$DEVICE_IPS1" "$EXC_DEVICE_IPS1" "$LISTEN_DNS_PORT1" "" "" "" ""               
+        elif [ "$new_interface" = "$TUN_INTERFACE2" ]; then
+            update_sbs_conf "" "" "" "" "$TUN_INTERFACE2" "$DEVICE_IPS2" "$EXC_DEVICE_IPS2" "$LISTEN_DNS_PORT2"
+        else
+            update_sbs_conf "$new_interface" "" "" "" "" "" "" ""
+        fi
+    elif [ $interfaces_count -eq 2 ]; then
+        new_interface1=$(echo $interfaces | awk '{print $1}')
+        new_interface2=$(echo $interfaces | awk '{print $2}')
+        found1=false
+        found2=false
+        if [ "$new_interface1" = "$TUN_INTERFACE1" ] || [ "$new_interface2" = "$TUN_INTERFACE1" ]; then
+            found1=true
+        fi
+        if [ "$new_interface1" = "$TUN_INTERFACE2" ] || [ "$new_interface2" = "$TUN_INTERFACE2" ]; then
+            found2=true
+        fi
+        if [ "$found1" = true ] && [ "$found2" = false ]; then
+            if [ "$new_interface1" = "$TUN_INTERFACE1" ]; then
+                update_sbs_conf "$TUN_INTERFACE1" "$DEVICE_IPS1" "$EXC_DEVICE_IPS1" "$LISTEN_DNS_PORT1" "$new_interface2" "" "" ""
+            else
+                update_sbs_conf "$TUN_INTERFACE1" "$DEVICE_IPS1" "$EXC_DEVICE_IPS1" "$LISTEN_DNS_PORT1" "$new_interface1" "" "" ""
+            fi
+        elif [ "$found2" = true ] && [ "$found1" = false ]; then
+            if [ "$new_interface1" = "$TUN_INTERFACE2" ]; then
+                update_sbs_conf "$new_interface2" "" "" "" "$TUN_INTERFACE2" "$DEVICE_IPS2" "$EXC_DEVICE_IPS2" "$LISTEN_DNS_PORT2"
+            else
+                update_sbs_conf "$new_interface1" "" "" "" "$TUN_INTERFACE2" "$DEVICE_IPS2" "$EXC_DEVICE_IPS2" "$LISTEN_DNS_PORT2"
+            fi
+        elif [ "$found1" = false ] && [ "$found2" = false ]; then
+            update_sbs_conf "$new_interface1" "" "" "" "$new_interface2" "" "" ""
+        fi
+    fi
+}
+
+find_cidrs() {
+    cidrs=""
+    for ip in $1; do
+        if echo "$ip" | grep -q '/'; then
+            cidrs="$cidrs $ip"
+        fi
+    done
+    echo $cidrs
+}
+
+add_cidr_rules() {
+    local device_ips=$1
+    local route_table=$2
+
+    for IP in $device_ips; do
+        if echo "$IP" | grep -q '/'; then
+            ip rule add from $IP lookup $route_table
+        fi
+    done
+}
+
+add_ip_rules() {
+    local device_ips=$1
+    local route_table=$2
+
+    for IP in $device_ips; do
+        if ! echo "$IP" | grep -q '/'; then
+            ip rule add from $IP lookup $route_table
+        fi
+    done
+}
+
+extract_listen_dns_ports() {
+    listen_dns_ports=$(grep -B1 '"override_port": 53' "$SB_CONFIG" | grep '"listen_port"' | sed -E 's/.*"listen_port": ([0-9]+),.*/\1/')
+    dns_port_count=$(echo "$listen_dns_ports" | wc -w)
+
+    if [ $dns_port_count -lt 1 ]; then
+        sed -i 's/^LISTEN_DNS_PORT1=.*/LISTEN_DNS_PORT1=""/' "$SBS_CONF"
+        sed -i 's/^LISTEN_DNS_PORT2=.*/LISTEN_DNS_PORT2=""/' "$SBS_CONF"
+    elif [ $dns_port_count -eq 1 ]; then
+        dns_port=$listen_dns_ports
+        if [ "$dns_port" = "$LISTEN_DNS_PORT1" ]; then
+            sed -i 's/^LISTEN_DNS_PORT2=.*/LISTEN_DNS_PORT2=""/' "$SBS_CONF"                
+        elif [ "$dns_port" = "$LISTEN_DNS_PORT2" ]; then
+            sed -i 's/^LISTEN_DNS_PORT1=.*/LISTEN_DNS_PORT1=""/' "$SBS_CONF"
+        else
+            if [ -n "$TUN_INTERFACE1" ]; then
+                sed -i "s/^LISTEN_DNS_PORT1=.*/LISTEN_DNS_PORT1=\"$dns_port\"/" "$SBS_CONF"
+                sed -i 's/^LISTEN_DNS_PORT2=.*/LISTEN_DNS_PORT2=""/' "$SBS_CONF"
+            elif [ -n "$TUN_INTERFACE2" ] && [ -z "$TUN_INTERFACE1" ]; then
+                sed -i "s/^LISTEN_DNS_PORT2=.*/LISTEN_DNS_PORT2=\"$dns_port\"/" "$SBS_CONF"
+            fi
+        fi
+    elif [ $dns_port_count -eq 2 ]; then
+        dns_port1=$(echo $listen_dns_ports | awk '{print $1}')
+        dns_port2=$(echo $listen_dns_ports | awk '{print $2}')
+        match1=false
+        match2=false
+        if [ "$dns_port1" = "$LISTEN_DNS_PORT1" ] || [ "$dns_port2" = "$LISTEN_DNS_PORT1" ]; then
+            match1=true
+        fi
+        if [ "$dns_port1" = "$LISTEN_DNS_PORT2" ] || [ "$dns_port2" = "$LISTEN_DNS_PORT2" ]; then
+            match2=true
+        fi
+        if [ "$match1" = true ] && [ "$match2" = false ]; then
+            if [ -n "$TUN_INTERFACE2" ]; then
+                if [ "$dns_port1" = "$LISTEN_DNS_PORT1" ]; then
+                    sed -i "s/^LISTEN_DNS_PORT2=.*/LISTEN_DNS_PORT2=\"$dns_port2\"/" "$SBS_CONF"
+                else
+                    sed -i "s/^LISTEN_DNS_PORT2=.*/LISTEN_DNS_PORT2=\"$dns_port1\"/" "$SBS_CONF"
+                fi
+            fi
+        elif [ "$match2" = true ] && [ "$match1" = false ]; then
+            if [ -n "$TUN_INTERFACE1" ]; then
+                if [ "$dns_port1" = "$LISTEN_DNS_PORT2" ]; then
+                    sed -i "s/^LISTEN_DNS_PORT1=.*/LISTEN_DNS_PORT1=\"$dns_port2\"/" "$SBS_CONF"
+                else
+                    sed -i "s/^LISTEN_DNS_PORT1=.*/LISTEN_DNS_PORT1=\"$dns_port1\"/" "$SBS_CONF"
+                fi
+            fi
+        elif [ "$match1" = false ] && [ "$match2" = false ]; then
+            if [ -n "$TUN_INTERFACE1" ] && [ -n "$TUN_INTERFACE2" ]; then
+                sed -i "s/^LISTEN_DNS_PORT1=.*/LISTEN_DNS_PORT1=\"$dns_port1\"/" "$SBS_CONF"
+                sed -i "s/^LISTEN_DNS_PORT2=.*/LISTEN_DNS_PORT2=\"$dns_port2\"/" "$SBS_CONF"
+            elif [ -n "$TUN_INTERFACE1" ] && [ -z "$TUN_INTERFACE2" ]; then
+                sed -i "s/^LISTEN_DNS_PORT1=.*/LISTEN_DNS_PORT1=\"$dns_port1\"/" "$SBS_CONF"
+            elif [ -n "$TUN_INTERFACE2" ] && [ -z "$TUN_INTERFACE1" ]; then
+                sed -i "s/^LISTEN_DNS_PORT2=.*/LISTEN_DNS_PORT2=\"$dns_port2\"/" "$SBS_CONF"
+            fi
+        fi
+    fi
+}
+
+start_sing_box() {
+    echo ""
+    log_msg "Запуск sing-box..."
+    is_running && { log_msg "Ошибка: sing-box уже запущен."; exit 1; }
+
+    source "$SBS_CONF"
+    update_sbs_interfaces
+    extract_listen_dns_ports
+    source "$SBS_CONF"
+
+    if [ -n "$TUN_INTERFACE1" ]; then
+        FW_RULES1="FORWARD -i $TUN_INTERFACE1 -j ACCEPT
+        FORWARD -o $TUN_INTERFACE1 -j ACCEPT
+        INPUT -i $TUN_INTERFACE1 -j ACCEPT
+        OUTPUT -o $TUN_INTERFACE1 -j ACCEPT"
+    fi
+    if [ -n "$TUN_INTERFACE2" ]; then
+        FW_RULES2="FORWARD -i $TUN_INTERFACE2 -j ACCEPT
+        FORWARD -o $TUN_INTERFACE2 -j ACCEPT
+        INPUT -i $TUN_INTERFACE2 -j ACCEPT
+        OUTPUT -o $TUN_INTERFACE2 -j ACCEPT"
+    fi
+
+    lsmod | grep -q "^tun " || { log_msg "Загрузка модуля TUN."; modprobe tun; }
+
+    $SB_PATH run -c $SB_CONFIG &
+    sleep 3
+
+# Проверка наличия tun интерфейсов
+    interface1_exists=false
+    interface2_exists=false
+
+    if ip link show "$TUN_INTERFACE1" >/dev/null 2>&1; then
+        log_msg "TUN интерфейс $TUN_INTERFACE1 обнаружен."
+        interface1_exists=true
+    else
+        interface1_exists=false
+    fi
+    if ip link show "$TUN_INTERFACE2" >/dev/null 2>&1; then
+        log_msg "TUN интерфейс $TUN_INTERFACE2 обнаружен."
+        interface2_exists=true
+    else
+        interface2_exists=false
+    fi
+    if [ "$interface1_exists" = false ] && [ "$interface2_exists" = false ]; then
+        log_msg "TUN интерфейсы не обнаружены."
+    fi
+# Конец проверки наличия tun интерфейсов
+# Добавление правил файрвола и обновления скрипта firewall-start
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+        log_msg "Добавление правил файрвола для интерфейса $TUN_INTERFACE1"
+        echo "$FW_RULES1" | while read -r rule; do
+            manage_iptables "add" "$rule"
+            update_script "$FW_SCRIPT" "iptables -I $rule"
+        done
+    fi
+    if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+        log_msg "Добавление правил файрвола для интерфейса $TUN_INTERFACE2"
+        echo "$FW_RULES2" | while read -r rule; do
+            manage_iptables "add" "$rule"
+            update_script "$FW_SCRIPT" "iptables -I $rule"
+        done
+    fi
+# Конец добавления правил файрвола и обновлений скрипта firewall-start
+# Добавление правил nat и обновления скрипта nat-start
+    if [ "$DNS_CHOICE" = "sing-box" ]; then
+        if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ] && [ -n "$LISTEN_DNS_PORT1" ]; then
+            ipset create sbsinc-ipset1 hash:net
+            for ip in $DEVICE_IPS1; do
+                ipset add sbsinc-ipset1 $ip
+            done
+            if [ -n "$EXC_DEVICE_IPS1" ]; then
+                ipset create sbsexc-ipset1 hash:net
+                for ip in $EXC_DEVICE_IPS1; do
+                    ipset add sbsexc-ipset1 $ip
+                done
+            fi
+            if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+                if ipset list sbsexc-ipset1 >/dev/null 2>&1; then
+                    for ip in $DEVICE_IPS2; do
+                        if ! echo "$ip" | grep -q "/"; then
+                            ipset add sbsexc-ipset1 $ip
+                        fi
+                    done
+                else
+                    ipset create sbsexc-ipset1 hash:net
+                    for ip in $DEVICE_IPS2; do
+                        if ! echo "$ip" | grep -q "/"; then
+                            ipset add sbsexc-ipset1 $ip
+                        fi
+                    done
+                fi
+            fi
+            NAT_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1
+            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1"
+            NAT_EXC_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1
+            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1"
+            if ipset list sbsinc-ipset1 >/dev/null 2>&1; then
+                log_msg "Добавление правил nat для интерфейса $TUN_INTERFACE1"
+                if ipset list sbsexc-ipset1 >/dev/null 2>&1; then
+                    echo "$NAT_EXC_RULES1" | while read -r rule; do
+                        manage_iptables_nat "add" "$rule"
+                        update_script "$NAT_SCRIPT" "iptables -t nat -A $rule"
+                    done
+                else
+                    echo "$NAT_RULES1" | while read -r rule; do
+                        manage_iptables_nat "add" "$rule"
+                        update_script "$NAT_SCRIPT" "iptables -t nat -A $rule"
+                    done
+                fi
+            fi
+        fi
+        if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ] && [ -n "$LISTEN_DNS_PORT2" ]; then
+            ipset create sbsinc-ipset2 hash:net
+            for ip in $DEVICE_IPS2; do
+                ipset add sbsinc-ipset2 $ip
+            done
+            if [ -n "$EXC_DEVICE_IPS2" ]; then
+                ipset create sbsexc-ipset2 hash:net
+                for ip in $EXC_DEVICE_IPS2; do
+                    ipset add sbsexc-ipset2 $ip
+                done
+            fi
+            if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+                if ipset list sbsexc-ipset2 >/dev/null 2>&1; then
+                    for ip in $DEVICE_IPS1; do
+                        if ! echo "$ip" | grep -q "/"; then
+                            ipset add sbsexc-ipset2 $ip
+                        fi
+                    done
+                else
+                    ipset create sbsexc-ipset2 hash:net
+                    for ip in $DEVICE_IPS1; do
+                        if ! echo "$ip" | grep -q "/"; then
+                            ipset add sbsexc-ipset2 $ip
+                        fi
+                    done
+                fi
+            fi
+            NAT_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2
+            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2"
+            NAT_EXC_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2
+            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2"
+            if ipset list sbsinc-ipset2 >/dev/null 2>&1; then
+                log_msg "Добавление правил nat для интерфейса $TUN_INTERFACE2"
+                if ipset list sbsexc-ipset2 >/dev/null 2>&1; then
+                    echo "$NAT_EXC_RULES2" | while read -r rule; do
+                        manage_iptables_nat "add" "$rule"
+                        update_script "$NAT_SCRIPT" "iptables -t nat -A $rule"
+                    done
+                else
+                    echo "$NAT_RULES2" | while read -r rule; do
+                        manage_iptables_nat "add" "$rule"
+                        update_script "$NAT_SCRIPT" "iptables -t nat -A $rule"
+                    done
+                fi
+            fi
+        fi
+    fi
+# Конец добавления правил nat и обновлений скрипта nat-start
+# Добавление маршрутов и правил маршрутизации
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+        log_msg "Добавление маршрутов и правил для интерфейса $TUN_INTERFACE1"
+        ip route add default dev $TUN_INTERFACE1 table $ROUTE_TABLE1
+        ip route show table main | grep -v '^default' | while read ROUTE; do ip route add $ROUTE table $ROUTE_TABLE1; done
+        add_cidr_rules "$DEVICE_IPS1" "$ROUTE_TABLE1"
+        if [ -n "$EXC_DEVICE_IPS1" ]; then
+            for IP in $EXC_DEVICE_IPS1; do
+                ip rule add from $IP lookup main
+            done
+        fi
+    fi
+    if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+        log_msg "Добавление маршрутов и правил для интерфейса $TUN_INTERFACE2"
+        ip route add default dev $TUN_INTERFACE2 table $ROUTE_TABLE2
+        ip route show table main | grep -v '^default' | while read ROUTE; do ip route add $ROUTE table $ROUTE_TABLE2; done
+        add_cidr_rules "$DEVICE_IPS2" "$ROUTE_TABLE2"
+        if [ -n "$EXC_DEVICE_IPS2" ]; then
+            for IP in $EXC_DEVICE_IPS2; do
+                ip rule add from $IP lookup main
+            done
+        fi
+    fi
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+        add_ip_rules "$DEVICE_IPS1" "$ROUTE_TABLE1"
+    fi
+    if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+        add_ip_rules "$DEVICE_IPS2" "$ROUTE_TABLE2"
+    fi
+# Конец добавления маршрутов и правил маршрутизации
+
+    log_msg "Добавление скрипта в автостарт."
+    update_script "$SS_SCRIPT" "$SS_LINES"
+
+    $SBS_MON &
+    log_msg "sing-box запущен."
+}
+
+stop_sing_box() {
+    echo ""
+    log_msg "Остановка sing-box..."
+
+    source "$SBS_CONF"
+
+    if [ -n "$TUN_INTERFACE1" ]; then
+        FW_RULES1="FORWARD -i $TUN_INTERFACE1 -j ACCEPT
+        FORWARD -o $TUN_INTERFACE1 -j ACCEPT
+        INPUT -i $TUN_INTERFACE1 -j ACCEPT
+        OUTPUT -o $TUN_INTERFACE1 -j ACCEPT"
+    fi
+    if [ -n "$TUN_INTERFACE2" ]; then
+        FW_RULES2="FORWARD -i $TUN_INTERFACE2 -j ACCEPT
+        FORWARD -o $TUN_INTERFACE2 -j ACCEPT
+        INPUT -i $TUN_INTERFACE2 -j ACCEPT
+        OUTPUT -o $TUN_INTERFACE2 -j ACCEPT"
+    fi
+
+    log_msg "Удаление скрипта из автостарта."
+    remove_script_content "$SS_SCRIPT" "$SS_LINES"
+
+    pids=$(pidof "sbs-monitor")
+    if [ -z "$pids" ]; then
+      break
+    fi
+    for pid in $pids; do
+      kill "$pid" >/dev/null 2>&1
+    done
+
+# Удаление маршрутов и правил маршрутизации
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+        log_msg "Удаление маршрутов и правил для интерфейса $TUN_INTERFACE1"
+        for IP in $DEVICE_IPS1; do
+            ip rule del from $IP lookup $ROUTE_TABLE1
+        done
+        if [ -n "$EXC_DEVICE_IPS1" ]; then
+            for IP in $EXC_DEVICE_IPS1; do
+                ip rule del from $IP lookup main
+            done
+        fi
+        ip route flush table $ROUTE_TABLE1
+    fi
+    if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+        log_msg "Удаление маршрутов и правил для интерфейса $TUN_INTERFACE2"
+        for IP in $DEVICE_IPS2; do
+            ip rule del from $IP lookup $ROUTE_TABLE2
+        done
+        if [ -n "$EXC_DEVICE_IPS2" ]; then
+            for IP in $EXC_DEVICE_IPS2; do
+                ip rule del from $IP lookup main
+            done
+        fi
+        ip route flush table $ROUTE_TABLE2
+    fi
+# Конец удаления маршрутов и правил маршрутизации
+# Удаление правил nat и обновления скрипта nat-start
+    if [ "$DNS_CHOICE" = "sing-box" ]; then
+        if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ] && [ -n "$LISTEN_DNS_PORT1" ]; then
+            NAT_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1
+            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1"
+            NAT_EXC_RULES1="PREROUTING -p tcp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1
+            PREROUTING -p udp -m set --match-set sbsinc-ipset1 src -m set ! --match-set sbsexc-ipset1 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT1"
+            if ipset list sbsinc-ipset1 >/dev/null 2>&1; then
+                log_msg "Удаление правил nat для интерфейса $TUN_INTERFACE1"
+                if ipset list sbsexc-ipset1 >/dev/null 2>&1; then
+                    echo "$NAT_EXC_RULES1" | while read -r rule; do
+                        manage_iptables_nat "remove" "$rule"
+                        remove_script_content "$NAT_SCRIPT" "iptables -t nat -A $rule"
+                    done
+                    ipset destroy sbsinc-ipset1
+                    ipset destroy sbsexc-ipset1
+                else
+                    echo "$NAT_RULES1" | while read -r rule; do
+                        manage_iptables_nat "remove" "$rule"
+                        remove_script_content "$NAT_SCRIPT" "iptables -t nat -A $rule"
+                    done
+                    ipset destroy sbsinc-ipset1
+                fi
+            fi
+        fi
+        if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ] && [ -n "$LISTEN_DNS_PORT2" ]; then
+            NAT_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2
+            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2"
+            NAT_EXC_RULES2="PREROUTING -p tcp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2
+            PREROUTING -p udp -m set --match-set sbsinc-ipset2 src -m set ! --match-set sbsexc-ipset2 src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT2"
+            if ipset list sbsinc-ipset2 >/dev/null 2>&1; then
+                log_msg "Удаление правил nat для интерфейса $TUN_INTERFACE2"
+                if ipset list sbsexc-ipset2 >/dev/null 2>&1; then
+                    echo "$NAT_EXC_RULES2" | while read -r rule; do
+                        manage_iptables_nat "remove" "$rule"
+                        remove_script_content "$NAT_SCRIPT" "iptables -t nat -A $rule"
+                    done
+                    ipset destroy sbsinc-ipset2
+                    ipset destroy sbsexc-ipset2
+                else
+                    echo "$NAT_RULES2" | while read -r rule; do
+                        manage_iptables_nat "remove" "$rule"
+                        remove_script_content "$NAT_SCRIPT" "iptables -t nat -A $rule"
+                    done
+                    ipset destroy sbsinc-ipset2
+                fi
+            fi
+        fi
+    fi
+# Конец удаления правил nat и обновлений скрипта nat-start
+# Удаление правил файрвола
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$ROUTE_TABLE1" ] && [ -n "$DEVICE_IPS1" ]; then
+        log_msg "Удаление правил файрвола для интерфейса $TUN_INTERFACE1"
+        echo "$FW_RULES1" | while read -r rule; do
+            manage_iptables "remove" "$rule"
+            remove_script_content "$FW_SCRIPT" "iptables -I $rule"
+        done
+    fi
+    if [ -n "$TUN_INTERFACE2" ] && [ -n "$ROUTE_TABLE2" ] && [ -n "$DEVICE_IPS2" ]; then
+        log_msg "Удаление правил файрвола для интерфейса $TUN_INTERFACE2"
+        echo "$FW_RULES2" | while read -r rule; do
+            manage_iptables "remove" "$rule"
+            remove_script_content "$FW_SCRIPT" "iptables -I $rule"
+        done
+    fi
+# Конец удаления правил файрвола
+
+    PIDS=$(pidof "sing-box")
+    if [ -z "$PIDS" ]; then
+      break
+    fi
+    for pid in $PIDS; do
+      kill "$pid"
+    done
+
+    log_msg "sing-box остановлен."
+}
+
+configure_interface1() {
+    source "$SBS_CONF"
+
+    if [ -z "$DEVICE_IPS1" ]; then
+        echo ""
+        echo "Ввести IP адреса устройств для интерфейса $TUN_INTERFACE1?"
+    else
+        echo ""
+        echo "Текущие IP адреса устройств для интерфейса $TUN_INTERFACE1: $DEVICE_IPS1"
+        echo "Ввести вместо них другие?"
+    fi
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "Отказ от ввода IP адресов."; break ;;
+            2) read -p "Введите IP адреса: " new_ips1
+               DEVICE_IPS1="$new_ips1"
+               sed -i "s|^DEVICE_IPS1=\".*\"$|DEVICE_IPS1=\"$new_ips1\"|" "$SBS_CONF"
+               log_msg "IP адреса устройств для интерфейса $TUN_INTERFACE1 введены."; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+
+    local cidrs=$(find_cidrs "$DEVICE_IPS1")
+    if [ -n "$cidrs" ]; then
+        if [ -z "$EXC_DEVICE_IPS1" ]; then
+            echo ""
+            echo "Для интерфейса $TUN_INTERFACE1 вами указаны следующие подсети: $cidrs"
+            echo "Ввести IP адреса устройств из этих подсетей для их исключения из интерфейса $TUN_INTERFACE1?"
+        else
+            echo ""
+            echo "Для $TUN_INTERFACE1 вами указаны следующие подсети: $cidrs"
+            echo "Текущие IP адреса устройств из этих подсетей для их исключения из интерфейса $TUN_INTERFACE1: $EXC_DEVICE_IPS1"
+            echo "Ввести вместо них другие?"
+        fi
+        while true; do
+            read -p "1-Нет, 2-Да: " choice_exc
+            case "$choice_exc" in
+                1) echo "Отказ от ввода IP адресов."; break ;;
+                2) read -p "Введите IP адреса: " exc_new_ips1
+                   EXC_DEVICE_IPS1="$exc_new_ips1"
+                   sed -i "s|^EXC_DEVICE_IPS1=\".*\"$|EXC_DEVICE_IPS1=\"$exc_new_ips1\"|" "$SBS_CONF"
+                   log_msg "IP адреса устройств для их исключения из интерфейса $TUN_INTERFACE1 введены."; break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    else
+        EXC_DEVICE_IPS1=""
+        sed -i "s|^EXC_DEVICE_IPS1=\".*\"$|EXC_DEVICE_IPS1=\"\"|" "$SBS_CONF"
+    fi
+
+    echo "Возврат в меню."
+}
+
+configure_interface2() {
+    source "$SBS_CONF"
+
+    if [ -z "$DEVICE_IPS2" ]; then
+        echo ""
+        echo "Ввести IP адреса устройств для интерфейса $TUN_INTERFACE2?"
+    else
+        echo ""
+        echo "Текущие IP адреса устройств для интерфейса $TUN_INTERFACE2: $DEVICE_IPS2"
+        echo "Ввести вместо них другие?"
+    fi
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "Отказ от ввода IP адресов."; break ;;
+            2) read -p "Введите IP адреса: " new_ips2
+               DEVICE_IPS2="$new_ips2"
+               sed -i "s|^DEVICE_IPS2=\".*\"$|DEVICE_IPS2=\"$new_ips2\"|" "$SBS_CONF"
+               log_msg "IP адреса устройств для интерфейса $TUN_INTERFACE2 введены."; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+
+    local cidrs=$(find_cidrs "$DEVICE_IPS2")
+    if [ -n "$cidrs" ]; then
+        if [ -z "$EXC_DEVICE_IPS2" ]; then
+            echo ""
+            echo "Для интерфейса $TUN_INTERFACE2 вами указаны следующие подсети: $cidrs"
+            echo "Ввести IP адреса устройств из этих подсетей для их исключения из интерфейса $TUN_INTERFACE2?"
+        else
+            echo ""
+            echo "Для $TUN_INTERFACE2 вами указаны следующие подсети: $cidrs"
+            echo "Текущие IP адреса устройств из этих подсетей для их исключения из интерфейса $TUN_INTERFACE2: $EXC_DEVICE_IPS2"
+            echo "Ввести вместо них другие?"
+        fi
+        while true; do
+            read -p "1-Нет, 2-Да: " choice_exc
+            case "$choice_exc" in
+                1) echo "Отказ от ввода IP адресов."; break ;;
+                2) read -p "Введите IP адреса: " exc_new_ips2
+                   EXC_DEVICE_IPS2="$exc_new_ips2"
+                   sed -i "s|^EXC_DEVICE_IPS2=\".*\"$|EXC_DEVICE_IPS2=\"$exc_new_ips2\"|" "$SBS_CONF"
+                   log_msg "IP адреса устройств для их исключения из интерфейса $TUN_INTERFACE2 введены."; break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    else
+        EXC_DEVICE_IPS2=""
+        sed -i "s|^EXC_DEVICE_IPS2=\".*\"$|EXC_DEVICE_IPS2=\"\"|" "$SBS_CONF"
+    fi
+
+    echo "Возврат в меню."
+}
+
+choose_dns() {
+    source "$SBS_CONF"
+    if [ "$DNS_CHOICE" = "router" ]; then
+        echo ""
+        echo "Сейчас используются DNS роутера."
+        echo "Изменить выбор на DNS конфигурационного файла sing-box?" 
+    elif [ "$DNS_CHOICE" = "sing-box" ]; then
+        echo ""
+        echo "Сейчас используются DNS конфигурационного файла sing-box."
+        echo "Изменить выбор на DNS роутера?"
+    fi
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1)  echo "Отказ от изменения используемых DNS."; break ;;
+            2)  if [ "$DNS_CHOICE" = "router" ]; then
+                    DNS_CHOICE="sing-box"
+                    echo "Выбраны DNS конфигурационного файла sing-box."
+                else
+                    DNS_CHOICE="router"
+                    echo "Выбраны DNS роутера."
+                fi
+                sed -i "s|DNS_CHOICE=\"[^\"]*\"|DNS_CHOICE=\"$DNS_CHOICE\"|" "$SBS_CONF"; break ;;
+            *)  echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+}
+
+configure_table1() {
+    source "$SBS_CONF"
+
+    echo ""
+    echo "Текущий номер таблицы маршрутизации для интерфейса $TUN_INTERFACE1: $ROUTE_TABLE1"
+    echo "Изменить его?"
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "Отказ от изменения номера таблицы маршрутизации."; break ;;
+            2) read -p "Введите новый номер таблицы маршрутизации: " new_table1
+               ROUTE_TABLE1="$new_table1"
+               sed -i "s|^ROUTE_TABLE1=\".*\"$|ROUTE_TABLE1=\"$new_table1\"|" "$SBS_CONF"
+               log_msg "Номер таблицы маршрутизации для интерфейса $TUN_INTERFACE1 изменен на $ROUTE_TABLE1"; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+    echo "Возврат в меню."
+}
+
+configure_table2() {
+    source "$SBS_CONF"
+
+    echo ""
+    echo "Текущий номер таблицы маршрутизации для интерфейса $TUN_INTERFACE2: $ROUTE_TABLE2"
+    echo "Изменить его?"
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "Отказ от изменения номера таблицы маршрутизации."; break ;;
+            2) read -p "Введите новый номер таблицы маршрутизации: " new_table2
+               ROUTE_TABLE2="$new_table2"
+               sed -i "s|^ROUTE_TABLE2=\".*\"$|ROUTE_TABLE2=\"$new_table2\"|" "$SBS_CONF"
+               log_msg "Номер таблицы маршрутизации для интерфейса $TUN_INTERFACE2 изменен на $ROUTE_TABLE2"; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+    echo "Возврат в меню."
+}
+
+setup_sing_box() {
+    source "$SBS_CONF"
+    update_sbs_interfaces
+    extract_listen_dns_ports
+    source "$SBS_CONF"
+
+    if [ -z "$TUN_INTERFACE1" ] && [ -z "$TUN_INTERFACE2" ]; then
+        echo ""
+        echo "Ваш конфигурационный файл sing-box не содержит tun интерфейсов. Тут нечего настраивать. Выход."
+        exit 0
+    fi
+
+    echo ""
+    echo "Войти в меню настройки скрипта? Если sing-box запущен, при выборе варианта 2 он будет остановлен."
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case "$choice" in
+            1) echo "Выход."; exit 0 ;;
+            2) if is_running; then stop_sing_box; fi; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+
+    if [ -n "$TUN_INTERFACE1" ] && [ -n "$TUN_INTERFACE2" ]; then
+        while true; do
+            echo ""
+            echo "Меню настройки скрипта."
+            echo "При первой настройке выполнение пунктов 1 и 2 обязательно."
+            echo "1. Настройка IP адресов для интерфейса $TUN_INTERFACE1"
+            echo "2. Настройка IP адресов для интерфейса $TUN_INTERFACE2"
+            echo "3. Выбор DNS для tun интерфейсов."
+            echo "4. Изменение номера таблицы маршрутизации для интерфейса $TUN_INTERFACE1"
+            echo "5. Изменение номера таблицы маршрутизации для интерфейса $TUN_INTERFACE2"
+            echo "6. Редактирование файла настроек скрипта редактором nano."
+            echo "0. Выход из меню."
+            read -p "Введите номер пункта [0-6]: " if_choice
+            case "$if_choice" in
+                1) configure_interface1; source "$SBS_CONF" ;;
+                2) configure_interface2; source "$SBS_CONF" ;;
+                3) choose_dns; source "$SBS_CONF" ;;
+                4) configure_table1; source "$SBS_CONF" ;;
+                5) configure_table2; source "$SBS_CONF" ;;
+                6) nano $SBS_CONF; update_sbs_interfaces; source "$SBS_CONF"; echo "Редактирование завершено. Возврат в меню."; echo "" ;;
+                0) break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    else
+        if [ -n "$TUN_INTERFACE1" ]; then
+            tun_inter="$TUN_INTERFACE1"
+        else
+            tun_inter="$TUN_INTERFACE2"
+        fi
+        while true; do
+            echo ""
+            echo "Меню настройки скрипта."
+            echo "При первой настройке выполнение пункта 1 обязательно."
+            echo "1. Настройка IP адресов для интерфейса $tun_inter"
+            echo "2. Выбор DNS для интерфейса $tun_inter"
+            echo "3. Изменение номера таблицы маршрутизации для интерфейса $tun_inter"
+            echo "4. Редактирование файла настроек скрипта редактором nano."
+            echo "0. Выход из меню."
+            read -p "Введите номер пункта  [0-4]: " if_choice
+            case "$if_choice" in
+                1) if [ -n "$TUN_INTERFACE1" ]; then configure_interface1; else configure_interface2; fi; source "$SBS_CONF" ;;
+                2) choose_dns; source "$SBS_CONF" ;;
+                3) if [ -n "$TUN_INTERFACE1" ]; then configure_table1; else configure_table2; fi; source "$SBS_CONF" ;;
+                4) nano $SBS_CONF; update_sbs_interfaces; source "$SBS_CONF"; echo "Редактирование завершено. Возврат в меню."; echo "" ;;
+                0) break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    fi
+
+    update_sbs_interfaces
+    extract_listen_dns_ports
+    sing_box_start
+}
+
+update_sing_box() {
+    echo ""
+    echo "Проверка версий скрипта и ядра sing-box..."
+    curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
+    silent_create_dir "$SB_DOWNLOAD_DIR"
+    if [ "$(uname -m)" = "aarch64" ]; then
+        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+    else
+        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+    fi
+    curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
+    echo "Проверка успешно выполнена."
+    update_sing_box_menu
+}
+
+update_sing_box_menu() {
+    singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+    chmod 775 $singbox_file
+    sbs_vers=$(get_sbs_version $SCRIPT_PATH)
+    sb_vers=$(get_sb_version $SB_PATH)
+    sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
+    sb_vers_new=$(get_sb_version $singbox_file)
+
+    while true; do
+        echo ""
+        echo "Меню обновления."
+        echo "Если sing-box запущен, при выборе пунктов 1 или 2, он будет остановлен."
+        read -p "1-Обновить скрипт. Установленная версия "$sbs_vers", доступная версия $sbs_vers_new
+2-Обновить ядро sing-box. Установленная версия "$sb_vers", доступная версия $sb_vers_new
+0-Выйти из меню.
+Введите номер пункта [0-2]: " choice
+        case "$choice" in
+            1) if is_running; then stop_sing_box; fi; update_sbs; break ;;
+            2) if is_running; then stop_sing_box; fi; updcore_sing_box; break ;;
+            0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Выход из меню обновления."; is_running || sing_box_start; exit 0 ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+}
+
+update_sbs() {
+    echo ""
+    echo "Обновление скрипта..."
+    cp "$SCRIPT_PATH"-tmp $SCRIPT_PATH
+    chmod 775 $SCRIPT_PATH
+
+    cat << EOF > $TEMP_UPDATE
+#!/bin/sh
+rm -f $TEMP_UPDATE
+exec $SCRIPT_PATH updmonandcore
+EOF
+    chmod 775 $TEMP_UPDATE
+
+    exec $TEMP_UPDATE
+}
+
+updmonandcore_sing_box() {
+    create_sbs_monitor "$SBS_MON"
+    echo "Скрипт успешно обновлён. Возврат в меню."
+    update_sing_box_menu
+}
+
+updcore_sing_box() {
+    echo ""
+    echo "Обновление ядра sing-box..."
+    cp "$singbox_file" "$SB_DIR"; echo "Ядро sing-box успешно обновлено. Возврат в меню."
+    update_sing_box_menu
+}
+
+check_sing_box() {
+    while true; do
+        echo ""; echo "Проверка конфигурационного файла sing-box на ошибки..."
+        if ! output=$($SB_PATH check -c $SB_CONFIG 2>&1); then
+            echo "В конфигурационном файле обнаружена ошибка:"
+            echo "$output"
+            echo "Отредактировать конфигурационный файл в редакторе nano?"
+            while true; do
+                read -p "1-Нет, 2-Да: " choice
+                case "$choice" in
+                    1) echo "Завершаем проверку, не исправив ошибки. Возврат в меню."; break 2 ;;
+                    2) echo ""; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; echo "Редактирование завершено."; break ;;
+                    *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+                esac
+            done
+        else
+            echo "Ошибки в конфигурационном файле не найдены. Возврат в меню."; break
+        fi
+    done
+}
+
+format_sing_box() {
+    if ! output=$($SB_PATH format -c $SB_CONFIG 2>&1); then
+        echo ""; echo "В конфигурационном файле обнаружена ошибка:"
+        echo "$output"
+        echo "Сначала выполните проверку на ошибки и их исправление, выбрав пункт 2 меню настройки конфигурационного файла sing-box."
+        echo "Возврат в меню."
+    else
+        echo ""; echo "Результат работы функции format:"
+        echo "$output"
+        while true; do
+            read -p "Сохранить результат работы функции format в конфигурационный файл sing-box?
+1-Нет, 2-Да: " save_choice
+            case "$save_choice" in
+                1) echo "Вы выбрали не сохранять результат. Возврат в меню."; break ;;
+                2) $SB_PATH format -w -c $SB_CONFIG; echo "Результат сохранён. Возврат в меню."; break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    fi
+}
+
+edit_sb_conf() {
+    while true; do
+        echo ""
+        echo "Меню настройки конфигурационного файла sing-box."
+        echo "1-Открыть конфигурационный файл в редакторе nano."
+        echo "2-Проверить конфигурационный файл на ошибки."
+        echo "3-Привести в порядок структуру конфигурационного файла."
+        echo "0-Выйти из меню."
+        read -p "Введите номер пункта [0-3]: " choice
+        case "$choice" in
+            1) echo ""; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; source "$SBS_CONF"; update_sbs_interfaces; echo "Редактирование завершено. Возврат в меню." ;;
+            2) check_sing_box; source "$SBS_CONF"; update_sbs_interfaces ;;
+            3) format_sing_box ;;
+            0) if is_running; then
+                   echo "Рекомендуется перезапустить sing-box, если вы внесли в конфигурационный файл изменения."
+                   echo "Перезапустить sing-box сейчас для применения изменений?"
+                   while true; do
+                       read -p "1-Нет, 2-Да: " sub_choice
+                       case "$sub_choice" in
+                           1) echo "Выход из меню. Изменения, если вы их внесли, будут применены при следующем перезапуске."; source "$SBS_CONF"; update_sbs_interfaces; exit 0 ;;
+                           2) echo "Перезапуск sing-box и выход из меню."; stop_sing_box; sleep 2; start_sing_box; exit 0 ;;
+                           *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+                       esac
+                   done
+               else
+                   echo "Выход из меню."; exit 0
+               fi ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+}
+
+status_sing_box() {
+    if is_running; then
+        echo "sing-box запущен."
+    else
+        echo "sing-box остановлен."
+    fi
+
+    sbs_version=$(get_sbs_version $SCRIPT_PATH)
+    if [ -n "$sbs_version" ]; then
+        echo "Версия скрипта: $sbs_version"
+    else
+        echo "Версия скрипта не найдена."
+    fi
+
+    sb_versplat=$(get_sb_versplat $SB_PATH)
+    if [ -n "$sb_versplat" ]; then
+        echo "Версия ядра sing-box: $sb_versplat"
+    else
+        echo "Версия ядра sing-box не найдена."
+    fi
+
+    echo "Архитектура CPU роутера: $(uname -m)"
+}
+
+install_sing_box() {
+    echo "Установить скрипт sing-box?"
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case $choice in
+            1) delete_if_not_current_dir; echo "Установка скрипта sing-box отменена."; exit 0 ;;
+            2) if is_running; then
+                echo "Скрипт sing-box уже установлен ранее и запущен. Продолжить установку?. При выборе варианта 2, sing-box будет предварительно остановлен."
+                while true; do
+                   read -p "1-Нет, 2-Да: " continue_choice
+                   case "$continue_choice" in
+                       1) delete_if_not_current_dir; echo "Установка скрипта sing-box отменена."; exit 0 ;;
+                       2) stop_sing_box; break ;;
+                       *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+                   esac
+                done
+               else break; fi; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+
+    echo "Начинаем установку скрипта sing-box..."
+    create_or_use_existing "$JFFS_SB_DIR"
+    handle_existing_file "$SCRIPT_PATH" self_copy
+    ln -sf $SCRIPT_PATH $LN_PATH
+    handle_existing_file "$JFFS_SB_DIR/sbs-conf" create_sbs_conf
+    handle_existing_file "$SBS_MON" create_sbs_monitor
+    check_file_existence_and_download "$SB_CONFIG" "$SB_CONFIG_URL"
+    chmod 664 "$SB_CONFIG"
+
+    if [ -n "$ROOT_DIR" ]; then
+        create_or_use_existing "$SB_DIR"
+    else
+        echo "Директория $ROOT_DIR не найдена. Видимо в роутере отсутствует USB накопитель с установленным Entware. Операция отменена."
+        delete_if_not_current_dir
+        exit 1
+    fi
+
+    create_dir "$SB_DOWNLOAD_DIR"
+    if [ "$(uname -m)" = "aarch64" ]; then
+        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+    else
+        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+    fi
+    echo "Скачиваем архив с ядром sing-box..."
+    curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    echo "Распаковываем архив..."
+    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
+    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+
+    if [ -f "$SB_PATH" ]; then
+        echo "Файл ядра sing-box уже существует. Что вы хотите сделать?"
+        while true; do
+            read -p "1-Оставить существующий файл, 2-Заменить файл: " choice
+            case $choice in
+                1) echo "Оставляем существующий файл."; break ;;
+                2) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "Файл $SB_PATH заменён."; break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    else
+        cp "$sing_box_file" "$SB_DIR"; echo "Файл ядра sing-box перемещён в директорию $SB_DIR"
+    fi
+
+    local current_dir=$(dirname "$(readlink -f "$0")")
+    if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
+      rm -rf "$SB_DOWNLOAD_DIR" "$(readlink -f "$0")"
+    else
+      rm -rf "$SB_DOWNLOAD_DIR"
+    fi
+
+    echo "Директория $SB_DOWNLOAD_DIR удалена."
+    echo ""
+    echo "
+*********************
+Установка завершена.
+*********************
+Перед первым запуском sing-box обязательно выполните шаги по настройке скрипта, описанные в Readme- раздел IV. Первоначальная настройка и запуск скрипта."
+}
+
+remove_sing_box() {
+    echo "Удалить все директории и файлы скрипта sing-box? Если sing-box запущен, при выборе варианта 2 он предварительно будет остановлен."
+    while true; do
+        read -p "1-Нет, 2-Да: " choice
+        case $choice in
+            1) echo "Уффф, пронесло! Чуть не удалили!"; exit 0 ;;
+            2) if is_running; then stop_sing_box; fi; echo "Удаление всех директорий и файлов скрипта sing-box."; rm -rf $SB_DIR $JFFS_SB_DIR $LN_PATH; echo "Все директории и файлы скрипта sing-box удалены."; exit 0 ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+        esac
+    done
+
+}
+
+show_menu() {
+    echo "Для запуска скрипта sing-box вы можете выполнить команду sbs с перечисленными ниже параметрами непосредственно в консоли, например sbs start, или можете выполнить запуск из данного меню по номеру параметра."
+    echo "Введите номер параметра запуска или выхода из данного меню:"
+    echo "1) start (Запуск sing-box)"
+    echo "2) stop (Остановка sing-box)"
+    echo "3) restart (Перезапуск sing-box)"
+    echo "4) setup (Вызвать меню настройки скрипта)"
+    echo "5) edit (Вызвать меню настройки конфигурационного файла sing-box - config.json)"
+    echo "6) update (Вызвать меню обновления скрипта и ядра sing-box)"
+    echo "7) status (Узнать статус sing-box, версии скрипта и ядра sing-box, архитектуру CPU роутера)"
+    echo "10) remove (!!!Удалить sing-box полностью!!!)"
+    echo "0) Выход из меню."
+}
+
+case "$1" in
+    install) install_sing_box ;;
+    start) start_sing_box ;;
+    stop) stop_sing_box ;;
+    restart) stop_sing_box; sleep 2; start_sing_box ;;
+    setup) setup_sing_box ;;
+    edit) edit_sb_conf ;;
+    update) update_sing_box ;;
+    status) status_sing_box ;;
+    remove) remove_sing_box ;;
+    updmonandcore) updmonandcore_sing_box ;;
+    *)
+        while true; do
+            show_menu
+            read -p "Введите номер пункта [0-7 или 10]: " choice
+            case $choice in
+                1) start_sing_box; break ;;
+                2) stop_sing_box; break ;;
+                3) stop_sing_box; sleep 2; start_sing_box; break ;;
+                4) setup_sing_box; break ;;
+                5) edit_sb_conf; break ;;
+                6) update_sing_box; break ;;
+                7) status_sing_box; break ;;
+                10) remove_sing_box; break ;;
+                0) exit 0 ;;
+                *) echo "Некорректный ввод, попробуйте ещё." ;;
+            esac
+        done ;;
+esac
