@@ -25,10 +25,6 @@
     ],
     "rules": [
       {
-        "outbound": "any",
-        "server": "dns-resolver"
-      },
-      {
         "inbound": [
           "mixed2global",
           "dns4tun2global"
