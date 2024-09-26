@@ -6,21 +6,22 @@
   "dns": {
     "servers": [
       {
-        "tag": "dns-ag-ipv4_only",
-        "address": "https://dns.adguard-dns.com/dns-query",
-        "address_resolver": "dns-resolver",
-        "strategy": "ipv4_only"
-      },
-      {
-        "tag": "dns-ag",
-        "address": "https://dns.adguard-dns.com/dns-query",
-        "address_resolver": "dns-resolver",
-        "detour": "Proxy"
-      },
-      {
         "tag": "dns-resolver",
         "address": "8.8.8.8",
         "strategy": "ipv4_only"
+      },
+      {
+        "tag": "dns-ag-direct",
+        "address": "https://dns.adguard-dns.com/dns-query",
+        "address_resolver": "dns-resolver",
+        "strategy": "ipv4_only"
+      },
+      {
+        "tag": "dns-ag-remote",
+        "address": "https://dns.adguard-dns.com/dns-query",
+        "address_resolver": "dns-resolver",
+        "strategy": "ipv4_only",
+        "detour": "Proxy"
       }
     ],
     "rules": [
@@ -29,11 +30,11 @@
           "mixed2global",
           "dns4tun2global"
         ],
-        "server": "dns-ag"
+        "server": "dns-ag-remote"
       },
       {
         "rule_set": "my_domains",
-        "server": "dns-ag"
+        "server": "dns-ag-remote"
       }
     ],
     "independent_cache": true
