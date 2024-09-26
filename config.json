@@ -6,11 +6,6 @@
   "dns": {
     "servers": [
       {
-        "tag": "dns-resolver",
-        "address": "8.8.8.8",
-        "strategy": "ipv4_only"
-      },
-      {
         "tag": "dns-direct",
         "address": "https://dns.adguard-dns.com/dns-query",
         "address_resolver": "dns-resolver",
@@ -20,8 +15,12 @@
         "tag": "dns-remote",
         "address": "https://dns.adguard-dns.com/dns-query",
         "address_resolver": "dns-resolver",
-        "strategy": "ipv4_only",
         "detour": "Proxy"
+      },
+      {
+        "tag": "dns-resolver",
+        "address": "8.8.8.8",
+        "strategy": "ipv4_only"
       }
     ],
     "rules": [
