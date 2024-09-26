@@ -11,13 +11,13 @@
         "strategy": "ipv4_only"
       },
       {
-        "tag": "dns-ag-direct",
+        "tag": "dns-direct",
         "address": "https://dns.adguard-dns.com/dns-query",
         "address_resolver": "dns-resolver",
         "strategy": "ipv4_only"
       },
       {
-        "tag": "dns-ag-remote",
+        "tag": "dns-remote",
         "address": "https://dns.adguard-dns.com/dns-query",
         "address_resolver": "dns-resolver",
         "strategy": "ipv4_only",
@@ -30,11 +30,11 @@
           "mixed2global",
           "dns4tun2global"
         ],
-        "server": "dns-ag-remote"
+        "server": "dns-remote"
       },
       {
         "rule_set": "my_domains",
-        "server": "dns-ag-remote"
+        "server": "dns-remote"
       }
     ],
     "independent_cache": true
