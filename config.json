@@ -25,6 +25,18 @@
     ],
     "rules": [
       {
+        "outbound": "any",
+        "server": "dns-direct"
+      },
+      {
+        "clash_mode": "Global",
+        "server": "dns-remote"
+      },
+      {
+        "clash_mode": "Direct",
+        "server": "dns-direct"
+      },
+      {
         "inbound": [
           "mixed2global",
           "dns4tun2global"
