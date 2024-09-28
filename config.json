@@ -45,7 +45,6 @@
       "interface_name": "sbtun-rule",
       "mtu": 1500,
       "inet4_address": "172.19.0.1/28",
-      "stack": "mixed",
       "sniff": true
     },
     {
@@ -54,7 +53,6 @@
       "interface_name": "sbtun-global",
       "mtu": 1500,
       "inet4_address": "172.19.1.1/28",
-      "stack": "mixed",
       "sniff": true
     },
     {
