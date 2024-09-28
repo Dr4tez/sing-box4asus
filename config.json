@@ -55,7 +55,6 @@
       "interface_name": "sbtun-global",
       "mtu": 1500,
       "inet4_address": "172.19.1.1/28",
-      "endpoint_independent_nat": true,
       "stack": "mixed",
       "sniff": true
     },
