@@ -54,25 +54,9 @@ V. Features of configuring sing-box on a router.
 Here are listed the conditions that must be observed when creating sing-box configuration files for the router, as well as the necessary settings in the router web interface.
 
  1. General conditions:
-  1.1 I do not recommend using clash_mod's in the dns rules section of your sing-box configuration file (config.json), for example:
-    {
-      "clash_mode": "Global",
-      "server": "dns-ag"
-    }
-    With some combinations of rules in config.json with the selection in the external dashboard* in the Config section of any Mode other than Rule, this causes almost instant absorption of all RAM by the sing-box process and the router to freeze.
-  *If your config.json, like my template, contains a block like this:
-    "experimental": {
-      "clash_api": {
-        "external_controller": "0.0.0.0:9090",
-        "external_ui": "/opt/root/sing-box/ui",
-        "secret": "1809"
-      }
-    }
-  then the external panel will be available at http://192.168.50.1:9090/ui/.
-  192.168.50.1 is the local IP address of the router, yours may be different.
-  1.2 Do not use the '"auto_route": true' setting in config.json, it does not function correctly on the router and disrupts routing.
-  1.3 Do not use the '"strict_route": true' setting in config.json, this may cause loss of access to the router's command line and routing problems.
-  1.4 The script supports a maximum of two tun interfaces, so do not add more than two to the config.json.
+  1.1 Do not use the '"auto_route": true' setting in config.json, it does not function correctly on the router and disrupts routing.
+  1.2 Do not use the '"strict_route": true' setting in config.json, this may cause loss of access to the router's command line and routing problems.
+  1.3 The script supports a maximum of two tun interfaces, so do not add more than two to the config.json.
 
 In the script setup menu, which is opened by the command 'sbs setup' in the router command line, there is an item for selecting DNS servers for tun interfaces- DNS servers configured in the router web interface, or DNS servers specified in the config.json.
  2. For sing-box to work with DNS servers configured in the router's web interface, the following conditions must be met:
@@ -105,9 +89,9 @@ In the script setup menu, which is opened by the command 'sbs setup' in the rout
    1) In the dns rules section:
     {
       "inbound": "dns4tun2global",
-      "server": "dns-ag"
+      "server": "dns-remote"
     }
-   This block directs all DNS requests from devices whose traffic is routed through the tun interface tun2global to be processed by the dns-ag DNS server.
+   This block directs all DNS requests from devices whose traffic is routed through the tun interface tun2global to be processed by the dns-remote DNS server.
    2) In the inbounds section:
     {
       "type": "direct",
