@@ -45,7 +45,6 @@
       "interface_name": "sbtun-rule",
       "mtu": 1500,
       "inet4_address": "172.19.0.1/28",
-      "endpoint_independent_nat": true,
       "stack": "mixed",
       "sniff": true
     },
