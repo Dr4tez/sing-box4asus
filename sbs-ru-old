@@ -6,8 +6,8 @@
 # Переменные
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
 SB_CONFIG="$JFFS_SB_DIR/config.json"
-SCRIPT_PATH="$JFFS_SB_DIR/sbs-ru"
-SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-ru"
+SCRIPT_PATH="$JFFS_SB_DIR/sbs-ru-old"
+SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-ru-old"
 SB_CONFIG_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/config.json"
 SBS_CONF="$JFFS_SB_DIR/sbs-conf"
 SBS_MON="$JFFS_SB_DIR/sbs-monitor"
