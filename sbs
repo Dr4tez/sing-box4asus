@@ -1,0 +1,1268 @@
+#!/bin/sh
+
+# Version 1.6
+# Script for running Sing-Box on Asus routers with Merlin firmware and Entware installed on a USB drive.
+
+JFFS_SB_DIR="/jffs/addons/sing-box-script"
+SB_CONFIG="$JFFS_SB_DIR/config.json"
+SCRIPT_PATH="$JFFS_SB_DIR/sbs"
+SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs"
+SB_CONFIG_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/config.json"
+SBS_CONF="$JFFS_SB_DIR/sbs-conf"
+SBS_MON="$JFFS_SB_DIR/sbs-monitor"
+TEMP_UPDATE="$JFFS_SB_DIR/temp-update"
+ROOT_DIR="/opt/root"
+SB_DIR="$ROOT_DIR/sing-box"
+SB_PATH="$SB_DIR/sing-box"
+SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
+SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
+SB_ARCHIVE64_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
+SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
+SB_DOWNLOAD64_URL=$(curl -s -H "Accept: application/vnd.github.v3+json" "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
+SB_DOWNLOAD_URL=$(curl -s -H "Accept: application/vnd.github.v3+json" "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
+FW_SCRIPT="/jffs/scripts/firewall-start"
+NAT_SCRIPT="/jffs/scripts/nat-start"
+SS_SCRIPT="/jffs/scripts/services-start"
+SS_LINES="(sleep 45 && $SCRIPT_PATH start) &"
+LN_PATH="/opt/bin/sbs"
+
+log_msg() {
+    echo "$1"
+    logger -t "sbs" "$1"
+}
+
+create_dir() {
+    mkdir -p "$1"
+    chmod 775 "$1"
+    echo "Directory $1 created."
+}
+
+create_sbs_conf() {
+    cat << EOF > "$1"
+# Since SBS version 1.5
+# This file is created automatically and values ​​are entered into it via the router command line when executing the 'sbs setup' command. It is not recommended to change the values ​​in it directly, bypassing the 'sbs setup' command.
+# If you still want to change the values ​​here directly, then before doing this, be sure to stop the sing-box using the 'sbs stop' command in the router console, otherwise you will not be able to avoid unpleasant bugs, which will be difficult to get rid of without special knowledge.
+
+# The DEVICE_IPS line - here, between the quotes, enter the IP addresses of the devices whose traffic you want to direct through the sing-box. The IP addresses must be entered on one line and separated by spaces. You can also enter a subnet in CIDR format, for example, 192.168.50.0/24.
+# EXC_DEVICE_IPS line - if a subnet is entered in the DEVICE_IPS line, here you can enter the IP addresses of devices from this subnet, the traffic of which you want to exclude from being routed through the sing-box. You can also enter a smaller subnet here, which is included in the one entered in DEVICE_IPS, if this suits your purposes.
+# ROUTE_TABLE line - if the default routing table number 5553 specified in it is already occupied in your router, which is unlikely, you can replace it with another one that is not occupied.
+# TUN_INTERFACE and LISTEN_DNS_PORT lines - their values ​​are automatically extracted from the sing-box configuration file and written here.
+# DNS_CHOICE line - by default has the value router, i.e. sing-box uses DNS servers specified in the section 'WAN DNS Setting' of the router's web interface. Through the menu of the command 'sbs setup' the value can be changed to sing-box and then DNS servers and rules specified in the configuration file sing-box will be used.
+# WAN_PORTS line - when sing-box starts, the ports specified in it will be opened for access from WAN to the router. Do not open ports from the WAN to your router without a conscious need. Opening the wrong ports can lead to the loss of all data in your home network.
+
+DEVICE_IPS=""
+EXC_DEVICE_IPS=""
+ROUTE_TABLE="5553"
+TUN_INTERFACE=""
+LISTEN_DNS_PORT=""
+DNS_CHOICE="router"
+WAN_PORTS=""
+EOF
+    chmod 664 "$1"
+}
+
+create_sbs_monitor() {
+    cat << EOF > "$1"
+#!/bin/sh
+# SBS version 1.6
+
+source "$SBS_CONF"
+sorted_all=\$(echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n; echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\$')
+route_in_process=0
+
+sbs_monitor_rr() {
+ { ip monitor route | while read _; do
+        if [ "\$route_in_process" -eq 0 ]; then
+            route_in_process=1
+            if ! pidof "$SB_PATH" >/dev/null 2>&1; then
+                "$SB_PATH" run -c "$SB_CONFIG" &
+            fi
+            ip route add default dev \$TUN_INTERFACE table \$ROUTE_TABLE 2>/dev/null
+            ip route show table main | grep -v '^default' | while read ROUTE; do
+                ip route add \$ROUTE table \$ROUTE_TABLE 2>/dev/null
+            done
+            ip route show table \$ROUTE_TABLE | grep -v '^default' | while read ROUTE; do
+                if ! ip route show table main | grep -q "^\$ROUTE"; then
+                    ip route del \$ROUTE table \$ROUTE_TABLE 2>/dev/null
+                fi
+            done; route_in_process=0
+        fi
+    done } &
+
+    while true; do
+        ip monitor rule | while read line; do
+            echo "\$sorted_all" | while read -r IP; do
+                if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
+                    ip rule del from "\$IP" lookup "\$ROUTE_TABLE" 2>/dev/null
+                else
+                    ip rule del from "\$IP" lookup main 2>/dev/null
+                fi
+            done
+            echo "\$sorted_all" | while read -r IP; do
+                if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
+                    ip rule add from "\$IP" lookup "\$ROUTE_TABLE"
+                else
+                    ip rule add from "\$IP" lookup main
+                fi
+            done; break
+        done
+    done
+}
+
+trap '' SIGHUP
+sbs_monitor_rr 2>/dev/null
+EOF
+    chmod 775 "$1"
+}
+
+check_file_existence_and_download() {
+    local file_path="$1"
+    local file_url="$2"
+    local file_name=$(basename "$file_path")
+
+    if [ -f "$file_path" ]; then
+        echo "The file $file_name already exists. What do you want to do?"
+        while true; do
+            read -p "0-Skip download, 1-Download and replace file: " choice
+            case $choice in
+                0) echo "Download of $file_name skipped."; return 0 ;;
+                1) echo "Download and replace the file $file_name"; curl -s -L -o "$file_path" "$file_url"; return 0 ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        echo "Downloading $file_name..."
+        curl -s -L -o "$file_path" "$file_url"
+    fi
+}
+
+delete_if_not_current_dir() {
+  local current_dir=$(dirname "$(readlink -f "$0")")
+
+  if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
+    rm -f "$(readlink -f "$0")"
+  fi
+}
+
+create_or_use_existing() {
+    local dir_path="$1"
+
+    if [ -d "$dir_path" ]; then
+        echo "The directory $dir_path already exists. What do you want to do?"
+        while true; do
+            read -p "0-Quit, 1-Use current directory: " choice
+            case $choice in
+                0) delete_if_not_current_dir; echo "The script has completed its work."; exit 0 ;;
+                1) echo "Use current directory $dir_path"; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        create_dir "$dir_path"
+    fi
+}
+
+handle_existing_file() {
+    local file_path="$1"
+    local create_function="$2"
+
+    if [ -f "$file_path" ]; then
+        echo "The file $file_path already exists. What do you want to do?"
+        while true; do
+            read -p "0-Leave the current file, 1-Replace the file: " choice
+            case $choice in
+                0) echo "We leave the current file."; break ;;
+                1) echo "Replace the $file_path file."; "$create_function" "$file_path"; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        "$create_function" "$file_path"
+    fi
+}
+
+update_script() {
+    [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
+    echo "$2" | while IFS= read -r line; do
+        grep -qF "$line" "$1" || echo "$line" >> "$1"
+    done
+}
+
+remove_script_content() {
+    [ -f "$1" ] && echo "$2" | while read -r line; do
+        sed -i "/$(echo "$line" | sed 's/[\/&]/\\&/g')/d" "$1"
+    done
+}
+
+manage_iptables() {
+    if [ "$1" = "add" ]; then
+        iptables -C $2 2>/dev/null || iptables -I $2 || log_msg "Error adding iptables rule: $2"
+    elif [ "$1" = "remove" ]; then
+        iptables -C $2 2>/dev/null && iptables -D $2 || log_msg "Error removing iptables rule: $2"
+    fi
+}
+
+is_running() {
+    ps | grep -v grep | grep -q "$SB_PATH"
+}
+
+get_sbs_version() {
+    sed -n '3s/^# Version //p' "$1"
+}
+
+get_sb_versplat() {
+    local vers plat
+
+    vers=$("$1" version | awk '/^sing-box version/ {print $3}' | head -n 1)
+    plat=$("$1" version | awk '/^Environment:/ {print $3}' | head -n 1)
+    echo "$vers $plat"
+}
+
+get_sb_version() {
+    local version
+
+    version=$("$1" version | awk '/^sing-box version/ {print $3}' | head -n 1)
+    echo "$version"
+}
+
+self_copy() {
+    local destination="$1"
+
+    cp "$0" "$destination"
+}
+
+silent_create_dir() {
+    mkdir -p "$1"
+    chmod 775 "$1"
+}
+
+sing_box_start() {
+    echo "Launch sing-box?"
+    while true; do
+        read -p "0-No, 1-Yes: " choice
+        case "$choice" in
+            0) echo "sing-box is not launched."; break ;;
+            1) start_sing_box; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+}
+
+update_sbs_interface() {
+    interfaces=$(awk -F'"' '/"interface_name":/ {print $4}' "$SB_CONFIG")
+
+    if [ -z "$interfaces" ]; then
+        sed -i 's/^TUN_INTERFACE=.*/TUN_INTERFACE=""/' "$SBS_CONF"
+    else
+        sed -i "s/^TUN_INTERFACE=.*/TUN_INTERFACE=\"$interfaces\"/" "$SBS_CONF"
+    fi
+}
+
+extract_listen_dns_port() {
+    listen_dns_port=$(grep -B1 '"override_port": 53' "$SB_CONFIG" | grep '"listen_port"' | sed -E 's/.*"listen_port": ([0-9]+),.*/\1/')
+
+    if [ -z $listen_dns_port ]; then
+        sed -i 's/^LISTEN_DNS_PORT=.*/LISTEN_DNS_PORT=""/' "$SBS_CONF"
+    else
+        sed -i "s/^LISTEN_DNS_PORT=.*/LISTEN_DNS_PORT=\"$listen_dns_port\"/" "$SBS_CONF"
+    fi
+}
+
+start_sing_box() {
+    echo ""
+    log_msg "Launching the sing-box..."
+    is_running && { log_msg "Error: sing-box is already running."; exit 1; }
+
+    source "$SBS_CONF"
+    update_sbs_interface
+    extract_listen_dns_port
+    check_ports
+    source "$SBS_CONF"
+
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$DEVICE_IPS" ]; then
+        sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n)
+        sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n; echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$')
+    fi
+
+    if [ -n "$TUN_INTERFACE" ]; then
+        FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
+        FORWARD -o $TUN_INTERFACE -j ACCEPT
+        INPUT -i $TUN_INTERFACE -j ACCEPT
+        OUTPUT -o $TUN_INTERFACE -j ACCEPT"
+    fi
+
+    lsmod | grep -q "^tun " || { log_msg "Loading TUN module."; modprobe tun; }
+    $SB_PATH run -c $SB_CONFIG &
+    sleep 3
+
+    if ip link show "$TUN_INTERFACE" >/dev/null 2>&1; then
+        log_msg "TUN interface $TUN_INTERFACE detected."
+    else
+        log_msg "TUN interfaces not found."
+    fi
+
+    if [ "$DNS_CHOICE" = "sing-box" ]; then
+        if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$DEVICE_IPS" ] && [ -n "$LISTEN_DNS_PORT" ]; then
+            has_no_slash=0
+            for IP in $DEVICE_IPS; do
+                if ! echo "$IP" | grep -q '/'; then
+                    has_no_slash=1
+                    break
+                fi
+            done
+            if [ $has_no_slash -eq 1 ]; then
+                ipset create sbsinc-ipset hash:ip
+                for IP in $DEVICE_IPS; do
+                    if ! echo "$IP" | grep -q '/'; then
+                        ipset add sbsinc-ipset "$IP"
+                    fi
+                done
+            fi
+            has_no_slash=0
+            for IP in $EXC_DEVICE_IPS; do
+                if ! echo "$IP" | grep -q '/'; then
+                    has_no_slash=1
+                    break
+                fi
+            done
+            if [ $has_no_slash -eq 1 ]; then
+                ipset create sbsexc-ipset hash:ip
+                for IP in $EXC_DEVICE_IPS; do
+                    if ! echo $IP | grep -q '/'; then
+                        ipset add sbsexc-ipset $IP
+                    fi
+                done
+            fi
+            log_msg "Adding NAT rules."
+            if [ -n "$sorted_subnets" ]; then
+                echo "$sorted_subnets" | while read -r subnet; do
+                    if echo "$DEVICE_IPS" | grep -qw "$subnet"; then
+                        if ! iptables-save -t nat | grep -q -- "-A PREROUTING -s $subnet -p tcp -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT"; then
+                            iptables -t nat -I PREROUTING -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                        else
+                            iptables -t nat -D PREROUTING -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                            iptables -t nat -I PREROUTING -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                        fi
+                        if ! iptables-save -t nat | grep -q -- "-A PREROUTING -s $subnet -p udp -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT"; then
+                            iptables -t nat -I PREROUTING -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                        else
+                            iptables -t nat -D PREROUTING -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                            iptables -t nat -I PREROUTING -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                        fi
+                        update_script "$NAT_SCRIPT" "iptables -t nat -I PREROUTING -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script"
+                        update_script "$NAT_SCRIPT" "iptables -t nat -I PREROUTING -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script"
+                    else
+                        if ! iptables-save -t nat | grep -q -- "-A PREROUTING -s $subnet -p tcp -m tcp --dport 53 -j DNAT --to-destination :53"; then
+                            iptables -t nat -I PREROUTING -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :53
+                        else
+                            iptables -t nat -D PREROUTING -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :53
+                            iptables -t nat -I PREROUTING -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :53
+                        fi
+                        if ! iptables-save -t nat | grep -q -- "-A PREROUTING -s $subnet -p udp -m udp --dport 53 -j DNAT --to-destination :53"; then
+                            iptables -t nat -I PREROUTING -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :53
+                        else
+                            iptables -t nat -D PREROUTING -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :53
+                            iptables -t nat -I PREROUTING -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :53
+                        fi
+                        update_script "$NAT_SCRIPT" "iptables -t nat -I PREROUTING -p tcp -s "$subnet" -m tcp --dport 53 -j DNAT --to-destination :53 # sing-box-script"
+                        update_script "$NAT_SCRIPT" "iptables -t nat -I PREROUTING -p udp -s "$subnet" -m udp --dport 53 -j DNAT --to-destination :53 # sing-box-script"
+                    fi
+                done
+            fi
+            if ipset list sbsinc-ipset >/dev/null 2>&1; then
+                iptables -t nat -I PREROUTING -p tcp -m set --match-set sbsinc-ipset src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                iptables -t nat -I PREROUTING -p udp -m set --match-set sbsinc-ipset src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                update_script "$NAT_SCRIPT" "iptables -t nat -I PREROUTING -p tcp -m set --match-set sbsinc-ipset src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script"
+                update_script "$NAT_SCRIPT" "iptables -t nat -I PREROUTING -p udp -m set --match-set sbsinc-ipset src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script"
+            fi
+            if ipset list sbsexc-ipset >/dev/null 2>&1; then
+                iptables -t nat -I PREROUTING -p tcp -m set --match-set sbsexc-ipset src -m tcp --dport 53 -j DNAT --to-destination :53
+                iptables -t nat -I PREROUTING -p udp -m set --match-set sbsexc-ipset src -m udp --dport 53 -j DNAT --to-destination :53
+                update_script "$NAT_SCRIPT" "iptables -t nat -I PREROUTING -p tcp -m set --match-set sbsexc-ipset src -m tcp --dport 53 -j DNAT --to-destination :53 # sing-box-script"
+                update_script "$NAT_SCRIPT" "iptables -t nat -I PREROUTING -p udp -m set --match-set sbsexc-ipset src -m udp --dport 53 -j DNAT --to-destination :53 # sing-box-script"
+            fi
+        fi
+    fi
+
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$DEVICE_IPS" ]; then
+        log_msg "Adding firewall rules."
+        echo "$FW_RULES" | while read -r rule; do
+            manage_iptables "add" "$rule"
+            update_script "$FW_SCRIPT" "iptables -I $rule # sing-box-script"
+        done
+        log_msg "Adding routes and routing rules."
+        ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE
+        ip route show table main | grep -v '^default' | while read ROUTE; do ip route add $ROUTE table $ROUTE_TABLE; done
+
+        echo "$sorted_all" | while read -r ip; do
+            if echo "$DEVICE_IPS" | grep -qw "$ip"; then
+                ip rule add from "$ip" lookup "$ROUTE_TABLE"
+            else
+                ip rule add from "$ip" lookup main
+            fi
+        done
+        $SBS_MON &
+    fi
+    if [ -n "$WAN_PORTS" ]; then
+        echo "Opening ports from WAN to router: $WAN_PORTS"
+       for entry in $WAN_PORTS; do
+            wan_port=$(echo "$entry" | cut -d ':' -f 2)
+            if ! iptables-save | grep -q -- "-A INPUT -p tcp -m tcp --dport $wan_port -j ACCEPT"; then
+                iptables -I INPUT -p tcp --dport "$wan_port" -j ACCEPT
+            fi
+            if ! iptables-save | grep -q -- "-A INPUT -p udp -m udp --dport $wan_port -j ACCEPT"; then
+                iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT
+            fi
+            update_script "$FW_SCRIPT" "iptables -I INPUT -p tcp --dport "$wan_port" -j ACCEPT # sing-box-script"
+            update_script "$FW_SCRIPT" "iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
+        done
+    fi
+    log_msg "Adding a script to autostart."
+    update_script "$SS_SCRIPT" "$SS_LINES"
+    log_msg "sing-box is running."
+}
+
+stop_sing_box() {
+    echo ""
+    log_msg "Stopping the sing-box..."
+
+    source "$SBS_CONF"
+
+    if [ -n "$TUN_INTERFACE" ]; then
+        FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
+        FORWARD -o $TUN_INTERFACE -j ACCEPT
+        INPUT -i $TUN_INTERFACE -j ACCEPT
+        OUTPUT -o $TUN_INTERFACE -j ACCEPT"
+    fi
+
+    log_msg "Removing the script from autostart."
+    remove_script_content "$SS_SCRIPT" "sing-box-script"
+
+    if [ -n "$WAN_PORTS" ] || [ -n "$TUN_INTERFACE" ]; then
+        remove_script_content "$FW_SCRIPT" "sing-box-script"
+    fi
+    if [ -n "$WAN_PORTS" ]; then
+        echo "Closing ports from WAN to router: $WAN_PORTS"
+        for entry in $WAN_PORTS; do
+            wan_port=$(echo "$entry" | cut -d ':' -f 2)
+            iptables -D INPUT -p udp --dport "$wan_port" -j ACCEPT
+            iptables -D INPUT -p tcp --dport "$wan_port" -j ACCEPT
+        done
+    fi
+
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$DEVICE_IPS" ]; then
+        pids=$(pidof "sbs-monitor")
+        for pid in $pids; do
+            kill "$pid" >/dev/null 2>&1
+        done
+
+        log_msg "Deleting routes and routing rules."
+        for IP in $DEVICE_IPS; do
+            ip rule del from $IP lookup $ROUTE_TABLE
+        done
+        for IP in $EXC_DEVICE_IPS; do
+            ip rule del from $IP lookup main
+        done
+        ip route flush table $ROUTE_TABLE
+        log_msg "Removing firewall rules."
+        echo "$FW_RULES" | while read -r rule; do
+            manage_iptables "remove" "$rule"
+        done
+    fi
+
+    if [ "$DNS_CHOICE" = "sing-box" ]; then
+        if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$DEVICE_IPS" ] && [ -n "$LISTEN_DNS_PORT" ]; then
+            log_msg "Removing NAT rules"
+            remove_script_content "$NAT_SCRIPT" "sing-box-script"
+            if ipset list sbsexc-ipset >/dev/null 2>&1; then
+                iptables -t nat -D PREROUTING -p udp -m set --match-set sbsexc-ipset src -m udp --dport 53 -j DNAT --to-destination :53
+                iptables -t nat -D PREROUTING -p tcp -m set --match-set sbsexc-ipset src -m tcp --dport 53 -j DNAT --to-destination :53
+                ipset destroy sbsexc-ipset
+            fi
+            if ipset list sbsinc-ipset >/dev/null 2>&1; then
+                iptables -t nat -D PREROUTING -p udp -m set --match-set sbsinc-ipset src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                iptables -t nat -D PREROUTING -p tcp -m set --match-set sbsinc-ipset src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                ipset destroy sbsinc-ipset
+            fi
+            for IP in $EXC_DEVICE_IPS; do
+                if echo $IP | grep -q '/'; then
+                    iptables -t nat -D PREROUTING -p udp -s $IP -m udp --dport 53 -j DNAT --to-destination :53
+                    iptables -t nat -D PREROUTING -p tcp -s $IP -m tcp --dport 53 -j DNAT --to-destination :53
+                fi
+            done
+            for IP in $DEVICE_IPS; do
+                if echo $IP | grep -q '/'; then
+                    iptables -t nat -D PREROUTING -p udp -s $IP -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                    iptables -t nat -D PREROUTING -p tcp -s $IP -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                fi
+            done
+        fi
+    fi
+
+    PIDS=$(pidof "sing-box")
+    for pid in $PIDS; do
+        kill "$pid"
+    done
+
+    log_msg "sing-box has stopped."
+}
+
+configure_interface() {
+    source "$SBS_CONF"
+
+    if [ -z "$DEVICE_IPS" ]; then
+        echo ""
+        echo "Enter the IP addresses of devices to route them through the sing-box?"
+        while true; do
+            read -p "0-No, 1-Yes: " initial_choice
+            case "$initial_choice" in
+                0) echo "Declining to add IP addresses."; break ;;
+                1) read -p "Enter IP addresses: " new_ips
+                   if [ -z "$new_ips" ]; then
+                       echo "IP addresses of the devices were not added."
+                   else
+                       DEVICE_IPS="$new_ips"
+                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$new_ips\"|" "$SBS_CONF"
+                       echo "The IP addresses of devices have been added."
+                   fi; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        echo ""
+        echo "The IP addresses of devices routed via sing-box: $DEVICE_IPS"
+        while true; do
+            echo ""
+            echo "1. Add/remove IP addresses."
+            echo "2. Replace IP addresses."
+            echo "0. Do not make changes."
+            read -p "Enter your choice [0-2]: " action_choice
+            case "$action_choice" in
+                1) read -p "Enter IP addresses for adding or removing: " ips_input
+                   if [ -z "$ips_input" ]; then
+                       echo "The IP addresses of the devices have not changed."
+                   else
+                       for ip in $ips_input; do
+                           if echo "$DEVICE_IPS" | grep -q "$ip"; then
+                               DEVICE_IPS=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
+                               echo "The IP address $ip has been removed from the list of those routed via sing-box."
+                           else
+                               DEVICE_IPS="${DEVICE_IPS:+$DEVICE_IPS }$ip"
+                               echo "The IP address $ip added to the list of those routed via sing-box."
+                           fi
+                       done
+                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
+                   fi; break ;;
+                2) read -p "Enter new IP addresses: " new_ips
+                   if [ -z "$new_ips" ]; then
+                       DEVICE_IPS=""
+                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"\"|" "$SBS_CONF"
+                       echo "The list of IP addresses routed through the sing-box has been cleared."
+                   else
+                       DEVICE_IPS="$new_ips"
+                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$new_ips\"|" "$SBS_CONF"
+                       echo "All IP addresses of devices routed through sing-box have been replaced with new ones."
+                   fi; break ;;
+                0) echo "Declining to make changes."; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    fi
+
+    cidrs=""
+    for ip in $DEVICE_IPS; do
+        if echo "$ip" | grep -q '/'; then
+            cidrs="$cidrs $ip"
+        fi
+    done
+    if [ -n "$cidrs" ]; then
+        if [ -z "$EXC_DEVICE_IPS" ]; then
+            echo ""
+            echo "For the routing via sing-box you specified the following subnets: $cidrs"
+            echo "Enter the IP addresses of devices from these subnets to exclude them from the sing-box?"
+            while true; do
+                read -p "0-No, 1-Yes: " initial_exc_choice
+                case "$initial_exc_choice" in
+                    0) echo "Declining to add IP addresses."; break ;;
+                    1) read -p "Enter IP addresses: " exc_new_ips
+                       if [ -z "$exc_new_ips" ]; then
+                           echo "The IP addresses of devices to exclude from sing-box were not added."
+                       else
+                           EXC_DEVICE_IPS="$exc_new_ips"
+                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$exc_new_ips\"|" "$SBS_CONF"
+                           echo "The IP addresses of devices to exclude them from the sing-box have been added."
+                       fi; break ;;
+                    *) echo "Incorrect input. Please try again." ;;
+                esac
+            done
+        else
+            echo ""
+            echo "For the routing via sing-box you specified the following subnets: $cidrs"
+            echo "Current IP addresses of devices from these subnets excluded from the sing-box: $EXC_DEVICE_IPS"
+            while true; do
+            echo ""
+            echo "1. Add/remove IP addresses."
+            echo "2. Replace IP addresses."
+            echo "0. Do not make changes."
+            read -p "Enter your choice [0-2]: " action_exc_choice
+                case "$action_exc_choice" in
+                    1) read -p "Enter IP addresses for adding or removing: " exc_ips_input
+                       if [ -z "$exc_ips_input" ]; then
+                           echo "The IP addresses of devices excluded from sing-box were not changed."
+                       else
+                           for ip in $exc_ips_input; do
+                               if echo "$EXC_DEVICE_IPS" | grep -q "$ip"; then
+                                   EXC_DEVICE_IPS=$(echo "$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
+                                   echo "The IP address $ip has been removed from the list of those excluded from the sing-box."
+                               else
+                                   EXC_DEVICE_IPS="${EXC_DEVICE_IPS:+$EXC_DEVICE_IPS }$ip"
+                                   echo "The IP address $ip has been added to the list of those excluded from the sing-box."
+                               fi
+                           done
+                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
+                       fi; break ;;
+                    2) read -p "Enter new IP addresses: " exc_new_ips
+                       if [ -z "$exc_new_ips" ]; then
+                           EXC_DEVICE_IPS=""
+                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
+                           echo "The list of IP addresses excluded from the sing-box has been cleared."
+                       else
+                           EXC_DEVICE_IPS="$exc_new_ips"
+                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$exc_new_ips\"|" "$SBS_CONF"
+                           echo "All IP addresses of devices excluded from sing-box have been replaced with new ones."
+                       fi; break ;;
+                    0) echo "Declining to make changes."; break ;;
+                    *) echo "Incorrect input. Please try again." ;;
+                esac
+            done
+        fi
+    else
+        EXC_DEVICE_IPS=""
+        sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
+    fi
+
+    echo "Returning to the menu."
+}
+
+choose_dns() {
+    source "$SBS_CONF"
+    if [ "$DNS_CHOICE" = "router" ]; then
+        echo ""
+        echo "Router DNS are currently used."
+        echo "Change selection to DNS in sing-box configuration file?" 
+    elif [ "$DNS_CHOICE" = "sing-box" ]; then
+        echo ""
+        echo "DNS of the sing-box configuration file is currently used."
+        echo "Change selection to router DNS?"
+    fi
+    while true; do
+        read -p "0-No, 1-Yes: " choice
+        case "$choice" in
+            0)  echo "Declining to change the DNS being used."; break ;;
+            1)  if [ "$DNS_CHOICE" = "router" ]; then
+                    DNS_CHOICE="sing-box"
+                    echo "DNS of the sing-box configuration file are selected."
+                else
+                    DNS_CHOICE="router"
+                    echo "Router DNS selected."
+                fi
+                sed -i "s|DNS_CHOICE=\"[^\"]*\"|DNS_CHOICE=\"$DNS_CHOICE\"|" "$SBS_CONF"; break ;;
+            *)  echo "Incorrect input. Please try again." ;;
+        esac
+    done
+}
+
+configure_table() {
+    source "$SBS_CONF"
+
+    echo ""
+    echo "Current routing table number for sing-box: $ROUTE_TABLE"
+    echo "Change it?"
+    while true; do
+        read -p "0-No, 1-Yes: " choice
+        case "$choice" in
+            0) echo "Declining to change the routing table number."; break ;;
+            1) read -p "Enter the new routing table number: " new_table
+               ROUTE_TABLE="$new_table"
+               sed -i "s|^ROUTE_TABLE=\".*\"$|ROUTE_TABLE=\"$new_table\"|" "$SBS_CONF"
+               log_msg "The routing table number for sing-box has been changed to $ROUTE_TABLE"; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+    echo "Returning to the menu."
+}
+
+setup_sing_box() {
+    source "$SBS_CONF"
+    update_sbs_interface
+    extract_listen_dns_port
+    source "$SBS_CONF"
+
+    if [ -z "$TUN_INTERFACE" ]; then
+        echo ""
+        echo "Your sing-box configuration file does not contain tun interfaces. There is nothing to configure. Exit."
+        exit 0
+    fi
+
+    echo ""
+    echo "Enter the script settings menu? If sing-box is running, it will be stopped when you enter the menu."
+    while true; do
+        read -p "0-No, 1-Yes: " choice
+        case "$choice" in
+            0) echo "Exit."; exit 0 ;;
+            1) if is_running; then stop_sing_box; fi; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+    while true; do
+        echo ""
+        echo "Script settings menu."
+        echo "When setting up for the first time, it is mandatory to complete point 1."
+        echo "1. Setting up IP addresses to route them through the sing-box."
+        echo "2. DNS selection for sing-box."
+        echo "3. Changing the routing table number for sing-box."
+        echo "0. Exit the menu."
+        read -p "Enter your choice [0-3]: " if_choice
+        case "$if_choice" in
+            1) configure_interface; source "$SBS_CONF" ;;
+            2) choose_dns; source "$SBS_CONF" ;;
+            3) configure_table; source "$SBS_CONF" ;;
+            0) break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+    update_sbs_interface
+    extract_listen_dns_port
+    sing_box_start
+}
+
+update_sing_box() {
+    echo ""
+    echo "Checking the script and sing-box core versions..."
+    curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
+    silent_create_dir "$SB_DOWNLOAD_DIR"
+    if [ "$(uname -m)" = "aarch64" ]; then
+        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+    else
+        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+    fi
+    curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
+    echo "The checking was completed successfully."
+    update_sing_box_menu
+}
+
+update_sing_box_menu() {
+    singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+    chmod 775 $singbox_file
+    sbs_vers=$(get_sbs_version $SCRIPT_PATH)
+    sb_vers=$(get_sb_version $SB_PATH)
+    sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
+    sb_vers_new=$(get_sb_version $singbox_file)
+
+    while true; do
+        echo ""
+        echo "Update menu."
+        echo "If the sing-box is running, selecting option 1 or 2 will stop it."
+        echo "1. Update script. Installed version "$sbs_vers", available version $sbs_vers_new"
+        echo "2. Update sing-box core. Installed version "$sb_vers", available version $sb_vers_new"
+        echo "0. Exit the update menu."
+        read -p "Enter your choice [0-2]: " choice
+        case "$choice" in
+            1) if is_running; then stop_sing_box; fi; update_sbs; break ;;
+            2) if is_running; then stop_sing_box; fi; updcore_sing_box; break ;;
+            0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "Exiting the update menu."; is_running || sing_box_start; exit 0 ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+}
+
+update_sbs() {
+    echo ""
+    echo "Script update..."
+    cp "$SCRIPT_PATH"-tmp $SCRIPT_PATH
+    chmod 775 $SCRIPT_PATH
+
+    cat << EOF > $TEMP_UPDATE
+#!/bin/sh
+rm -f $TEMP_UPDATE
+exec $SCRIPT_PATH updmonandcore
+EOF
+    chmod 775 $TEMP_UPDATE
+
+    exec $TEMP_UPDATE
+}
+
+updmonandcore_sing_box() {
+    create_sbs_monitor "$SBS_MON"
+    echo "The script has been updated successfully. Returning to the menu."
+    update_sing_box_menu
+}
+
+updcore_sing_box() {
+    echo ""
+    echo "Updating sing-box core..."
+    cp "$singbox_file" "$SB_DIR"; echo "The sing-box core has been updated successfully. Returning to the menu."
+    update_sing_box_menu
+}
+
+check_sing_box() {
+    while true; do
+        echo ""; echo "Checking sing-box configuration file for errors..."
+        if ! output=$($SB_PATH check -c $SB_CONFIG 2>&1); then
+            echo "An error was found in the configuration file:"
+            echo "$output"
+            echo "Edit the configuration file in the nano editor?"
+            while true; do
+                read -p "0-No, 1-Yes: " choice
+                case "$choice" in
+                    0) echo "Completing the check without correcting the errors."; break 2 ;;
+                    1) echo ""; echo "Open the configuration file in the nano editor..."; nano $SB_CONFIG; echo "Editing complete."; break ;;
+                    *) echo "Incorrect input. Please try again." ;;
+                esac
+            done
+        else
+            echo "No errors were found in the configuration file. Returning to the menu."; break
+        fi
+    done
+}
+
+format_sing_box() {
+    if ! output=$($SB_PATH format -c $SB_CONFIG 2>&1); then
+        echo ""; echo "An error was found in the configuration file:"
+        echo "$output"
+        echo "First, check for errors and correct them by selecting point 2 of the sing-box configuration file setup menu."
+        echo "Returning to menu."
+    else
+        echo ""; echo "Result of executing format:"
+        echo "$output"
+        while true; do
+            echo "Save this output of format to your sing-box configuration file?"
+            read -p "0-No, 1-Yes: " save_choice
+            case "$save_choice" in
+                0) echo "You have chosen not to save the output of format. Returning to menu."; break ;;
+                1) $SB_PATH format -w -c $SB_CONFIG; echo "Changes have been saved to the configuration file. Returning to the menu."; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    fi
+}
+
+config_sing_box() {
+    while true; do
+        echo ""
+        echo "Menu for setting up the sing-box configuration file."
+        echo "1-Open the configuration file in the nano editor."
+        echo "2-Check the configuration file for errors."
+        echo "3-Tidy up the structure of the configuration file."
+        echo "0-Exit the menu."
+        read -p "Enter your choice [0-3]: " choice
+        case "$choice" in
+            1) echo ""; echo "Opening configuration file in nano editor..."; nano $SB_CONFIG; source "$SBS_CONF"; update_sbs_interfaces; echo "Editing complete. Returning to the menu." ;;
+            2) check_sing_box; source "$SBS_CONF"; update_sbs_interfaces ;;
+            3) format_sing_box ;;
+            0) if is_running; then
+                   echo "It is recommended to restart sing-box if you have made changes to the configuration file."
+                   echo "Restart sing-box now to apply changes?"
+                   while true; do
+                       read -p "0-No, 1-Yes: " sub_choice
+                       case "$sub_choice" in
+                           0) echo "Exiting the menu. Changes, if you made any, will be applied the next time you restart sing-box."; source "$SBS_CONF"; update_sbs_interfaces; exit 0 ;;
+                           1) echo "Restarting sing-box and exiting the menu."; stop_sing_box; sleep 2; start_sing_box; exit 0 ;;
+                           *) echo "Incorrect input. Please try again." ;;
+                       esac
+                   done
+               else
+                   echo "Exiting the menu."; exit 0
+               fi ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+}
+
+status_sing_box() {
+    if is_running; then
+        echo "sing-box is running."
+    else
+        echo "sing-box is stopped."
+    fi
+
+    sbs_version=$(get_sbs_version $SCRIPT_PATH)
+    if [ -n "$sbs_version" ]; then
+        echo "Script version: $sbs_version"
+    else
+        echo "Script version not found."
+    fi
+
+    sb_versplat=$(get_sb_versplat $SB_PATH)
+    if [ -n "$sb_versplat" ]; then
+        echo "sing-box core version: $sb_versplat"
+    else
+        echo "sing-box core version not found."
+    fi
+
+    echo "Router CPU architecture: $(uname -m)"
+}
+
+check_ports() {
+    current_ports=$(echo "$WAN_PORTS" | tr ' ' '\n')
+    updated_ports=""
+    for combination in $current_ports; do
+        proxy_type=$(echo "$combination" | cut -d':' -f1)
+        port=$(echo "$combination" | cut -d':' -f2)
+        found_match=0
+        in_inbounds=0
+        search_port=0
+        while read -r line; do
+            if echo "$line" | grep -q '"inbounds"'; then
+                in_inbounds=1
+            fi
+            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "\"type\": \"$proxy_type\""; then
+                search_port=1
+                continue
+            fi
+            if [ "$search_port" = "1" ] && echo "$line" | grep -q "\"listen_port\": $port\\b"; then
+                found_match=1
+                break
+            fi
+            if echo "$line" | grep -q '"type":'; then
+                search_port=0
+            fi
+        done < "$SB_CONFIG"
+        if [ "$found_match" -eq 1 ]; then
+            updated_ports="$updated_ports $combination"
+        fi
+    done
+    updated_ports=$(echo "$updated_ports" | tr -s ' ' | sed 's/^ //')
+    sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$updated_ports\"|" "$SBS_CONF"
+}
+
+add_del_ports() {
+    source "$SBS_CONF"
+    VALID_TYPES="vless vmess shadowsocks trojan naive hysteria shadowtls tuic hysteria2"
+    read -p "Enter the server type and port combinations in the format type:port, separated by a space (e.g. vless:443 shadowsocks:4567): " input_combinations
+    if [ -z "$input_combinations" ]; then
+        echo "Ports were not entered."
+    fi
+    combinations=$(echo "$input_combinations" | tr ' ' '\n')
+    current_ports=$(grep "^WAN_PORTS=" "$SBS_CONF" | cut -d '"' -f 2)
+    for combination in $combinations; do
+      found_match=0
+      proxy_type=$(echo "$combination" | cut -d':' -f1)
+      port=$(echo "$combination" | cut -d':' -f2)
+      if ! echo "$VALID_TYPES" | grep -qw "$proxy_type"; then
+        echo "Invalid inbound proxy type: $proxy_type"
+        continue
+      fi
+      in_inbounds=0
+      search_port=0
+      while read -r line; do
+        if echo "$line" | grep -q '"inbounds"'; then
+          in_inbounds=1
+        fi
+        if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "\"type\": \"$proxy_type\""; then
+          search_port=1
+          continue
+        fi
+        if [ "$search_port" = "1" ] && echo "$line" | grep -q "\"listen_port\": $port\\b"; then
+          found_match=1
+          break
+        fi
+        if echo "$line" | grep -q '"type":'; then
+          search_port=0
+        fi
+      done < "$SB_CONFIG"
+      if [ "$found_match" -eq 0 ]; then
+        echo "The combination $proxy_type:$port was not found in the sing-box configuration file."
+        continue
+      fi
+      if echo "$current_ports" | grep -wq "$proxy_type:$port"; then
+        current_ports=$(echo "$current_ports" | sed "s/\b$proxy_type:$port\b//g" | tr -s ' ' | sed 's/^ //')
+        echo "The $proxy_type:$port combination has been removed from the list."
+      else
+        if [ -n "$current_ports" ]; then
+          current_ports="$current_ports $proxy_type:$port"
+        else
+          current_ports="$proxy_type:$port"
+        fi
+        echo "The $proxy_type:$port combination has been added to the list."
+      fi
+    done
+    sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$current_ports\"|" "$SBS_CONF"
+    source "$SBS_CONF"
+    echo ""
+    if [ -z "$WAN_PORTS" ]; then
+        echo "The list of inbound ports for inbound proxy servers is empty."
+    else
+        echo "The list of inbound ports for inbound proxy servers contains: $WAN_PORTS"
+    fi
+    serv_sing_box
+}
+
+exch_ports() {
+    source "$SBS_CONF"
+    VALID_TYPES="vless vmess shadowsocks trojan naive hysteria shadowtls tuic hysteria2"
+    read -p "Enter the server type and port combinations in the format type:port, separated by a space (e.g. vless:443 shadowsocks:4567): " input_combinations
+    if [ -z "$input_combinations" ];then
+        echo "Ports were not entered."
+        sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"\"|" "$SBS_CONF"
+        source "$SBS_CONF"
+        echo ""
+        echo "The list of inbound ports for inbound proxy servers has been cleared."
+        serv_sing_box
+        return
+    fi
+    combinations=$(echo "$input_combinations" | tr ' ' '\n')
+    new_ports=""
+    invalid_combinations=0
+    for combination in $combinations; do
+        found_match=0
+        proxy_type=$(echo "$combination" | cut -d':' -f1)
+        port=$(echo "$combination" | cut -d':' -f2)
+        if ! echo "$VALID_TYPES" | grep -qw "$proxy_type"; then
+            echo "Invalid inbound proxy type: $proxy_type"
+            invalid_combinations=1
+            continue
+        fi
+        in_inbounds=0
+        search_port=0
+        while read -r line; do
+            if echo "$line" | grep -q '"inbounds"'; then
+                in_inbounds=1
+            fi
+            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "\"type\": \"$proxy_type\""; then
+                search_port=1
+                continue
+            fi
+            if [ "$search_port" = "1" ] && echo "$line" | grep -q "\"listen_port\": $port\\b"; then
+                found_match=1
+                break
+            fi
+            if echo "$line" | grep -q '"type":'; then
+                search_port=0
+            fi
+        done < "$SB_CONFIG"
+        if [ "$found_match" -eq 0 ]; then
+            echo "The combination $proxy_type:$port was not found in the sing-box configuration file."
+            invalid_combinations=1
+            continue
+        fi
+        if [ -n "$new_ports" ]; then
+            new_ports="$new_ports $proxy_type:$port"
+        else
+            new_ports="$proxy_type:$port"
+        fi
+    done
+    if [ -n "$new_ports" ]; then
+        sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$new_ports\"|" "$SBS_CONF"
+        source "$SBS_CONF"
+        echo ""
+        echo "All ports in the list have been replaced with the following: $WAN_PORTS"
+    else
+        echo "No valid combinations found in input. Port list unchanged."
+        echo ""
+        echo "The list of inbound ports for inbound proxy servers contains: $WAN_PORTS"
+    fi
+    serv_sing_box
+}
+
+server_sing_box() {
+    source "$SBS_CONF"
+    echo ""
+    echo "Enter the inbound ports settings menu for inbound proxy servers?"
+    echo "If sing-box is running, it will be stopped when you enter the menu."
+    while true; do
+        read -p "0-No, 1-Yes: " choices
+        case "$choices" in
+            0) echo "Exit."; exit 0 ;;
+            1) if is_running; then stop_sing_box; fi; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+    echo ""
+    echo "Menu for configuring inbound ports for inbound proxy servers."
+    echo "Ports added through this menu will be opened from WAN to the router when the sing-box is running."
+    echo "Do not open ports from WAN to your router without a conscious need, this will risk the security of your home network."
+    echo "Valid inbound proxy types are: vless, vmess, shadowsocks, trojan, naive, hysteria, hysteria2, shadowtls and tuic."
+    echo ""
+    if [ -z "$WAN_PORTS" ]; then
+        echo "The list of inbound ports for inbound proxy servers is empty."
+    else
+        echo "The list of inbound ports for inbound proxy servers contains: $WAN_PORTS"
+    fi
+    serv_sing_box
+}
+
+serv_sing_box() {
+    source "$SBS_CONF"
+    if [ -z "$WAN_PORTS" ]; then
+        while true; do
+            echo "Add ports?"
+            read -p "0-No, 1-Yes: " init_portchoice
+            case "$init_portchoice" in
+                0) echo "Declining to add ports."; break ;;
+                1) add_del_ports; exit 0 ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        while true; do
+            echo "1. Add/remove ports."
+            echo "2. Replace ports."
+            echo "0. Exit the menu."
+            read -p "Enter your choice [0-2]: " act_portchoice
+            case "$act_portchoice" in
+                1) add_del_ports; exit 0 ;;
+                2) exch_ports; exit 0 ;;
+                0) break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    fi
+    sing_box_start
+}
+
+install_sing_box() {
+    echo "Install sing-box script?"
+    while true; do
+        read -p "0-No, 1-Yes: " choice
+        case $choice in
+            0) delete_if_not_current_dir; echo "Installation of sing-box script has been cancelled."; exit 0 ;;
+            1) if is_running; then
+                echo "The sing-box script has already been installed and started. Continue installation despite this?"
+                while true; do
+                   read -p "0-No, 1-Yes: " continue_choice
+                   case "$continue_choice" in
+                       0) delete_if_not_current_dir; echo "Installation of sing-box script has been cancelled."; exit 0 ;;
+                       1) stop_sing_box; break ;;
+                       *) echo "Incorrect input. Please try again." ;;
+                   esac
+                done
+               else break; fi; break ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+    echo "Let's start installing the sing-box script..."
+    create_or_use_existing "$JFFS_SB_DIR"
+    handle_existing_file "$SCRIPT_PATH" self_copy
+    ln -sf $SCRIPT_PATH $LN_PATH
+    handle_existing_file "$JFFS_SB_DIR/sbs-conf" create_sbs_conf
+    handle_existing_file "$SBS_MON" create_sbs_monitor
+    check_file_existence_and_download "$SB_CONFIG" "$SB_CONFIG_URL"
+    chmod 664 "$SB_CONFIG"
+
+    if [ -n "$ROOT_DIR" ]; then
+        create_or_use_existing "$SB_DIR"
+    else
+        echo "Directory $ROOT_DIR not found. Apparently the router does not have a USB drive with Entware installed. Operation cancelled."
+        delete_if_not_current_dir
+        exit 1
+    fi
+
+    create_dir "$SB_DOWNLOAD_DIR"
+    if [ "$(uname -m)" = "aarch64" ]; then
+        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+    else
+        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+    fi
+    echo "Download the archive with the sing-box core..."
+    curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    echo "Unpack the archive..."
+    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
+    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+
+    if [ -f "$SB_PATH" ]; then
+        echo "The sing-box core file already exists. What do you want to do?"
+        while true; do
+            read -p "0-Leave the current file, 1-Replace the file: " choice
+            case $choice in
+                0) echo "Leave the current file."; break ;;
+                1) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "The $SB_PATH file has been replaced."; break ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done
+    else
+        cp "$sing_box_file" "$SB_DIR"; echo "The sing-box core file has been moved to the $SB_DIR directory."
+    fi
+
+    local current_dir=$(dirname "$(readlink -f "$0")")
+    if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
+      rm -rf "$SB_DOWNLOAD_DIR" "$(readlink -f "$0")"
+    else
+      rm -rf "$SB_DOWNLOAD_DIR"
+    fi
+
+    echo "The $SB_DOWNLOAD_DIR directory has been removed."
+    echo ""
+    echo "
+*********************
+Installation completed.
+*********************
+Before running sing-box for the first time, be sure to follow the script setup steps described in the Readme - Section III. Initial setup and running of the script."
+}
+
+remove_sing_box() {
+    echo "Remove all directories and files of the sing-box script?"
+    while true; do
+        read -p "0-No, 1-Yes: " choice
+        case $choice in
+            0) echo "Exit."; exit 0 ;;
+            1) if is_running; then stop_sing_box; fi; echo "Removing all sing-box script directories and files."; rm -rf $SB_DIR $JFFS_SB_DIR $LN_PATH; echo "All sing-box script directories and files have been removed."; exit 0 ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done
+
+}
+
+show_menu() {
+    echo "To run the sing-box script, you can run the 'sbs' command with the parameters listed below directly in the console, for example 'sbs start', or you can run it from this menu by the parameter number."
+    echo "Enter the number of the parameter to run or exit this menu:"
+    echo "1) start (Start sing-box)"
+    echo "2) stop (Stop sing-box)"
+    echo "3) restart (Restart sing-box)"
+    echo "4) config (Open the menu for setting up the sing-box configuration file - config.json)"
+    echo "5) setup (Open the script settings menu)"
+    echo "6) update (Open the script and sing-box core update menu)"
+    echo "7) status (Find out the status of sing-box, the versions of the script and sing-box core, and the router's CPU architecture)"
+    echo "8) server (Specify ports of incoming proxy servers to open them from WAN to the router)"
+    echo "10) remove (!!!Remove sing-box completely!!!)"
+    echo "0) Exit the menu."
+}
+
+case "$1" in
+    install) install_sing_box ;;
+    start) start_sing_box ;;
+    stop) stop_sing_box ;;
+    restart) stop_sing_box; sleep 2; start_sing_box ;;
+    config) config_sing_box ;;
+    setup) setup_sing_box ;;
+    update) update_sing_box ;;
+    status) status_sing_box ;;
+    server) server_sing_box ;;
+    remove) remove_sing_box ;;
+    updmonandcore) updmonandcore_sing_box ;;
+    *)
+        while true; do
+            show_menu
+            read -p "Enter your choice [0-8 or 10]: " choice
+            case $choice in
+                1) start_sing_box; break ;;
+                2) stop_sing_box; break ;;
+                3) stop_sing_box; sleep 2; start_sing_box; break ;;
+                4) config_sing_box; break ;;
+                5) setup_sing_box; break ;;
+                6) update_sing_box; break ;;
+                7) status_sing_box; break ;;
+                8) server_sing_box; break ;;
+                10) remove_sing_box; break ;;
+                0) exit 0 ;;
+                *) echo "Incorrect input. Please try again." ;;
+            esac
+        done ;;
+esac
