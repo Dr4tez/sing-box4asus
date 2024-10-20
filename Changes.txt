@@ -105,10 +105,16 @@ Version 1.5 from 10/13/24
 9. The names of variables in the sbs-conf file created by the script have been changed.
 10. Several minor edits to the script code.
 
-Due to the addition of new functionality and significant changes to the old one, you can update to version 1.5 only by reinstalling the script according to the following instructions:
+Version 1.6 from 10/20/24
+1. Fixed termination of the sing-box process when exiting any script menu using the Ctrl+C key combination, if this menu was entered in the same terminal session as the last launch of sing-box.
+2. When stopping sing-box, all records created by the sing-box script at its start are deleted from the firewall-start, nat-start and services-start scripts, according to the text of the "sing-box-script" comment added to the records. This guarantees the deletion of all records created by the script, without harming others.
+3. Several more bugfixes.
+
+You can update from version 1.5 to version 1.6 by simply selecting the first item in the menu 'sbs update'.
+From version 1.4 and older, you can update to version 1.6 only by reinstalling the script according to the following instructions:
 1. Save your configuration file config.json from the /jffs/addons/sing-box-script directory somewhere safe.
 2. Remove the previous version by running the command 'sbs remove' in the router's command line.
-3. Install version 1.5 by executing the following command in the router's command line: 'wget -O /jffs/scripts/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs && chmod 775 /jffs/scripts/sbs && /jffs/scripts/sbs install'
-4. Modify your config.json configuration file to work with a single tun interface. You can use the new template of my configuration file as a sample, which was installed with version 1.5 of the script.
+3. Install version 1.6 by executing the following command in the router's command line: 'wget -O /jffs/scripts/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs && chmod 775 /jffs/scripts/sbs && /jffs/scripts/sbs install'
+4. Modify your config.json configuration file to work with a single tun interface. You can use the new template of my configuration file as a sample, which was installed with version 1.6 of the script.
 5. Place your modified config.json configuration file in the /jffs/addons/sing-box-script directory instead of the template.
 6. Configure the script by running the 'sbs setup' command in the router's command line.
