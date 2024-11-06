@@ -69,7 +69,7 @@ create_sbs_monitor() {
 # SBS version 1.6
 
 source "$SBS_CONF"
-sorted_all=\$(echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n; echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\$')
+sorted_all=\$(echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\$'; echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n -r)
 route_in_process=0
 
 sbs_monitor_rr() {
@@ -102,9 +102,9 @@ sbs_monitor_rr() {
             done
             echo "\$sorted_all" | while read -r IP; do
                 if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
-                    ip rule add from "\$IP" lookup "\$ROUTE_TABLE"
+                    ip rule add from "\$IP" lookup "\$ROUTE_TABLE" priority 553
                 else
-                    ip rule add from "\$IP" lookup main
+                    ip rule add from "\$IP" lookup main priority 553
                 fi
             done; break
         done
@@ -283,7 +283,7 @@ start_sing_box() {
 
     if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$DEVICE_IPS" ]; then
         sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n)
-        sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n; echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$')
+        sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n -r)
     fi
 
     if [ -n "$TUN_INTERFACE" ]; then
@@ -399,9 +399,9 @@ start_sing_box() {
 
         echo "$sorted_all" | while read -r ip; do
             if echo "$DEVICE_IPS" | grep -qw "$ip"; then
-                ip rule add from "$ip" lookup "$ROUTE_TABLE"
+                ip rule add from "$ip" lookup "$ROUTE_TABLE" priority 553
             else
-                ip rule add from "$ip" lookup main
+                ip rule add from "$ip" lookup main priority 553
             fi
         done
         $SBS_MON &
