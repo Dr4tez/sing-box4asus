@@ -6,8 +6,8 @@
 # Переменные
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
 SB_CONFIG="$JFFS_SB_DIR/config.json"
-SCRIPT_PATH="$JFFS_SB_DIR/sbs-test"
-SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-test"
+SCRIPT_PATH="$JFFS_SB_DIR/sbs-ru"
+SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-ru"
 SB_CONFIG_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/config.json"
 SBS_CONF="$JFFS_SB_DIR/sbs-conf"
 SBS_MON="$JFFS_SB_DIR/sbs-monitor"
@@ -412,7 +412,7 @@ start_sing_box() {
         fi
     fi
 # Добавление правил файрвола, маршрутов и правил маршрутизации и обновление скрипта firewall-start
-    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$DEVICE_IPS" ]; then
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]); then
         log_msg "Добавление правил файрвола."
         echo "$FW_RULES" | while read -r rule; do
             manage_iptables "add" "$rule"
@@ -424,13 +424,15 @@ start_sing_box() {
         if [ -n "$FAKEIP_SUBNET" ]; then
             ip rule add to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE priority 553
         fi
-        echo "$sorted_all" | while read -r ip; do
-            if echo "$DEVICE_IPS" | grep -qw "$ip"; then
-                ip rule add from "$ip" lookup "$ROUTE_TABLE" priority 553
-            else
-                ip rule add from "$ip" lookup main priority 553
-            fi
-        done
+        if [ -n "$DEVICE_IPS" ]; then
+            echo "$sorted_all" | while read -r ip; do
+                if echo "$DEVICE_IPS" | grep -qw "$ip"; then
+                    ip rule add from "$ip" lookup "$ROUTE_TABLE" priority 553
+                else
+                    ip rule add from "$ip" lookup main priority 553
+                fi
+            done
+        fi
         $SBS_MON &
     fi
     if [ -n "$WAN_PORTS" ]; then
@@ -480,7 +482,7 @@ stop_sing_box() {
         done
     fi
 
-    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$DEVICE_IPS" ]; then
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]); then
         pids=$(pidof "sbs-monitor")
         for pid in $pids; do
             kill "$pid" >/dev/null 2>&1
