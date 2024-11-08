@@ -98,23 +98,27 @@ sbs_monitor_rr() {
 
     while true; do
         ip monitor rule | while read line; do
-            if ! ip rule show | grep -q "to \$FAKEIP_SUBNET lookup \$ROUTE_TABLE"; then
-                ip rule add to \$FAKEIP_SUBNET lookup \$ROUTE_TABLE priority 553
+            if [ -n "\$DEVICE_FIPS" ]; then
+                if ! ip rule show | grep -q "to \$FAKEIP_SUBNET lookup \$ROUTE_TABLE"; then
+                    ip rule add to \$FAKEIP_SUBNET lookup \$ROUTE_TABLE priority 553
+                fi
             fi
-            echo "\$sorted_all" | while read -r IP; do
-                if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
-                    ip rule del from "\$IP" lookup "\$ROUTE_TABLE" 2>/dev/null
-                else
-                    ip rule del from "\$IP" lookup main 2>/dev/null
-                fi
-            done
-            echo "\$sorted_all" | while read -r IP; do
-                if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
-                    ip rule add from "\$IP" lookup "\$ROUTE_TABLE" priority 553
-                else
-                    ip rule add from "\$IP" lookup main priority 553
-                fi
-            done; break
+            if [ -n "\$DEVICE_IPS" ]; then
+                echo "\$sorted_all" | while read -r IP; do
+                    if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
+                        ip rule del from "\$IP" lookup "\$ROUTE_TABLE" 2>/dev/null
+                    else
+                        ip rule del from "\$IP" lookup main 2>/dev/null
+                    fi
+                done
+                echo "\$sorted_all" | while read -r IP; do
+                    if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
+                        ip rule add from "\$IP" lookup "\$ROUTE_TABLE" priority 553
+                    else
+                        ip rule add from "\$IP" lookup main priority 553
+                    fi
+                done; break
+            fi
         done
     done
 }
