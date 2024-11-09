@@ -868,6 +868,7 @@ setup_sing_box() {
     source "$SBS_CONF"
     update_sbs_interface
     extract_listen_dns_port
+    fakeip_check
     source "$SBS_CONF"
 
     if [ -z "$TUN_INTERFACE" ]; then
@@ -1263,6 +1264,8 @@ server_sing_box() {
 }
 
 serv_sing_box() {
+    source "$SBS_CONF"
+    check_ports
     source "$SBS_CONF"
     if [ -z "$WAN_PORTS" ]; then
         while true; do
