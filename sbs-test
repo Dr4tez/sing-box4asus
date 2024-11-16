@@ -510,16 +510,12 @@ stop_sing_box() {
     if [ "$DNS_CHOICE" = "sing-box" ] && [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]) && [ -n "$LISTEN_DNS_PORT" ]; then
         log_msg "Удаление правил NAT."
         remove_script_content "$NAT_SCRIPT" "sing-box-script"
-        if ipset list sbsexc-ipset >/dev/null 2>&1; then
-            iptables -t nat -D PREROUTING -p udp -m set --match-set sbsexc-ipset src -m udp --dport 53 -j DNAT --to-destination :53
-            iptables -t nat -D PREROUTING -p tcp -m set --match-set sbsexc-ipset src -m tcp --dport 53 -j DNAT --to-destination :53
-            ipset destroy sbsexc-ipset
-        fi
-        if ipset list sbsinc-ipset >/dev/null 2>&1; then
-            iptables -t nat -D PREROUTING -p udp -m set --match-set sbsinc-ipset src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
-            iptables -t nat -D PREROUTING -p tcp -m set --match-set sbsinc-ipset src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
-            ipset destroy sbsinc-ipset
-        fi
+        iptables -t nat -D PREROUTING -p udp -m set --match-set sbsexc-ipset src -m udp --dport 53 -j DNAT --to-destination :53 >/dev/null 2>&1
+        iptables -t nat -D PREROUTING -p tcp -m set --match-set sbsexc-ipset src -m tcp --dport 53 -j DNAT --to-destination :53 >/dev/null 2>&1
+        ipset destroy sbsexc-ipset >/dev/null 2>&1
+        iptables -t nat -D PREROUTING -p udp -m set --match-set sbsinc-ipset src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT >/dev/null 2>&1
+        iptables -t nat -D PREROUTING -p tcp -m set --match-set sbsinc-ipset src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT >/dev/null 2>&1
+        ipset destroy sbsinc-ipset >/dev/null 2>&1
         for IP in $EXC_DEVICE_IPS $EXC_DEVICE_FIPS; do
             if echo $IP | grep -q '/'; then
                 iptables -t nat -D PREROUTING -p udp -s $IP -m udp --dport 53 -j DNAT --to-destination :53
