@@ -8,20 +8,17 @@
       {
         "tag": "dns-direct",
         "address": "https://dns.adguard-dns.com/dns-query",
-        "address_resolver": "dns-resolver",
-        "strategy": "ipv4_only"
+        "address_resolver": "dns-resolver"
       },
       {
         "tag": "dns-remote",
         "address": "https://dns.adguard-dns.com/dns-query",
         "address_resolver": "dns-resolver",
-        "strategy": "ipv4_only",
         "detour": "My-VLESS"
       },
       {
         "tag": "dns-resolver",
-        "address": "8.8.8.8",
-        "strategy": "ipv4_only"
+        "address": "8.8.8.8"
       }
     ],
     "rules": [
@@ -42,7 +39,8 @@
         "server": "dns-remote"
       }
     ],
-    "independent_cache": true
+    "independent_cache": true,
+    "strategy": "ipv4_only"
   },
   "inbounds": [
     {
