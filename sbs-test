@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 1.7b5
+# Version 1.7
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -49,7 +49,6 @@ create_sbs_conf() {
 # Строка EXC_DEVICE_IPS - если в строке DEVICE_IPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, трафик которых вы хотите исключить из направления через sing-box. Так же тут можно указать подсеть меньшего размера, которая входит в указанную в DEVICE_IPS, если это соответствует вашим целям.
 # Строка DEVICE_FIPS - тут между кавычками указываются IP-адреса устройств, которые вы хотите заставить работать через fakeip. В остальном аналогично строке DEVICE_IPS.
 # Строка EXC_DEVICE_FIPS - если в строке DEVICE_FIPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, которые вы хотите исключить из работы через fakeip. В остальном аналогично строке EXC_DEVICE_IPS.
-# Строка DNS_CHOICE - по умолчанию имеет значение router, т.е. sing-box использует DNS серверы, указанные в разделе 'Настройка DNS WAN' вэб-интерфейса роутера. Через меню команды 'sbs setup' значение можно изменить на sing-box и тогда будут использоваться DNS серверы и правила, прописанные в конфигурационном файле sing-box.
 # Строка ROUTE_TABLE - если указанный в ней по умолчанию номер таблицы маршрутизации 5553 уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят.
 # Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети.
 # Строки TUN_INTERFACE, LISTEN_DNS_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
@@ -58,7 +57,6 @@ DEVICE_IPS=""
 EXC_DEVICE_IPS=""
 DEVICE_FIPS=""
 EXC_DEVICE_FIPS=""
-DNS_CHOICE="router"
 ROUTE_TABLE="5553"
 WAN_PORTS=""
 TUN_INTERFACE=""
@@ -335,7 +333,7 @@ start_sing_box() {
         log_msg "TUN интерфейсы не обнаружены."
     fi
 # Добавление правил nat и обновление скрипта nat-start
-    if [ "$DNS_CHOICE" = "sing-box" ] && [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]) && [ -n "$LISTEN_DNS_PORT" ]; then
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]) && [ -n "$LISTEN_DNS_PORT" ]; then
         iptables -t nat -N SBS-TNAT
         iptables -t nat -I PREROUTING -j SBS-TNAT
         update_script "$NAT_SCRIPT" "iptables -t nat -N SBS-TNAT # sing-box-script
@@ -760,7 +758,7 @@ configure_finterface() {
             done
         else
             echo ""
-            echo "Для направления через fakeip вами указаны следующие подсети: $fcidrs"
+            echo "Для работы через fakeip вами указаны следующие подсети: $fcidrs"
             echo "Текущие IP адреса устройств из этих подсетей, исключённые из fakeip: $EXC_DEVICE_FIPS"
             while true; do
             echo ""
@@ -807,34 +805,6 @@ configure_finterface() {
     echo "Возврат в меню."
 }
 
-choose_dns() {
-    source "$SBS_CONF"
-    if [ "$DNS_CHOICE" = "router" ]; then
-        echo ""
-        echo "Сейчас используются DNS роутера."
-        echo "Изменить выбор на DNS конфигурационного файла sing-box?" 
-    elif [ "$DNS_CHOICE" = "sing-box" ]; then
-        echo ""
-        echo "Сейчас используются DNS конфигурационного файла sing-box."
-        echo "Изменить выбор на DNS роутера?"
-    fi
-    while true; do
-        read -p "0-Нет, 1-Да: " choice
-        case "$choice" in
-            0)  echo "Отказ от изменения используемых DNS."; break ;;
-            1)  if [ "$DNS_CHOICE" = "router" ]; then
-                    DNS_CHOICE="sing-box"
-                    echo "Выбраны DNS конфигурационного файла sing-box."
-                else
-                    DNS_CHOICE="router"
-                    echo "Выбраны DNS роутера."
-                fi
-                sed -i "s|DNS_CHOICE=\"[^\"]*\"|DNS_CHOICE=\"$DNS_CHOICE\"|" "$SBS_CONF"; break ;;
-            *)  echo "Некорректный ввод. Попробуйте ещё раз." ;;
-        esac
-    done
-}
-
 configure_table() {
     source "$SBS_CONF"
 
@@ -867,7 +837,6 @@ setup_sing_box() {
         echo "Ваш конфигурационный файл sing-box не содержит tun интерфейсов. Тут нечего настраивать. Выход."
         exit 0
     fi
-
     echo ""
     echo "Войти в меню настройки скрипта? Если sing-box запущен, при входе в меню он будет остановлен."
     while true; do
@@ -878,28 +847,41 @@ setup_sing_box() {
             *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
         esac
     done
-    while true; do
-        echo ""
-        echo "Меню настройки скрипта."
-        echo "При первой настройке выполнение пунктов 1 и/или 2 обязательно."
-        echo "1. Настройка IP адресов для направления их через sing-box."
-        echo "2. Настройка IP адресов для направления их через fakeip."
-        echo "3. Выбор DNS для sing-box."
-        echo "4. Изменение номера таблицы маршрутизации для sing-box."
-        echo "0. Выход из меню."
-        read -p "Введите номер пункта [0-4]: " if_choice
-        case "$if_choice" in
-            1) configure_interface; source "$SBS_CONF" ;;
-            2) configure_finterface; source "$SBS_CONF" ;;
-            3) choose_dns; source "$SBS_CONF" ;;
-            4) configure_table; source "$SBS_CONF" ;;
-            0) break ;;
-            *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
-        esac
-    done
-
-    update_sbs_interface
-    extract_listen_dns_port
+    if [ -z "$FAKEIP_SUBNET" ]; then
+        while true; do
+            echo ""
+            echo "Меню настройки скрипта."
+            echo "При первой настройке выполнение пункта 1 обязательно."
+            echo "1. Настройка IP адресов для направления их через sing-box."
+            echo "2. Изменение номера таблицы маршрутизации для sing-box."
+            echo "0. Выход из меню."
+            read -p "Введите номер пункта [0-2]: " if_choice
+            case "$if_choice" in
+                1) configure_interface; source "$SBS_CONF" ;;
+                2) configure_table; source "$SBS_CONF" ;;
+                0) break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    else
+        while true; do
+            echo ""
+            echo "Меню настройки скрипта."
+            echo "При первой настройке выполнение пунктов 1 и/или 2 обязательно."
+            echo "1. Настройка IP адресов для направления их через sing-box."
+            echo "2. Настройка IP адресов для направления их через fakeip."
+            echo "3. Изменение номера таблицы маршрутизации для sing-box."
+            echo "0. Выход из меню."
+            read -p "Введите номер пункта [0-3]: " if_choice
+            case "$if_choice" in
+                1) configure_interface; source "$SBS_CONF" ;;
+                2) configure_finterface; source "$SBS_CONF" ;;
+                3) configure_table; source "$SBS_CONF" ;;
+                0) break ;;
+                *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
+            esac
+        done
+    fi
     sing_box_start
 }
 
@@ -987,7 +969,7 @@ check_sing_box() {
                 read -p "0-Нет, 1-Да: " choice
                 case "$choice" in
                     0) echo "Завершаем проверку, не исправив ошибки. Возврат в меню."; break 2 ;;
-                    1)  echo ""; is_running && stop_sing_box; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; echo "Редактирование завершено."; break ;;
+                    1) echo ""; is_running && stop_sing_box; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; echo "Редактирование завершено."; break ;;
                     *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
                 esac
             done
@@ -1029,8 +1011,8 @@ config_sing_box() {
         echo "0-Выйти из меню."
         read -p "Введите номер пункта [0-3]: " choice
         case "$choice" in
-            1) echo ""; is_running && stop_sing_box; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; source "$SBS_CONF"; update_sbs_interface; echo "Редактирование завершено. Возврат в меню." ;;
-            2) check_sing_box; source "$SBS_CONF"; update_sbs_interface ;;
+            1) echo ""; is_running && stop_sing_box; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; update_sbs_interface; extract_listen_dns_port; fakeip_check; echo "Редактирование завершено. Возврат в меню." ;;
+            2) check_sing_box ;;
             3) format_sing_box ;;
             0) break ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
@@ -1038,6 +1020,7 @@ config_sing_box() {
     done
     update_sbs_interface
     extract_listen_dns_port
+    fakeip_check
     is_running || sing_box_start
 }
 
@@ -1063,6 +1046,7 @@ status_sing_box() {
     fi
 
     echo "Архитектура CPU роутера: $(uname -m)"
+    echo "Версия ядра системы: $(uname -r)"
 }
 
 check_ports() {
