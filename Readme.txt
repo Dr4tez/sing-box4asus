@@ -48,7 +48,7 @@ The script has the ability to route device IP addresses via regular routing (usi
  For this option, the sing-box configuration file template is called config-3.json. If you want to use it, just copy its contents into the config.json file downloaded during script installation, replacing its contents. Instead of IP addresses 192.168.50.14 and 192.168.50.15 in this configuration file, you can insert your IP addresses of the devices that you want to configure to work via fakeip.
 
  4. If you want to configure the entire subnet via fakeip by specifying it in the second point of the 'sbs setup' menu, and send some IP addresses from it via regular routing, then it is enough to specify these IP addresses only in the first point.
- For this option, the sing-box configuration file template is called config-4.json. If you want to use it, just copy its contents into the config.json file downloaded during script installation, replacing its contents.
+ For this option, the sing-box configuration file template is called config-4.json. If you want to use it, just copy its contents into the config.json file downloaded during script installation, replacing its contents. Instead of IP addresses 192.168.50.14 and 192.168.50.15 in this configuration file, you can insert your IP addresses of devices that you want to route via the sing-box using regular routing.
 
 V. Features of configuring sing-box on a router.
 Here are listed the conditions that must be observed when creating sing-box configuration files for the router, as well as the necessary settings in the router web interface.
