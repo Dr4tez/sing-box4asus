@@ -1228,7 +1228,6 @@ server_sing_box() {
     echo "Do not open ports from WAN to your router without a conscious need, this will risk the security of your home network."
     echo "Valid inbound proxy types are: vless, vmess, shadowsocks, trojan, naive, hysteria, hysteria2, shadowtls and tuic."
     echo ""
-    source "$SBS_CONF"
     check_ports
     source "$SBS_CONF"
     if [ -z "$WAN_PORTS" ]; then
