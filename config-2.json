@@ -1,0 +1,139 @@
+{
+  "log": {
+    "level": "error",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "dns-direct",
+        "address": "https://dns.adguard-dns.com/dns-query",
+        "address_resolver": "dns-resolver"
+      },
+      {
+        "tag": "fakeip-dns",
+        "address": "fakeip"
+      },
+      {
+        "tag": "dns-resolver",
+        "address": "8.8.8.8"
+      }
+    ],
+    "rules": [
+      {
+        "outbound": "any",
+        "server": "dns-direct"
+      },
+      {
+        "query_type": "A",
+        "clash_mode": "Global",
+        "server": "fakeip-dns"
+      },
+      {
+        "clash_mode": "Direct",
+        "server": "dns-direct"
+      },
+      {
+        "query_type": "A",
+        "rule_set": "my_domains",
+        "server": "fakeip-dns"
+      }
+    ],
+    "fakeip": {
+      "enabled": true,
+      "inet4_range": "198.18.0.0/15"
+    },
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tunin",
+      "interface_name": "sbtun",
+      "mtu": 1500,
+      "address": "172.19.0.1/28",
+      "sniff": true
+    },
+    {
+      "type": "direct",
+      "tag": "dns4tunin",
+      "listen": "0.0.0.0",
+      "listen_port": 55553,
+      "override_port": 53
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "vless",
+      "tag": "My-VLESS",
+      "server": "XX.XX.XX.XX",
+      "server_port": 443,
+      "uuid": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "flow": "xtls-rprx-vision",
+      "tls": {
+        "enabled": true,
+        "server_name": "google.com",
+        "utls": {
+          "enabled": true,
+          "fingerprint": "chrome"
+        },
+        "reality": {
+          "enabled": true,
+          "public_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+          "short_id": "XXXXXXXXX"
+        }
+      }
+    },
+    {
+      "type": "dns",
+      "tag": "dns-out"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "protocol": "dns",
+        "outbound": "dns-out"
+      },
+      {
+        "inbound": "dns4tunin",
+        "outbound": "dns-out"
+      },
+      {
+        "clash_mode": "Global",
+        "outbound": "My-VLESS"
+      },
+      {
+        "clash_mode": "Direct",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": "my_domains",
+        "outbound": "My-VLESS"
+      }
+    ],
+    "rule_set": [
+      {
+        "type": "remote",
+        "tag": "my_domains",
+        "format": "binary",
+        "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs"
+      }
+    ]
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "/opt/root/sing-box/cache.db"
+    },
+    "clash_api": {
+      "external_controller": "0.0.0.0:9090",
+      "external_ui": "/opt/root/sing-box/ui",
+      "secret": "1809"
+    }
+  }
+}
