@@ -829,6 +829,7 @@ setup_sing_box() {
     source "$SBS_CONF"
     update_sbs_interface
     extract_listen_dns_port
+    check_ports
     fakeip_check
     source "$SBS_CONF"
 
@@ -1011,7 +1012,7 @@ config_sing_box() {
         echo "0-Выйти из меню."
         read -p "Введите номер пункта [0-3]: " choice
         case "$choice" in
-            1) echo ""; is_running && stop_sing_box; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; update_sbs_interface; extract_listen_dns_port; fakeip_check; echo "Редактирование завершено. Возврат в меню." ;;
+            1) echo ""; is_running && stop_sing_box; echo "Открываем конфигурационный файл в редакторе nano..."; nano $SB_CONFIG; update_sbs_interface; extract_listen_dns_port; check_ports; fakeip_check; echo "Редактирование завершено. Возврат в меню." ;;
             2) check_sing_box ;;
             3) format_sing_box ;;
             0) break ;;
@@ -1020,6 +1021,7 @@ config_sing_box() {
     done
     update_sbs_interface
     extract_listen_dns_port
+    check_ports
     fakeip_check
     is_running || sing_box_start
 }
@@ -1230,6 +1232,8 @@ server_sing_box() {
     echo "Не открывайте порты из WAN в свой роутер без осознанной необходимости, этим вы рискуете безопасностью своей домашней сети."
     echo "Допустимые типы inbound прокси-серверов: vless, vmess, shadowsocks, trojan, naive, hysteria, hysteria2, shadowtls и tuic."
     echo ""
+    check_ports
+    source "$SBS_CONF"
     if [ -z "$WAN_PORTS" ]; then
         echo "Список входящих портов для inbound прокси-серверов пуст."
     else
