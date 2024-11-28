@@ -1412,4 +1412,5 @@ case "$1" in
         esac
     done ;;
 esac
-# The developer is Dr4tez dr4tez@gmail.com
+# The developer is Dr4tez dr4tez@gmail.com https://github.com/Dr4tez/sing-box4asus
+# The sing-box core is used for work https://github.com/SagerNet/sing-box
