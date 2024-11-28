@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 1.7
+# Version 1.7.1
 # Script for running Sing-Box on Asus routers with Merlin firmware and Entware installed on a USB drive.
 
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
@@ -67,7 +67,7 @@ EOF
 create_sbs_monitor() {
     cat << EOF > "$1"
 #!/bin/sh
-# SBS version 1.7
+# Since SBS version 1.7
 
 source "$SBS_CONF"
 sorted_all=\$(echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\$'; echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n -r)
@@ -332,7 +332,9 @@ start_sing_box() {
 
     if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]) && [ -n "$LISTEN_DNS_PORT" ]; then
         iptables -t nat -N SBS-TNAT
-        iptables -t nat -I PREROUTING -j SBS-TNAT
+        if ! iptables -t nat -C PREROUTING -j SBS-TNAT 2>/dev/null; then
+            iptables -t nat -I PREROUTING -j SBS-TNAT
+        fi
         update_script "$NAT_SCRIPT" "iptables -t nat -N SBS-TNAT # sing-box-script
 iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script"
         has_no_slash=0
