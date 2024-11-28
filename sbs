@@ -1392,21 +1392,22 @@ case "$1" in
     remove) remove_sing_box ;;
     updmonandcore) updmonandcore_sing_box ;;
     *)
-        while true; do
-            show_menu
-            read -p "Enter your choice [0-8 or 10]: " choice
-            case $choice in
-                1) start_sing_box; break ;;
-                2) stop_sing_box; break ;;
-                3) stop_sing_box; sleep 3; start_sing_box; break ;;
-                4) config_sing_box; break ;;
-                5) setup_sing_box; break ;;
-                6) update_sing_box; break ;;
-                7) status_sing_box; break ;;
-                8) server_sing_box; break ;;
-                10) remove_sing_box; break ;;
-                0) exit 0 ;;
-                *) echo "Incorrect input. Please try again." ;;
-            esac
-        done ;;
+    while true; do
+        show_menu
+        read -p "Enter your choice [0-8 or 10]: " choice
+        case $choice in
+            1) start_sing_box; break ;;
+            2) stop_sing_box; break ;;
+            3) stop_sing_box; sleep 3; start_sing_box; break ;;
+            4) config_sing_box; break ;;
+            5) setup_sing_box; break ;;
+            6) update_sing_box; break ;;
+            7) status_sing_box; break ;;
+            8) server_sing_box; break ;;
+            10) remove_sing_box; break ;;
+            0) exit 0 ;;
+            *) echo "Incorrect input. Please try again." ;;
+        esac
+    done ;;
 esac
+# The developer is Dr4tez dr4tez@gmail.ciom
