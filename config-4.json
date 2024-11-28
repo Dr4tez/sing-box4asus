@@ -12,7 +12,7 @@
       },
       {
         "tag": "dns-remote",
-        "address": "https://aeza-fn.kyjiep.com:4443/dns-query",
+        "address": "https://dns.adguard-dns.com/dns-query",
         "address_resolver": "dns-direct",
         "detour": "My-VLESS"
       },
