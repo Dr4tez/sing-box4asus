@@ -58,7 +58,7 @@
       {
         "query_type": "A",
         "rule_set": "my_domains",
-        "server": "dns-remote"
+        "server": "fakeip-dns"
       }
     ],
     "fakeip": {
