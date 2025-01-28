@@ -19,8 +19,8 @@ SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
 SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
 SB_ARCHIVE64_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
 SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
-SB_DOWNLOAD64_URL=$(curl -s -H "Accept: application/vnd.github.v3+json" "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
-SB_DOWNLOAD_URL=$(curl -s -H "Accept: application/vnd.github.v3+json" "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
+SB_DOWNLOAD64_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
+SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
 FW_SCRIPT="/jffs/scripts/firewall-start"
 NAT_SCRIPT="/jffs/scripts/nat-start"
 SS_SCRIPT="/jffs/scripts/services-start"
@@ -1361,12 +1361,20 @@ install_sing_box() {
             read -p "0-Оставить существующий файл, 1-Заменить файл: " choice
             case $choice in
                 0) echo "Оставляем существующий файл."; break ;;
-                1) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "Файл $SB_PATH заменён."; break ;;
+                1) if [ -f "$sing_box_file" ]; then
+                    cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "Файл $SB_PATH заменён."; break ;;
+                else
+                    echo "Ошибка. Новый файл ядра sing-box отсутствует, оставляем существующий файл."; break ;;
+                fi
                 *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
             esac
         done
     else
-        cp "$sing_box_file" "$SB_DIR"; echo "Файл ядра sing-box перемещён в директорию $SB_DIR"
+        if [ -f "$sing_box_file" ]; then
+            cp "$sing_box_file" "$SB_DIR"; echo "Файл ядра sing-box перемещён в директорию $SB_DIR"
+        else
+            echo "Ошибка. Файл ядра sing-box отсутствует."
+        fi
     fi
 
     local current_dir=$(dirname "$(readlink -f "$0")")
