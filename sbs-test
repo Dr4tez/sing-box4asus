@@ -142,13 +142,13 @@ check_file_existence_and_download() {
             read -p "0-Пропустить скачивание, 1-Скачать и заменить файл: " choice
             case $choice in
                 0) echo "Cкачивание $file_name пропущено."; return 0 ;;
-                1) echo "Скачиваем и заменяем файл $file_name"; curl -s -L -o "$file_path" "$file_url"; return 0 ;;
+                1) echo "Скачиваем и заменяем файл $file_name"; wget -O "$file_path" "$file_url"; return 0 ;;
                 *) echo "Некорректный ввод. Попробуйте еще раз." ;;
             esac
         done
     else
         echo "Скачиваем $file_name..."
-        curl -s -L -o "$file_path" "$file_url"
+        wget -O "$file_path" "$file_url"
     fi
 }
 
@@ -919,7 +919,7 @@ setup_sing_box() {
 update_sing_box() {
     echo ""
     echo "Проверка версий скрипта и ядра sing-box..."
-    curl -s -L -o "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
+    wget -O "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
     silent_create_dir "$SB_DOWNLOAD_DIR"
     if [ "$(uname -m)" = "aarch64" ]; then
         DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
@@ -928,7 +928,7 @@ update_sing_box() {
         DOWNLOAD_URL="$SB_DOWNLOAD_URL"
         ARCHIVE_PATH="$SB_ARCHIVE_PATH"
     fi
-    curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    wget -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
     tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
     echo "Проверка успешно выполнена."
     update_sing_box_menu
@@ -1350,7 +1350,7 @@ install_sing_box() {
         ARCHIVE_PATH="$SB_ARCHIVE_PATH"
     fi
     echo "Скачиваем архив с ядром sing-box..."
-    curl -s -L -o "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    wget -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
     echo "Распаковываем архив..."
     tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
     sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
