@@ -113,6 +113,10 @@
     {
       "type": "dns",
       "tag": "dns-out"
+    },
+    {
+      "type": "block",
+      "tag": "block"
     }
   ],
   "route": {
@@ -124,6 +128,10 @@
       {
         "inbound": "dns4tunin",
         "outbound": "dns-out"
+      },
+      {
+        "ip_cidr": "198.18.0.0/15",
+        "outbound": "block"
       },
       {
         "clash_mode": "Global",
