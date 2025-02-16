@@ -127,7 +127,8 @@
         "type": "remote",
         "tag": "my_domains",
         "format": "binary",
-        "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs"
+        "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs",
+        "download_detour": "My-VLESS"
       }
     ]
   },
