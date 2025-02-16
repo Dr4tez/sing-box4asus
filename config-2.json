@@ -43,7 +43,7 @@
           },
           {
             "query_type": "A",
-            "rule_set": "my_domains"
+            "rule_set": "my-ruleset"
           }
         ],
         "server": "fakeip-dns"
@@ -119,7 +119,7 @@
             "clash_mode": "Global"
           },
           {
-            "rule_set": "my_domains"
+            "rule_set": "my-ruleset"
           }
         ],
         "outbound": "My-VLESS"
@@ -128,7 +128,7 @@
     "rule_set": [
       {
         "type": "remote",
-        "tag": "my_domains",
+        "tag": "my-ruleset",
         "format": "binary",
         "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs",
         "download_detour": "My-VLESS"
