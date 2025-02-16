@@ -23,19 +23,29 @@
     ],
     "rules": [
       {
-        "outbound": "any",
+        "type": "logical",
+        "mode": "or",
+        "rules": [
+          {
+            "clash_mode": "Direct"
+          },
+          {
+            "outbound": "any"
+          }
+        ],
         "server": "dns-direct"
       },
       {
-        "clash_mode": "Global",
-        "server": "dns-remote"
-      },
-      {
-        "clash_mode": "Direct",
-        "server": "dns-direct"
-      },
-      {
-        "rule_set": "my_domains",
+        "type": "logical",
+        "mode": "or",
+        "rules": [
+          {
+            "clash_mode": "Global"
+          },
+          {
+            "rule_set": "my_domains"
+          }
+        ],
         "server": "dns-remote"
       }
     ],
@@ -48,8 +58,7 @@
       "tag": "tunin",
       "interface_name": "sbtun",
       "mtu": 1500,
-      "address": "172.19.0.1/28",
-      "sniff": true
+      "address": "172.19.0.1/28"
     },
     {
       "type": "direct",
@@ -67,16 +76,16 @@
     {
       "type": "vless",
       "tag": "My-VLESS",
-      "server": "XX.XX.XX.XX",
+      "server": "XXXXXXXXXXX",
       "server_port": 443,
       "uuid": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
       "flow": "xtls-rprx-vision",
       "tls": {
         "enabled": true,
-        "server_name": "google.com",
+        "server_name": "XXXXXXXXXX",
         "utls": {
           "enabled": true,
-          "fingerprint": "chrome"
+          "fingerprint": "XXXXXX"
         },
         "reality": {
           "enabled": true,
@@ -84,32 +93,32 @@
           "short_id": "XXXXXXXXX"
         }
       }
-    },
-    {
-      "type": "dns",
-      "tag": "dns-out"
     }
   ],
   "route": {
     "rules": [
       {
+        "action": "sniff"
+      },
+      {
         "protocol": "dns",
-        "outbound": "dns-out"
-      },
-      {
-        "inbound": "dns4tunin",
-        "outbound": "dns-out"
-      },
-      {
-        "clash_mode": "Global",
-        "outbound": "My-VLESS"
+        "action": "hijack-dns"
       },
       {
         "clash_mode": "Direct",
         "outbound": "direct"
       },
       {
-        "rule_set": "my_domains",
+        "type": "logical",
+        "mode": "or",
+        "rules": [
+          {
+            "clash_mode": "Global"
+          },
+          {
+            "rule_set": "my_domains"
+          }
+        ],
         "outbound": "My-VLESS"
       }
     ],
