@@ -34,7 +34,7 @@ After installing the script, before the first start of sing-box, be sure to conf
   2.4 When you select option 0 to exit the script setup menu, you will be prompted to run sing-box. If you are ready, agree.
 
 IV. About configuring device IP addresses to route them via regular routing or fakeip.
-The script has the ability to route device IP addresses via regular routing (using the first point of menu 'sbs setup'), and/or specify them for using fakeip (using the second point of menu 'sbs setup', if the config.json file contains fakeip settings). Different options require different, appropriately composed sing-box configuration files, which requires advanced skills in compiling them. You can find templates for all the options listed below on the page of this project https://github.com/Dr4tez/sing-box4asus.
+The script has the ability to route device IP addresses via regular routing (using the first point of menu 'sbs setup'), and/or specify them for using fakeip (using the second point of menu 'sbs setup', if the config.json file contains fakeip settings). Different options require different, appropriately composed sing-box configuration files, which requires advanced skills in compiling them.  Configuration file templates for sing-box 1.11.* for all the variants listed below can be found on the project page https://github.com/Dr4tez/sing-box4asus. If you want to use one of them with other versions of sing-box, do not forget to change the config according to the Migration section (https://sing-box.sagernet.org/migration/) in the sing-box documentation, if necessary.
 
  1. If you want to route device IP addresses only via regular routing, then specify them only in the first point of the 'sbs setup' menu. If you specify a subnet in CIDR format here, for example 192.168.50.0/24, then after entering it, a prompt will appear to enter exception IP addresses that should not be routed via sing-box.
  Write IP addresses in one line, separating them only with spaces. This also applies to subsequent variants.
@@ -65,8 +65,7 @@ Here are listed the conditions that must be observed when creating sing-box conf
    2) The "Advertise router's IP in addition to user-specified DNS" option must be set to "Yes",
    3) In the "DNS Server (Optional)" fields for the devices whose traffic is routed through sing-box, "Default" should be specified;
   2.2 In the "LAN - DNS Director" section of the router's web interface, there should be no settings for the devices whose traffic is routed through sing-box.
-  2.3 The following blocks must be present in config.json:
-   1) In the inbounds section:
+  2.3 The following block should be present in the inbounds section of config.json:
     {
       "type": "direct",
       "tag": "dns4tunin",
@@ -74,15 +73,8 @@ Here are listed the conditions that must be observed when creating sing-box conf
       "listen_port": 55553,
       "override_port": 53
     }
-   This block is an inbound direct interface named dns4tunin. It accepts DNS requests on port 55553 from devices whose traffic is routed through the sing-box, and redirects them to port 53.
-   2) In the route rules section:
-    {
-      "inbound": "dns4tunin",
-      "outbound": "dns-out"
-    }
-   This block sends dns requests received by the inbound direct interface dns4tunin for processing by DNS rules.
-  The listen_port value does not necessarily have to be 55553, if this port is already occupied by your router for other purposes, you can enter any free 4- or 5-digit port instead.
-  These blocks are present in my config.json template, which is downloaded when installing the script.
+  This block is an inbound direct interface called dns4tunin. It accepts DNS requests on port 55553 from devices whose traffic is routed through the sing-box and redefines them to port 53. The listen_port value does not necessarily have to be 55553, if this port is already occupied by your router for other purposes, you can enter any free 4- or 5-digit port instead.
+  This block is present in the template of my config.json, downloaded during the installation of the script.
 
  3. The instructions for setting up the 3x-ui panel that I came across on the Internet do not mention one important nuance- if you want your DNS requests to be processed by DNS servers specified in the sing-box configuration file, then in the 3x-ui panel, in the connection settings, turn off Sniffing, otherwise DNS requests sent to the proxy tunnel will be processed by DNS servers configured on the server or in the 3x-ui panel itself.
 
