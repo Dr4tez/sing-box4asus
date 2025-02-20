@@ -165,7 +165,8 @@
   "experimental": {
     "cache_file": {
       "enabled": true,
-      "path": "/opt/root/sing-box/cache.db"
+      "path": "/opt/root/sing-box/cache.db",
+      "store_fakeip": true
     },
     "clash_api": {
       "external_controller": "0.0.0.0:9090",
