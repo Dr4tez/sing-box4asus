@@ -1362,10 +1362,10 @@ install_sing_box() {
             case $choice in
                 0) echo "Оставляем существующий файл."; break ;;
                 1) if [ -f "$sing_box_file" ]; then
-                    cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "Файл $SB_PATH заменён."; break ;;
+                    cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "Файл $SB_PATH заменён."; break
                 else
-                    echo "Ошибка. Новый файл ядра sing-box отсутствует, оставляем существующий файл."; break ;;
-                fi
+                    echo "Ошибка. Новый файл ядра sing-box отсутствует, оставляем существующий файл."; break
+                fi ;;
                 *) echo "Некорректный ввод. Попробуйте ещё раз." ;;
             esac
         done
