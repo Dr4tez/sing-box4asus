@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 1.7.4
+# Version 1.7.5
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -326,9 +326,9 @@ start_sing_box() {
         OUTPUT -o $TUN_INTERFACE -j ACCEPT"
     fi
 
-    lsmod | grep -q "^tun " || { log_msg "Загрузка модуля TUN."; modprobe tun; }
+    lsmod | grep -q "^tun " || { log_msg "Загрузка модуля TUN."; modprobe tun; sleep 3; }
     $SB_PATH run -c $SB_CONFIG &
-    sleep 3
+    sleep 5
 
 # Проверка наличия tun интерфейса
     if ip link show "$TUN_INTERFACE" >/dev/null 2>&1; then
