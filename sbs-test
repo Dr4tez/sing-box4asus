@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 1.7.5
+# Version 1.7.6
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -378,49 +378,49 @@ iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script"
         if [ -n "$sorted_subnets" ]; then
             echo "$sorted_subnets" | while read -r subnet; do
                 if echo "$DEVICE_IPS $DEVICE_FIPS" | grep -qw "$subnet"; then
-                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p tcp -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT"; then
-                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p tcp -m tcp --dport 53 -j REDIRECT --to-ports $LISTEN_DNS_PORT"; then
+                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
                     else
-                        iptables -t nat -D SBS-TNAT -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
-                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                        iptables -t nat -D SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
                     fi
-                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p udp -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT"; then
-                        iptables -t nat -I SBS-TNAT -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p udp -m udp --dport 53 -j REDIRECT --to-ports $LISTEN_DNS_PORT"; then
+                        iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
                     else
-                        iptables -t nat -D SBS-TNAT -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
-                        iptables -t nat -I SBS-TNAT -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
+                        iptables -t nat -D SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+                        iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
                     fi
-                    update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script
-iptables -t nat -I SBS-TNAT -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script"
+                    update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script
+iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script"
                 else
-                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p tcp -m tcp --dport 53 -j DNAT --to-destination :53"; then
-                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :53
+                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p tcp -m tcp --dport 53 -j REDIRECT"; then
+                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT
                     else
-                        iptables -t nat -D SBS-TNAT -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :53
-                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet -m tcp --dport 53 -j DNAT --to-destination :53
+                        iptables -t nat -D SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT
+                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT
                     fi
-                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p udp -m udp --dport 53 -j DNAT --to-destination :53"; then
-                        iptables -t nat -I SBS-TNAT -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :53
+                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p udp -m udp --dport 53 -j REDIRECT"; then
+                        iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT
                     else
-                        iptables -t nat -D SBS-TNAT -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :53
-                        iptables -t nat -I SBS-TNAT -p udp -s $subnet -m udp --dport 53 -j DNAT --to-destination :53
+                        iptables -t nat -D SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT
+                        iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT
                     fi
-                    update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -s "$subnet" -m tcp --dport 53 -j DNAT --to-destination :53 # sing-box-script
-iptables -t nat -I SBS-TNAT -p udp -s "$subnet" -m udp --dport 53 -j DNAT --to-destination :53 # sing-box-script"
+                    update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT # sing-box-script
+iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT # sing-box-script"
                 fi
             done
         fi
         if ipset list sbsexc-ipset >/dev/null 2>&1; then
-            iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsexc-ipset src -m tcp --dport 53 -j DNAT --to-destination :53
-            iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsexc-ipset src -m udp --dport 53 -j DNAT --to-destination :53
-            update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsexc-ipset src -m tcp --dport 53 -j DNAT --to-destination :53 # sing-box-script
-iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsexc-ipset src -m udp --dport 53 -j DNAT --to-destination :53 # sing-box-script"
+            iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsexc-ipset src --dport 53 -j REDIRECT
+            iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsexc-ipset src --dport 53 -j REDIRECT
+            update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsexc-ipset src --dport 53 -j REDIRECT # sing-box-script
+iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsexc-ipset src --dport 53 -j REDIRECT # sing-box-script"
         fi
         if ipset list sbsinc-ipset >/dev/null 2>&1; then
-            iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsinc-ipset src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
-            iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsinc-ipset src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT
-            update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsinc-ipset src -m tcp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script
-iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsinc-ipset src -m udp --dport 53 -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script"
+            iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+            iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsinc-ipset src --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+            update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script
+iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsinc-ipset src --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script"
         fi
     fi
 # Добавление правил файрвола, маршрутов и правил маршрутизации и обновление скрипта firewall-start
