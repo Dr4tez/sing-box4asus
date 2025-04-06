@@ -1,0 +1,59 @@
+#!/bin/sh
+# Для SBS 1.8
+
+source "/jffs/addons/sing-box-script/sbs-conf"
+if [ -n "$DEVICE_IPS" ]; then
+    sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n -r)
+fi
+route_in_process=0
+
+sbs_monitor_rr() {
+  { ip monitor route | while read _; do
+        if [ "$route_in_process" -eq 0 ]; then
+            route_in_process=1
+            if ! pidof "/opt/root/sing-box/sing-box" >/dev/null 2>&1; then
+                "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
+            fi
+            ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE 2>/dev/null
+            if [ -n "$DEVICE_IPS" ]; then
+                ip route show table main | grep -v '^default' | while read ROUTE; do
+                    ip route add $ROUTE table $ROUTE_TABLE 2>/dev/null
+                done
+                ip route show table $ROUTE_TABLE | grep -v '^default' | while read ROUTE; do
+                    if ! ip route show table main | grep -q "^$ROUTE"; then
+                        ip route del $ROUTE table $ROUTE_TABLE 2>/dev/null
+                    fi
+                done
+            fi; route_in_process=0
+        fi
+    done } &
+
+    while true; do
+        ip monitor rule | while read line; do
+            if [ -n "$FAKEIP_SUBNET" ]; then
+                if ! ip rule show | grep -q "to $FAKEIP_SUBNET lookup $ROUTE_TABLE"; then
+                    ip rule add to $FAKEIP_SUBNET lookup $ROUTE_TABLE priority 553
+                fi
+            fi
+            if [ -n "$DEVICE_IPS" ]; then
+                echo "$sorted_all" | while read -r IP; do
+                    if echo "$DEVICE_IPS" | grep -qw "$IP"; then
+                        ip rule del from "$IP" lookup "$ROUTE_TABLE" 2>/dev/null
+                    else
+                        ip rule del from "$IP" lookup main 2>/dev/null
+                    fi
+                done
+                echo "$sorted_all" | while read -r IP; do
+                    if echo "$DEVICE_IPS" | grep -qw "$IP"; then
+                        ip rule add from "$IP" lookup "$ROUTE_TABLE" priority 553
+                    else
+                        ip rule add from "$IP" lookup main priority 553
+                    fi
+                done
+            fi; break
+        done
+    done
+}
+
+trap '' SIGHUP
+sbs_monitor_rr 2>/dev/null
