@@ -1,0 +1,20 @@
+#!/bin/sh
+# Для SBS 1.8
+
+wget -O /opt/root/lang-ru https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/lang-ru && chmod 664 /opt/root/lang-ru
+wget -O /opt/root/lang-en https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/lang-en && chmod 664 /opt/root/lang-en
+wget -O /opt/root/sbs-conf https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-conf && chmod 664 /opt/root/sbs-conf
+source "/opt/root/sbs-conf"
+
+# Выбор языка
+while true; do
+    read -p "1 - Русский, 2 - English: " language_choice
+    case "$language_choice" in
+        1) source "/opt/root/lang-ru"; sed -i 's/^LANG=".*"/LANG="RU"/' /opt/root/sbs-conf; break ;;
+        2) source "/opt/root/lang-en"; sed -i 's/^LANG=".*"/LANG="RU"/' /opt/root/sbs-conf; break ;;
+        0) exit 0 ;;
+        *) ;;
+    esac
+done
+
+source "/opt/root/sbs-conf"
