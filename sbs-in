@@ -10,8 +10,8 @@ source "/opt/root/sbs-conf"
 while true; do
     read -p "1 - Русский, 2 - English: " language_choice
     case "$language_choice" in
-        1) source "/opt/root/lang-ru"; sed -i 's/^LANG=".*"/LANG="RU"/' /opt/root/sbs-conf; break ;;
-        2) source "/opt/root/lang-en"; sed -i 's/^LANG=".*"/LANG="RU"/' /opt/root/sbs-conf; break ;;
+        1) source "/opt/root/lang-ru"; sed -i 's/^LANG=".*"/LANG="ru"/' /opt/root/sbs-conf; break ;;
+        2) source "/opt/root/lang-en"; sed -i 's/^LANG=".*"/LANG="en"/' /opt/root/sbs-conf; break ;;
         0) exit 0 ;;
         *) ;;
     esac
