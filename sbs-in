@@ -19,9 +19,9 @@ wget -P $TEMP_SBS_DIR https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev
 echo "Выбор языка / Select language:"
 echo ""
 while true; do
-    read -p "1 - Русский / Russian
-2 - Aнглийский / English
-0 - Выход / Exit
+    read -p " 1 - Русский / Russian
+ 2 - Aнглийский / English
+ 0 - Выход / Exit
 Введите номер пункта / Enter item number: " language_choice
     case "$language_choice" in
         1) source "$TEMP_LANG_RU"; sed -i 's/^LANG=".*"/LANG="ru"/' "$TEMP_SBS_CONF"; break ;;
