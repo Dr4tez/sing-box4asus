@@ -16,8 +16,6 @@ wget -P $TEMP_SBS_DIR https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev
 wget -P $TEMP_SBS_DIR https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs-conf && chmod 664 $TEMP_SBS_CONF
 wget -P $TEMP_SBS_DIR https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs && chmod 775 $TEMP_SBS
 
-source "$TEMP_SBS"
-
 while true; do
     read -p "1 - Русский
 2 - English
