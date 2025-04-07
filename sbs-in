@@ -16,9 +16,10 @@ wget -P $TEMP_SBS_DIR https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev
 wget -P $TEMP_SBS_DIR https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs-conf && chmod 664 $TEMP_SBS_CONF
 wget -P $TEMP_SBS_DIR https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs && chmod 775 $TEMP_SBS
 
+echo "Выбор языка / Select language:"
+echo ""
 while true; do
-    read -p "Выберите язык / Select language
-1 - Русский / Russian
+    read -p "1 - Русский / Russian
 2 - Aнглийский / English
 0 - Выход / Exit
 Введите номер пункта / Enter item number: " language_choice
