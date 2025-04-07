@@ -17,14 +17,16 @@ wget -P $TEMP_SBS_DIR https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev
 wget -P $TEMP_SBS_DIR https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs && chmod 775 $TEMP_SBS
 
 while true; do
-    read -p "1 - Русский
-2 - English
-0 - Выход: " language_choice
+    read -p "Выберите язык / Select language
+1 - Русский / Russian
+2 - Aнглийский / English
+0 - Выход / Exit
+: " language_choice
     case "$language_choice" in
         1) source "$TEMP_LANG_RU"; sed -i 's/^LANG=".*"/LANG="ru"/' "$TEMP_SBS_CONF"; break ;;
         2) source "$TEMP_LANG_EN"; sed -i 's/^LANG=".*"/LANG="en"/' "$TEMP_SBS_CONF"; break ;;
         0) exit 0 ;;
-        *) ;;
+        *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
     esac
 done
 
