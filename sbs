@@ -622,7 +622,7 @@ configure_interface() {
         done
     else
         echo ""
-        printf "$MESSAGE43\n" "$DEVICE_IPS")"
+        printf "$MESSAGE43\n" "$DEVICE_IPS"
         while true; do
             echo ""
             echo "$MESSAGE44"
