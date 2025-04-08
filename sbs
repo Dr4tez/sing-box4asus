@@ -369,7 +369,7 @@ start_sing_box() {
     fakeip_check
     source "$SBS_CONF"
 
-    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]); then
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
         sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n)
         sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n -r)
     fi
@@ -392,7 +392,7 @@ start_sing_box() {
         log_msg "$MESSAGE24"
     fi
 # Добавление правил nat и обновление скрипта nat-start
-    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]) && [ -n "$LISTEN_DNS_PORT" ]; then
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; } && [ -n "$LISTEN_DNS_PORT" ]; then
         iptables -t nat -N SBS-TNAT
         if ! iptables -t nat -C PREROUTING -j SBS-TNAT 2>/dev/null; then
             iptables -t nat -I PREROUTING -j SBS-TNAT
@@ -479,7 +479,7 @@ iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsinc-ipset src --dport 5
         fi
     fi
 # Добавление правил файрвола, маршрутов и правил маршрутизации и обновление скрипта firewall-start
-    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]); then
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
         log_msg "$MESSAGE26"
         echo "$FW_RULES" | while read -r rule; do
             manage_iptables "add" "$rule"
@@ -565,7 +565,7 @@ stop_sing_box() {
         done
     fi
 
-    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]); then
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
         pids=$(pidof "sbs-monitor")
         for pid in $pids; do
             kill "$pid" >/dev/null 2>&1
