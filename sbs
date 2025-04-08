@@ -216,12 +216,12 @@ check_copy_file() {
             read -p "$MESSAGE12" choice
             case $choice in
                 0) echo "$MESSAGE13"; break ;;
-                1) printf "$MESSAGE14\n" "$dst_file"; cp "$src_file" "$dst_file"; break ;;
+                1) [ -f "$src_file" ] && printf "$MESSAGE14\n" "$dst_file" && cp "$src_file" "$dst_file"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
         done
     else
-        cp "$src_file" "$dst_file"
+        [ -f "$src_file" ] && cp "$src_file" "$dst_file"
     fi
 }
 
