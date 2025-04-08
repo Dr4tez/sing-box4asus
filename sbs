@@ -1103,7 +1103,7 @@ config_sing_box() {
         echo "$MESSAGE126"
         echo "$MESSAGE127"
         echo "$MESSAGE128"
-        echo "$MESSAGE95"
+        echo "$MESSAGE189"
         read -p "$MESSAGE99" choice
         case "$choice" in
             1) echo ""; is_running && stop_sing_box; echo "$MESSAGE116"; nano $SB_CONFIG; update_sbs_interface; extract_listen_dns_port; check_ports; fakeip_check; echo "$MESSAGE129" ;;
