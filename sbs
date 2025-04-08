@@ -1242,7 +1242,7 @@ add_del_ports() {
     if [ -z "$WAN_PORTS" ]; then
         echo "$MESSAGE142"
     else
-        echo "$MESSAGE143"
+        printf "$MESSAGE143\n" "$WAN_PORTS"
     fi
     serv_sing_box
 }
@@ -1305,11 +1305,11 @@ exch_ports() {
         sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$new_ports\"|" "$SBS_CONF"
         source "$SBS_CONF"
         echo ""
-        echo "$MESSAGE145"
+        printf "$MESSAGE145\n" "$WAN_PORTS"
     else
         echo "$MESSAGE146"
         echo ""
-        echo "$MESSAGE143"
+        printf "$MESSAGE143\n" "$WAN_PORTS"
     fi
     serv_sing_box
 }
@@ -1344,7 +1344,7 @@ server_sing_box() {
     if [ -z "$WAN_PORTS" ]; then
         echo "$MESSAGE142"
     else
-        echo "$MESSAGE143"
+        printf "$MESSAGE143\n" "$WAN_PORTS"
     fi
     serv_sing_box
 }
