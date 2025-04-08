@@ -1030,7 +1030,7 @@ update_sing_box_menu() {
         case "$choice" in
             1) is_running && stop_sing_box; update_sbs; break ;;
             2) is_running && stop_sing_box; updcore_sing_box; break ;;
-            0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
+            0) rm -rf "$SB_DOWNLOAD_DIR" "$SCRIPT_PATH"-tmp; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
