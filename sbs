@@ -397,7 +397,8 @@ start_sing_box() {
         if ! iptables -t nat -C PREROUTING -j SBS-TNAT 2>/dev/null; then
             iptables -t nat -I PREROUTING -j SBS-TNAT
         fi
-        update_script "$NAT_SCRIPT" "iptables -t nat -N SBS-TNAT # sing-box-script
+        update_script "$NAT_SCRIPT" "sleep 15 # sing-box-script
+iptables -t nat -N SBS-TNAT # sing-box-script
 iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script"
         has_no_slash=0
         for IP in $DEVICE_IPS $DEVICE_FIPS; do
@@ -951,8 +952,8 @@ setup_sing_box() {
             echo "$MESSAGE92"
             echo "$MESSAGE93"
             echo "$MESSAGE94"
-            echo "3. $MESSAGE190"
-            echo "$MESSAGE95"
+            echo "3. $MESSAGE157"
+            echo "0. $MESSAGE95"
             read -p "$MESSAGE47" if_choice
             case "$if_choice" in
                 1) configure_interface; source "$SBS_CONF" ;;
@@ -970,8 +971,8 @@ setup_sing_box() {
             echo "$MESSAGE93"
             echo "$MESSAGE97"
             echo "$MESSAGE98"
-            echo "4. $MESSAGE190"
-            echo "$MESSAGE95"
+            echo "4. $MESSAGE157"
+            echo "0. $MESSAGE95"
             read -p "$MESSAGE99" if_choice
             case "$if_choice" in
                 1) configure_interface; source "$SBS_CONF" ;;
@@ -1024,7 +1025,7 @@ update_sing_box_menu() {
         echo "$MESSAGE103"
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
         printf "$MESSAGE105\n" "$sb_vers" "$sb_vers_new"
-        echo "$MESSAGE95"
+        echo "0. $MESSAGE95"
         read -p "$MESSAGE47" choice
         case "$choice" in
             1) is_running && stop_sing_box; update_sbs; break ;;
@@ -1040,6 +1041,8 @@ update_sbs() {
     echo "$MESSAGE107"
     cp "$SCRIPT_PATH"-tmp $SCRIPT_PATH
     chmod 775 $SCRIPT_PATH
+    [ -f "$LANG_EN" ] && { wget -q -O $LANG_EN $LANG_EN_URL && chmod 664 $LANG_EN; }
+    [ -f "$LANG_RU" ] && { wget -q -O $LANG_RU $LANG_RU_URL && chmod 664 $LANG_RU; }
 
     cat << EOF > $TEMP_UPDATE
 #!/bin/sh
@@ -1129,7 +1132,7 @@ config_sing_box() {
         echo "$MESSAGE126"
         echo "$MESSAGE127"
         echo "$MESSAGE128"
-        echo "$MESSAGE189"
+        echo "0-$MESSAGE95"
         read -p "$MESSAGE99" choice
         case "$choice" in
             1) echo ""; is_running && stop_sing_box; echo "$MESSAGE116"; nano $SB_CONFIG; update_sbs_interface; extract_listen_dns_port; check_ports; fakeip_check; echo "$MESSAGE129" ;;
@@ -1393,12 +1396,12 @@ serv_sing_box() {
         while true; do
             echo "$MESSAGE155"
             echo "$MESSAGE156"
-            echo "$MESSAGE95"
+            echo "0. $MESSAGE95"
             read -p "$MESSAGE47" act_portchoice
             case "$act_portchoice" in
                 1) add_del_ports; exit 0 ;;
                 2) exch_ports; exit 0 ;;
-                0) echo "$MESSAGE157"; break ;;
+                0) echo "$MESSAGE95"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
         done
@@ -1555,7 +1558,7 @@ show_menu() {
     echo "$MESSAGE184"
     echo "$MESSAGE185"
     echo "$MESSAGE186"
-    echo "$MESSAGE187"
+    echo "0) $MESSAGE95"
 }
 
 case "$1" in
@@ -1573,7 +1576,7 @@ case "$1" in
     *)
     while true; do
         show_menu
-        read -p "$MESSAGE188" choice
+        read -p "$MESSAGE187" choice
         case $choice in
             1) start_sing_box; break ;;
             2) stop_sing_box; break ;;
