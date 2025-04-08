@@ -1,0 +1,1568 @@
+#!/bin/sh
+
+# Version 1.8
+# Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
+
+# Переменные
+JFFS_SB_DIR="/jffs/addons/sing-box-script"
+SB_CONFIG="$JFFS_SB_DIR/config.json"
+SCRIPT_PATH="$JFFS_SB_DIR/sbs"
+TEMP_UPDATE="$JFFS_SB_DIR/temp-update"
+SBS_CONF="$JFFS_SB_DIR/sbs-conf"
+SBS_MON="$JFFS_SB_DIR/sbs-monitor"
+LANG_RU="$JFFS_SB_DIR/sbs-lang-ru"
+LANG_EN="$JFFS_SB_DIR/sbs-lang-en"
+SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs"
+SB_CONFIG_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/config.json"
+LANG_RU_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs-lang-ru"
+LANG_EN_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs-lang-en"
+ROOT_DIR="/opt/root"
+SB_DIR="$ROOT_DIR/sing-box"
+SB_PATH="$SB_DIR/sing-box"
+SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
+SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
+SB_ARCHIVE64_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
+SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
+SB_DOWNLOAD64_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
+SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
+TEMP_SBS_CONF="/jffs/scripts/sbs-conf"
+TEMP_LANG_RU="/jffs/scripts/sbs-lang-ru"
+TEMP_LANG_EN="/jffs/scripts/sbs-lang-en"
+FW_SCRIPT="/jffs/scripts/firewall-start"
+NAT_SCRIPT="/jffs/scripts/nat-start"
+SS_SCRIPT="/jffs/scripts/services-start"
+SS_LINES="(sleep 45 && $SCRIPT_PATH start) &"
+LN_PATH="/opt/bin/sbs"
+
+# Функции
+log_msg() {
+    echo "$1"
+    logger -t "sbs" "$1"
+}
+
+create_dir() {
+    mkdir -p "$1"
+    chmod 775 "$1"
+    printf "$MESSAGE1\n" "$1"
+}
+
+create_sbs_conf() {
+    cat << EOF > "$1"
+# Создан в SBS 1.8
+# Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении команды 'sbs setup'. Не рекомендуется изменять значения в нём напрямую, в обход команды 'sbs setup'.
+# Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
+
+# Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском.
+# Строка DEVICE_IPS - тут между кавычками указываются IP-адреса устройств, трафик которых вы хотите направить через sing-box. IP-адреса должны быть в одну строку и между ними должно быть только по одному пробелу. Так же тут можно указать и подсеть в формате CIDR, например 192.168.50.0/24.
+# Строка EXC_DEVICE_IPS - если в строке DEVICE_IPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, трафик которых вы хотите исключить из направления через sing-box. Так же тут можно указать подсеть меньшего размера, которая входит в указанную в DEVICE_IPS, если это соответствует вашим целям.
+# Строка DEVICE_FIPS - тут между кавычками указываются IP-адреса устройств, которые вы хотите заставить работать через fakeip. В остальном аналогично строке DEVICE_IPS.
+# Строка EXC_DEVICE_FIPS - если в строке DEVICE_FIPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, которые вы хотите исключить из работы через fakeip. В остальном аналогично строке EXC_DEVICE_IPS.
+# Строка ROUTE_TABLE - если указанный в ней по умолчанию номер таблицы маршрутизации 5553 уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят.
+# Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети.
+# Строки TUN_INTERFACE, LISTEN_DNS_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
+
+LANG=""
+DEVICE_IPS=""
+EXC_DEVICE_IPS=""
+DEVICE_FIPS=""
+EXC_DEVICE_FIPS=""
+ROUTE_TABLE="5553"
+WAN_PORTS=""
+TUN_INTERFACE=""
+LISTEN_DNS_PORT=""
+FAKEIP_SUBNET=""
+EOF
+    chmod 664 "$1"
+}
+
+create_sbs_monitor() {
+    cat << EOF > "$1"
+#!/bin/sh
+# Создан в SBS 1.8
+
+source "$SBS_CONF"
+if [ -n "\$DEVICE_IPS" ]; then
+    sorted_all=\$(echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\$'; echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n -r)
+fi
+route_in_process=0
+
+sbs_monitor_rr() {
+  { ip monitor route | while read _; do
+        if [ "\$route_in_process" -eq 0 ]; then
+            route_in_process=1
+            if ! pidof "$SB_PATH" >/dev/null 2>&1; then
+                "$SB_PATH" run -c "$SB_CONFIG" &
+            fi
+            ip route add default dev \$TUN_INTERFACE table \$ROUTE_TABLE 2>/dev/null
+            if [ -n "\$DEVICE_IPS" ]; then
+                ip route show table main | grep -v '^default' | while read ROUTE; do
+                    ip route add \$ROUTE table \$ROUTE_TABLE 2>/dev/null
+                done
+                ip route show table \$ROUTE_TABLE | grep -v '^default' | while read ROUTE; do
+                    if ! ip route show table main | grep -q "^\$ROUTE"; then
+                        ip route del \$ROUTE table \$ROUTE_TABLE 2>/dev/null
+                    fi
+                done
+            fi; route_in_process=0
+        fi
+    done } &
+
+    while true; do
+        ip monitor rule | while read line; do
+            if [ -n "\$FAKEIP_SUBNET" ]; then
+                if ! ip rule show | grep -q "to \$FAKEIP_SUBNET lookup \$ROUTE_TABLE"; then
+                    ip rule add to \$FAKEIP_SUBNET lookup \$ROUTE_TABLE priority 553
+                fi
+            fi
+            if [ -n "\$DEVICE_IPS" ]; then
+                echo "\$sorted_all" | while read -r IP; do
+                    if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
+                        ip rule del from "\$IP" lookup "\$ROUTE_TABLE" 2>/dev/null
+                    else
+                        ip rule del from "\$IP" lookup main 2>/dev/null
+                    fi
+                done
+                echo "\$sorted_all" | while read -r IP; do
+                    if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
+                        ip rule add from "\$IP" lookup "\$ROUTE_TABLE" priority 553
+                    else
+                        ip rule add from "\$IP" lookup main priority 553
+                    fi
+                done
+            fi; break
+        done
+    done
+}
+
+trap '' SIGHUP
+sbs_monitor_rr 2>/dev/null
+EOF
+    chmod 775 "$1"
+}
+
+check_file_existence_and_download() {
+    local file_path="$1"
+    local file_url="$2"
+    local file_name=$(basename "$file_path")
+
+    if [ -f "$file_path" ]; then
+        printf "$MESSAGE2\n" "$file_name"
+        while true; do
+            read -p "$MESSAGE3" choice
+            case $choice in
+                0) printf "$MESSAGE4\n" "$file_name"; return 0 ;;
+                1) printf "$MESSAGE5\n" "$file_name"; wget -q -O "$file_path" "$file_url"; return 0 ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    else
+        printf "$MESSAGE7\n" "$file_name"
+        wget -q -O "$file_path" "$file_url"
+    fi
+}
+
+delete_if_not_current_dir() {
+  local current_dir=$(dirname "$(readlink -f "$0")")
+
+  if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
+    rm -f "$(readlink -f "$0")"
+  fi
+}
+
+create_or_use_existing() {
+    local dir_path="$1"
+
+    if [ -d "$dir_path" ]; then
+        printf "$MESSAGE8\n" "$dir_path"
+        while true; do
+            read -p "$MESSAGE9" choice
+            case $choice in
+                0) delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0 ;;
+                1) printf "$MESSAGE11\n" "$dir_path"; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    else
+        create_dir "$dir_path"
+    fi
+}
+
+handle_existing_file() {
+    local file_path="$1"
+    local create_function="$2"
+
+    if [ -f "$file_path" ]; then
+        printf "$MESSAGE2\n" "$file_path"
+        while true; do
+            read -p "$MESSAGE12" choice
+            case $choice in
+                0) echo "$MESSAGE13"; break ;;
+                1) printf "$MESSAGE14\n" "$file_path"; "$create_function" "$file_path"; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    else
+        "$create_function" "$file_path"
+    fi
+}
+
+check_copy_file() {
+    local src_file="$1"
+    local dst_file="$2"
+
+    if [ -f "$dst_file" ]; then
+        printf "$MESSAGE2\n" "$dst_file"
+        while true; do
+            read -p "$MESSAGE12" choice
+            case $choice in
+                0) echo "$MESSAGE13"; break ;;
+                1) printf "$MESSAGE14\n" "$dst_file"; cp "$src_file" "$dst_file"; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    else
+        cp "$src_file" "$dst_file"
+    fi
+}
+
+update_script() {
+    [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
+    echo "$2" | while IFS= read -r line; do
+        grep -qF "$line" "$1" || echo "$line" >> "$1"
+    done
+}
+
+remove_script_content() {
+    [ -f "$1" ] && echo "$2" | while read -r line; do
+        sed -i "/$(echo "$line" | sed 's/[\/&]/\\&/g')/d" "$1"
+    done
+}
+
+manage_iptables() {
+    if [ "$1" = "add" ]; then
+        iptables -C $2 2>/dev/null || iptables -I $2 || log_msg "$(printf "$MESSAGE15\n" "$2")"
+    elif [ "$1" = "remove" ]; then
+        iptables -C $2 2>/dev/null && iptables -D $2 || log_msg "$(printf "$MESSAGE16\n" "$2")"
+    fi
+}
+
+is_running() {
+    ps | grep -v grep | grep -q "$SB_PATH"
+}
+
+get_sbs_version() {
+    sed -n '3s/^# Version //p' "$1"
+}
+
+get_sb_versplat() {
+    local vers plat
+
+    vers=$("$1" version | awk '/^sing-box version/ {print $3}' | head -n 1)
+    plat=$("$1" version | awk '/^Environment:/ {print $3}' | head -n 1)
+    echo "$vers $plat"
+}
+
+get_sb_version() {
+    local version
+
+    version=$("$1" version | awk '/^sing-box version/ {print $3}' | head -n 1)
+    echo "$version"
+}
+
+self_copy() {
+    local destination="$1"
+    cp "$0" "$destination"
+}
+
+silent_create_dir() {
+    mkdir -p "$1"
+    chmod 775 "$1"
+}
+
+sing_box_start() {
+    echo "$MESSAGE17"
+    while true; do
+        read -p "$MESSAGE18" choice
+        case "$choice" in
+            0) echo "$MESSAGE19"; break ;;
+            1) start_sing_box; break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+update_sbs_interface() {
+    interfaces=$(awk -F'"' '/"interface_name":/ {print $4}' "$SB_CONFIG")
+
+    if [ -z "$interfaces" ]; then
+        sed -i 's/^TUN_INTERFACE=.*/TUN_INTERFACE=""/' "$SBS_CONF"
+    else
+        sed -i "s/^TUN_INTERFACE=.*/TUN_INTERFACE=\"$interfaces\"/" "$SBS_CONF"
+    fi
+}
+
+extract_listen_dns_port() {
+    listen_dns_port=$(grep -B1 '"override_port": 53' "$SB_CONFIG" | grep '"listen_port"' | sed -E 's/.*"listen_port": ([0-9]+),.*/\1/')
+
+    if [ -z $listen_dns_port ]; then
+        sed -i 's/^LISTEN_DNS_PORT=.*/LISTEN_DNS_PORT=""/' "$SBS_CONF"
+    else
+        sed -i "s/^LISTEN_DNS_PORT=.*/LISTEN_DNS_PORT=\"$listen_dns_port\"/" "$SBS_CONF"
+    fi
+}
+
+fakeip_check() {
+    fakeip_line=$(grep -E '^\s*"fakeip":\s*\{' "$SB_CONFIG")
+    if [ -n "$fakeip_line" ]; then
+        enabled_line=$(grep -A1 -E '^\s*"fakeip":\s*\{' "$SB_CONFIG" | tail -n1 | grep -q '"enabled": true')
+        if [ $? -eq 0 ]; then
+            inet4_range_line=$(grep -A2 -E '^\s*"fakeip":\s*\{' "$SB_CONFIG" | grep -E '"inet4_range":')
+            if [ -n "$inet4_range_line" ]; then
+                inet4_range=$(echo "$inet4_range_line" | sed -E 's/.*"inet4_range": "([^"]+)".*/\1/')
+                sed -i "s|^FAKEIP_SUBNET=.*|FAKEIP_SUBNET=\"$inet4_range\"|" "$SBS_CONF"
+            fi
+        else
+            sed -i "s|^FAKEIP_SUBNET=.*|FAKEIP_SUBNET=\"\"|" "$SBS_CONF"
+        fi
+    else
+        sed -i "s|^FAKEIP_SUBNET=.*|FAKEIP_SUBNET=\"\"|" "$SBS_CONF"
+    fi
+}
+
+start_sing_box() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+
+    echo ""
+    log_msg "$MESSAGE20"
+    is_running && { log_msg "$MESSAGE21"; exit 1; }
+
+    update_sbs_interface
+    extract_listen_dns_port
+    check_ports
+    fakeip_check
+    source "$SBS_CONF"
+
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]); then
+        sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n)
+        sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; echo "$DEVICE_IPS $EXC_DEVICE_IPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n -r)
+    fi
+
+    if [ -n "$TUN_INTERFACE" ]; then
+        FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
+        FORWARD -o $TUN_INTERFACE -j ACCEPT
+        INPUT -i $TUN_INTERFACE -j ACCEPT
+        OUTPUT -o $TUN_INTERFACE -j ACCEPT"
+    fi
+
+    lsmod | grep -q "^tun " || { log_msg "$MESSAGE22"; modprobe tun; sleep 3; }
+    $SB_PATH run -c $SB_CONFIG &
+    sleep 5
+
+# Проверка наличия tun интерфейса
+    if ip link show "$TUN_INTERFACE" >/dev/null 2>&1; then
+        log_msg "$MESSAGE23"
+    else
+        log_msg "$MESSAGE24"
+    fi
+# Добавление правил nat и обновление скрипта nat-start
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]) && [ -n "$LISTEN_DNS_PORT" ]; then
+        iptables -t nat -N SBS-TNAT
+        if ! iptables -t nat -C PREROUTING -j SBS-TNAT 2>/dev/null; then
+            iptables -t nat -I PREROUTING -j SBS-TNAT
+        fi
+        update_script "$NAT_SCRIPT" "iptables -t nat -N SBS-TNAT # sing-box-script
+iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script"
+        has_no_slash=0
+        for IP in $DEVICE_IPS $DEVICE_FIPS; do
+            if ! echo "$IP" | grep -q '/'; then
+                has_no_slash=1
+                break
+            fi
+        done
+        if [ $has_no_slash -eq 1 ]; then
+            ipset create sbsinc-ipset hash:ip
+            for IP in $DEVICE_IPS $DEVICE_FIPS; do
+                if ! echo "$IP" | grep -q '/'; then
+                    ipset add sbsinc-ipset "$IP"
+                fi
+            done
+        fi
+        exchas_no_slash=0
+        for IP in $EXC_DEVICE_IPS $EXC_DEVICE_FIPS; do
+            if ! echo "$IP" | grep -q '/'; then
+                exchas_no_slash=1
+                break
+            fi
+        done
+        if [ $exchas_no_slash -eq 1 ]; then
+            ipset create sbsexc-ipset hash:ip
+            for IP in $EXC_DEVICE_IPS $EXC_DEVICE_FIPS; do
+                if ! echo $IP | grep -q '/'; then
+                    ipset add sbsexc-ipset $IP
+                fi
+            done
+        fi
+        log_msg "$MESSAGE25"
+        if [ -n "$sorted_subnets" ]; then
+            echo "$sorted_subnets" | while read -r subnet; do
+                if echo "$DEVICE_IPS $DEVICE_FIPS" | grep -qw "$subnet"; then
+                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p tcp -m tcp --dport 53 -j REDIRECT --to-ports $LISTEN_DNS_PORT"; then
+                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+                    else
+                        iptables -t nat -D SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+                    fi
+                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p udp -m udp --dport 53 -j REDIRECT --to-ports $LISTEN_DNS_PORT"; then
+                        iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+                    else
+                        iptables -t nat -D SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+                        iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+                    fi
+                    update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script
+iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script"
+                else
+                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p tcp -m tcp --dport 53 -j REDIRECT"; then
+                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT
+                    else
+                        iptables -t nat -D SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT
+                        iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT
+                    fi
+                    if ! iptables-save -t nat | grep -q -- "-A SBS-TNAT -s $subnet -p udp -m udp --dport 53 -j REDIRECT"; then
+                        iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT
+                    else
+                        iptables -t nat -D SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT
+                        iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT
+                    fi
+                    update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT # sing-box-script
+iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT # sing-box-script"
+                fi
+            done
+        fi
+        if ipset list sbsexc-ipset >/dev/null 2>&1; then
+            iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsexc-ipset src --dport 53 -j REDIRECT
+            iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsexc-ipset src --dport 53 -j REDIRECT
+            update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsexc-ipset src --dport 53 -j REDIRECT # sing-box-script
+iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsexc-ipset src --dport 53 -j REDIRECT # sing-box-script"
+        fi
+        if ipset list sbsinc-ipset >/dev/null 2>&1; then
+            iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+            iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsinc-ipset src --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
+            update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script
+iptables -t nat -I SBS-TNAT -p udp -m set --match-set sbsinc-ipset src --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script"
+        fi
+    fi
+# Добавление правил файрвола, маршрутов и правил маршрутизации и обновление скрипта firewall-start
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]); then
+        log_msg "$MESSAGE26"
+        echo "$FW_RULES" | while read -r rule; do
+            manage_iptables "add" "$rule"
+            update_script "$FW_SCRIPT" "iptables -I $rule # sing-box-script"
+        done
+        log_msg "$MESSAGE27"
+        ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE
+        ip route show table main | grep -v '^default' | while read ROUTE; do ip route add $ROUTE table $ROUTE_TABLE; done
+        if [ -n "$FAKEIP_SUBNET" ]; then
+            ip rule add to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE priority 553
+        fi
+        if [ -n "$DEVICE_IPS" ]; then
+            echo "$sorted_all" | while read -r ip; do
+                if echo "$DEVICE_IPS" | grep -qw "$ip"; then
+                    ip rule add from "$ip" lookup "$ROUTE_TABLE" priority 553
+                else
+                    ip rule add from "$ip" lookup main priority 553
+                fi
+            done
+        fi
+        $SBS_MON &
+    fi
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$FAKEIP_SUBNET" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ]; then
+        log_msg "$MESSAGE26"
+        echo "$FW_RULES" | while read -r rule; do
+            manage_iptables "add" "$rule"
+            update_script "$FW_SCRIPT" "iptables -I $rule # sing-box-script"
+        done
+        log_msg "$MESSAGE27"
+        ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE
+        ip rule add to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE priority 553
+        $SBS_MON &
+    fi
+    if [ -n "$WAN_PORTS" ]; then
+        log_msg "$MESSAGE28"
+        for entry in $WAN_PORTS; do
+            wan_port=$(echo "$entry" | cut -d ':' -f 2)
+            if ! iptables-save | grep -q -- "-A INPUT -p tcp -m tcp --dport $wan_port -j ACCEPT"; then
+                iptables -I INPUT -p tcp --dport "$wan_port" -j ACCEPT
+            fi
+            if ! iptables-save | grep -q -- "-A INPUT -p udp -m udp --dport $wan_port -j ACCEPT"; then
+                iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT
+            fi
+            update_script "$FW_SCRIPT" "iptables -I INPUT -p tcp --dport "$wan_port" -j ACCEPT # sing-box-script
+iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
+        done
+    fi
+    log_msg "$MESSAGE29"
+    update_script "$SS_SCRIPT" "$SS_LINES # sing-box-script"
+    log_msg "$MESSAGE30"
+}
+
+stop_sing_box() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+
+    echo ""
+    log_msg "$MESSAGE31"
+
+    if [ -n "$TUN_INTERFACE" ]; then
+        FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
+        FORWARD -o $TUN_INTERFACE -j ACCEPT
+        INPUT -i $TUN_INTERFACE -j ACCEPT
+        OUTPUT -o $TUN_INTERFACE -j ACCEPT"
+    fi
+
+    log_msg "$MESSAGE32"
+    remove_script_content "$SS_SCRIPT" "sing-box-script"
+
+    if [ -n "$WAN_PORTS" ] || [ -n "$TUN_INTERFACE" ]; then
+        remove_script_content "$FW_SCRIPT" "sing-box-script"
+    fi
+    if [ -n "$WAN_PORTS" ]; then
+        log_msg "$MESSAGE33"
+        for entry in $WAN_PORTS; do
+            wan_port=$(echo "$entry" | cut -d ':' -f 2)
+            iptables -D INPUT -p udp --dport "$wan_port" -j ACCEPT
+            iptables -D INPUT -p tcp --dport "$wan_port" -j ACCEPT
+        done
+    fi
+
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && ([ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]); then
+        pids=$(pidof "sbs-monitor")
+        for pid in $pids; do
+            kill "$pid" >/dev/null 2>&1
+        done
+# Удаление правил маршрутизации, маршрутов, правил файрвола и обновление скрипта firewall-start
+        log_msg "$MESSAGE34"
+        ip rule del to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE >/dev/null 2>&1
+        for IP in $DEVICE_IPS; do
+            ip rule del from $IP lookup $ROUTE_TABLE >/dev/null 2>&1
+        done
+        for IP in $EXC_DEVICE_IPS; do
+            ip rule del from $IP lookup main >/dev/null 2>&1
+        done
+        ip route flush table $ROUTE_TABLE
+        log_msg "$MESSAGE35"
+        echo "$FW_RULES" | while read -r rule; do
+            manage_iptables "remove" "$rule"
+        done
+# Удаление правил nat и обновления скрипта nat-start
+        log_msg "$MESSAGE36"
+        if iptables -t nat -L SBS-TNAT >/dev/null 2>&1; then
+            remove_script_content "$NAT_SCRIPT" "sing-box-script"
+            iptables -t nat -D PREROUTING -j SBS-TNAT
+            iptables -t nat -F SBS-TNAT
+            iptables -t nat -X SBS-TNAT
+            if ipset list sbsexc-ipset >/dev/null 2>&1; then
+                ipset destroy sbsexc-ipset >/dev/null 2>&1
+            fi
+            if ipset list sbsinc-ipset >/dev/null 2>&1; then
+                ipset destroy sbsinc-ipset >/dev/null 2>&1
+            fi
+        fi
+    fi
+    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$FAKEIP_SUBNET" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ]; then
+        pids=$(pidof "sbs-monitor")
+        for pid in $pids; do
+            kill "$pid" >/dev/null 2>&1
+        done
+        log_msg "$MESSAGE34"
+        ip rule del to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE >/dev/null 2>&1
+        ip route flush table $ROUTE_TABLE
+        log_msg "$MESSAGE35"
+        echo "$FW_RULES" | while read -r rule; do
+            manage_iptables "remove" "$rule"
+        done
+    fi
+
+    PIDS=$(pidof "sing-box")
+    for pid in $PIDS; do
+        kill "$pid"
+    done
+
+    log_msg "$MESSAGE37"
+}
+
+configure_interface() {
+    source "$SBS_CONF"
+
+    if [ -z "$DEVICE_IPS" ]; then
+        echo ""
+        echo "$MESSAGE38"
+        while true; do
+            read -p "$MESSAGE18" initial_choice
+            case "$initial_choice" in
+                0) echo "$MESSAGE39"; break ;;
+                1) read -p "$MESSAGE40" new_ips
+                   if [ -z "$new_ips" ]; then
+                       echo "$MESSAGE41"
+                   else
+                       DEVICE_IPS="$new_ips"
+                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$new_ips\"|" "$SBS_CONF"
+                       echo "$MESSAGE42"
+                   fi; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    else
+        echo ""
+        echo "$MESSAGE43"
+        while true; do
+            echo ""
+            echo "$MESSAGE44"
+            echo "$MESSAGE45"
+            echo "$MESSAGE46"
+            read -p "$MESSAGE47" action_choice
+            case "$action_choice" in
+                1) read -p "$MESSAGE48" ips_input
+                   if [ -z "$ips_input" ]; then
+                       echo "$MESSAGE49"
+                   else
+                       for ip in $ips_input; do
+                           if echo "$DEVICE_IPS" | grep -q "$ip"; then
+                               DEVICE_IPS=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
+                               printf "$MESSAGE50\n" "$ip"
+                           else
+                               DEVICE_IPS="${DEVICE_IPS:+$DEVICE_IPS }$ip"
+                               printf "$MESSAGE51\n" "$ip"
+                           fi
+                       done
+                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
+                   fi; break ;;
+                2) read -p "$MESSAGE52" new_ips
+                   if [ -z "$new_ips" ]; then
+                       DEVICE_IPS=""
+                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"\"|" "$SBS_CONF"
+                       echo "$MESSAGE53"
+                   else
+                       DEVICE_IPS="$new_ips"
+                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$new_ips\"|" "$SBS_CONF"
+                       echo "$MESSAGE54"
+                   fi; break ;;
+                0) echo "$MESSAGE55"; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    fi
+
+    cidrs=""
+    for ip in $DEVICE_IPS; do
+        if echo "$ip" | grep -q '/'; then
+            cidrs="$cidrs $ip"
+        fi
+    done
+    if [ -n "$cidrs" ]; then
+        if [ -z "$EXC_DEVICE_IPS" ]; then
+            echo ""
+            printf "$MESSAGE56\n" "$cidrs"
+            echo "$MESSAGE57"
+            while true; do
+                read -p "$MESSAGE18" initial_exc_choice
+                case "$initial_exc_choice" in
+                    0) echo "$MESSAGE39"; break ;;
+                    1) read -p "$MESSAGE40" exc_new_ips
+                       if [ -z "$exc_new_ips" ]; then
+                           echo "$MESSAGE58"
+                       else
+                           EXC_DEVICE_IPS="$exc_new_ips"
+                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$exc_new_ips\"|" "$SBS_CONF"
+                           echo "$MESSAGE59"
+                       fi; break ;;
+                    *) echo "$MESSAGE6" ;;
+                esac
+            done
+        else
+            echo ""
+            printf "$MESSAGE56\n" "$cidrs"
+            echo "$MESSAGE60"
+            while true; do
+            echo ""
+            echo "$MESSAGE44"
+            echo "$MESSAGE45"
+            echo "$MESSAGE46"
+            read -p "$MESSAGE47" action_exc_choice
+                case "$action_exc_choice" in
+                    1) read -p "$MESSAGE48" exc_ips_input
+                       if [ -z "$exc_ips_input" ]; then
+                           echo "$MESSAGE61"
+                       else
+                           for ip in $exc_ips_input; do
+                               if echo "$EXC_DEVICE_IPS" | grep -q "$ip"; then
+                                   EXC_DEVICE_IPS=$(echo "$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
+                                   printf "$MESSAGE62\n" "$ip"
+                               else
+                                   EXC_DEVICE_IPS="${EXC_DEVICE_IPS:+$EXC_DEVICE_IPS }$ip"
+                                   printf "$MESSAGE63\n" "$ip"
+                               fi
+                           done
+                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
+                       fi; break ;;
+                    2) read -p "$MESSAGE52" exc_new_ips
+                       if [ -z "$exc_new_ips" ]; then
+                           EXC_DEVICE_IPS=""
+                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
+                           echo "$MESSAGE64"
+                       else
+                           EXC_DEVICE_IPS="$exc_new_ips"
+                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$exc_new_ips\"|" "$SBS_CONF"
+                           echo "$MESSAGE65"
+                       fi; break ;;
+                    0) echo "$MESSAGE55"; break ;;
+                    *) echo "$MESSAGE6" ;;
+                esac
+            done
+        fi
+    else
+        EXC_DEVICE_IPS=""
+        sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
+    fi
+
+    echo "$MESSAGE66"
+}
+
+configure_finterface() {
+    source "$SBS_CONF"
+
+    if [ -z "$DEVICE_FIPS" ]; then
+        echo ""
+        echo "$MESSAGE67"
+        while true; do
+            read -p "$MESSAGE18" initial_fchoice
+            case "$initial_fchoice" in
+                0) echo "$MESSAGE39"; break ;;
+                1) read -p "$MESSAGE40" new_fips
+                   if [ -z "$new_fips" ]; then
+                       echo "$MESSAGE41"
+                   else
+                       DEVICE_FIPS="$new_fips"
+                       sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$new_fips\"|" "$SBS_CONF"
+                       echo "$MESSAGE42"
+                   fi; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    else
+        echo ""
+        echo "$MESSAGE68"
+        while true; do
+            echo ""
+            echo "$MESSAGE44"
+            echo "$MESSAGE45"
+            echo "$MESSAGE46"
+            read -p "$MESSAGE47" action_fchoice
+            case "$action_fchoice" in
+                1) read -p "$MESSAGE48" ips_finput
+                   if [ -z "$ips_finput" ]; then
+                       echo "$MESSAGE49"
+                   else
+                       for ip in $ips_finput; do
+                           if echo "$DEVICE_FIPS" | grep -q "$ip"; then
+                               DEVICE_FIPS=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
+                               printf "$MESSAGE69\n" "$ip"
+                           else
+                               DEVICE_FIPS="${DEVICE_FIPS:+$DEVICE_FIPS }$ip"
+                               printf "$MESSAGE70\n" "$ip"
+                           fi
+                       done
+                       sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
+                   fi; break ;;
+                2) read -p "$MESSAGE52" new_fips
+                   if [ -z "$new_fips" ]; then
+                       DEVICE_FIPS=""
+                       sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"\"|" "$SBS_CONF"
+                       echo "$MESSAGE71"
+                   else
+                       DEVICE_FIPS="$new_fips"
+                       sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$new_fips\"|" "$SBS_CONF"
+                       echo "$MESSAGE72"
+                   fi; break ;;
+                0) echo "$MESSAGE55"; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    fi
+
+    fcidrs=""
+    for ip in $DEVICE_FIPS; do
+        if echo "$ip" | grep -q '/'; then
+            fcidrs="$fcidrs $ip"
+        fi
+    done
+    if [ -n "$fcidrs" ]; then
+        if [ -z "$EXC_DEVICE_FIPS" ]; then
+            echo ""
+            printf "$MESSAGE73\n" "$fcidrs"
+            echo "$MESSAGE74"
+            while true; do
+                read -p "$MESSAGE18" initial_exc_fchoice
+                case "$initial_exc_fchoice" in
+                    0) echo "$MESSAGE39"; break ;;
+                    1) read -p "$MESSAGE40" exc_new_fips
+                       if [ -z "$exc_new_fips" ]; then
+                           echo "$MESSAGE75"
+                       else
+                           EXC_DEVICE_FIPS="$exc_new_fips"
+                           sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$exc_new_fips\"|" "$SBS_CONF"
+                           echo "$MESSAGE76"
+                       fi; break ;;
+                    *) echo "$MESSAGE6" ;;
+                esac
+            done
+        else
+            echo ""
+            printf "$MESSAGE73\n" "$fcidrs"
+            echo "$MESSAGE77"
+            while true; do
+            echo ""
+            echo "$MESSAGE44"
+            echo "$MESSAGE45"
+            echo "$MESSAGE46"
+            read -p "$MESSAGE47" action_exc_fchoice
+                case "$action_exc_fchoice" in
+                    1) read -p "$MESSAGE48" exc_ips_finput
+                       if [ -z "$exc_ips_finput" ]; then
+                           echo "$MESSAGE78"
+                       else
+                           for ip in $exc_ips_finput; do
+                               if echo "$EXC_DEVICE_FIPS" | grep -q "$ip"; then
+                                   EXC_DEVICE_FIPS=$(echo "$EXC_DEVICE_FIPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
+                                   printf "$MESSAGE79\n" "$ip"
+                               else
+                                   EXC_DEVICE_FIPS="${EXC_DEVICE_FIPS:+$EXC_DEVICE_FIPS }$ip"
+                                   printf "$MESSAGE80\n" "$ip"
+                               fi
+                           done
+                           sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
+                       fi; break ;;
+                    2) read -p "$MESSAGE52" exc_new_fips
+                       if [ -z "$exc_new_fips" ]; then
+                           EXC_DEVICE_FIPS=""
+                           sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
+                           echo "$MESSAGE81"
+                       else
+                           EXC_DEVICE_FIPS="$exc_new_fips"
+                           sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$exc_new_fips\"|" "$SBS_CONF"
+                           echo "$MESSAGE82"
+                       fi; break ;;
+                    0) echo "$MESSAGE55"; break ;;
+                    *) echo "$MESSAGE6" ;;
+                esac
+            done
+        fi
+    else
+        EXC_DEVICE_FIPS=""
+        sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
+    fi
+
+    echo "$MESSAGE66"
+}
+
+configure_table() {
+    source "$SBS_CONF"
+
+    echo ""
+    echo "$MESSAGE83"
+    echo "$MESSAGE84"
+    while true; do
+        read -p "$MESSAGE18" choice
+        case "$choice" in
+            0) echo "$MESSAGE85"; break ;;
+            1) read -p "$MESSAGE86" new_table
+               ROUTE_TABLE="$new_table"
+               sed -i "s|^ROUTE_TABLE=\".*\"$|ROUTE_TABLE=\"$new_table\"|" "$SBS_CONF"
+               log_msg "$MESSAGE87"; break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+    echo "$MESSAGE66"
+}
+
+setup_sing_box() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+
+    update_sbs_interface
+    extract_listen_dns_port
+    check_ports
+    fakeip_check
+    source "$SBS_CONF"
+
+    if [ -z "$TUN_INTERFACE" ]; then
+        echo ""
+        echo "$MESSAGE88"
+        exit 0
+    fi
+    echo ""
+    echo "$MESSAGE89"
+    while true; do
+        read -p "$MESSAGE18" choice
+        case "$choice" in
+            0) echo "$MESSAGE90"; exit 0 ;;
+            1) is_running && stop_sing_box; break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+    if [ -z "$FAKEIP_SUBNET" ]; then
+        while true; do
+            echo ""
+            echo "$MESSAGE91"
+            echo "$MESSAGE92"
+            echo "$MESSAGE93"
+            echo "$MESSAGE94"
+            echo "$MESSAGE95"
+            read -p "$MESSAGE47" if_choice
+            case "$if_choice" in
+                1) configure_interface; source "$SBS_CONF" ;;
+                2) configure_table; source "$SBS_CONF" ;;
+                0) break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    else
+        while true; do
+            echo ""
+            echo "$MESSAGE91"
+            echo "$MESSAGE96"
+            echo "$MESSAGE93"
+            echo "$MESSAGE97"
+            echo "$MESSAGE98"
+            echo "$MESSAGE95"
+            read -p "$MESSAGE99" if_choice
+            case "$if_choice" in
+                1) configure_interface; source "$SBS_CONF" ;;
+                2) configure_finterface; source "$SBS_CONF" ;;
+                3) configure_table; source "$SBS_CONF" ;;
+                0) break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    fi
+    sing_box_start
+}
+
+update_sing_box() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+    echo ""
+    echo "$MESSAGE100"
+    wget -q -O "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
+    silent_create_dir "$SB_DOWNLOAD_DIR"
+    if [ "$(uname -m)" = "aarch64" ]; then
+        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+    else
+        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+    fi
+    wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
+    echo "$MESSAGE101"
+    update_sing_box_menu
+}
+
+update_sing_box_menu() {
+    singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+    chmod 775 $singbox_file
+    sbs_vers=$(get_sbs_version $SCRIPT_PATH)
+    sb_vers=$(get_sb_version $SB_PATH)
+    sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
+    sb_vers_new=$(get_sb_version $singbox_file)
+
+    while true; do
+        echo ""
+        echo "$MESSAGE102"
+        echo "$MESSAGE103"
+        printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
+        printf "$MESSAGE105\n" "$sb_vers" "$sb_vers_new"
+        echo "$MESSAGE95"
+        read -p "$MESSAGE47" choice
+        case "$choice" in
+            1) is_running && stop_sing_box; update_sbs; break ;;
+            2) is_running && stop_sing_box; updcore_sing_box; break ;;
+            0) rm -f "$SCRIPT_PATH"-tmp; rm -rf "$SB_DOWNLOAD_DIR"; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+update_sbs() {
+    echo ""
+    echo "$MESSAGE107"
+    cp "$SCRIPT_PATH"-tmp $SCRIPT_PATH
+    chmod 775 $SCRIPT_PATH
+
+    cat << EOF > $TEMP_UPDATE
+#!/bin/sh
+rm -f $TEMP_UPDATE
+exec $SCRIPT_PATH updmonandcore
+EOF
+    chmod 775 $TEMP_UPDATE
+
+    exec $TEMP_UPDATE
+}
+
+updmonandcore_sing_box() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+
+    create_sbs_monitor "$SBS_MON"
+    echo "$MESSAGE108"
+    update_sing_box_menu
+}
+
+updcore_sing_box() {
+    echo ""
+    echo "$MESSAGE109"
+    cp "$singbox_file" "$SB_DIR"; echo "$MESSAGE110"
+    update_sing_box_menu
+}
+
+check_sing_box() {
+    while true; do
+        echo ""; echo "$MESSAGE111"
+        if ! output=$($SB_PATH check -c $SB_CONFIG 2>&1); then
+            echo "$MESSAGE112"
+            echo "$output"
+            echo "$MESSAGE113"
+            echo "$MESSAGE114"
+            while true; do
+                read -p "$MESSAGE18" choice
+                case "$choice" in
+                    0) echo "$MESSAGE115"; break 2 ;;
+                    1) echo ""; is_running && stop_sing_box; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE117"; break ;;
+                    *) echo "$MESSAGE6" ;;
+                esac
+            done
+        else
+            echo "$MESSAGE118"; break
+        fi
+    done
+}
+
+format_sing_box() {
+    if ! output=$($SB_PATH format -c $SB_CONFIG 2>&1); then
+        echo ""; echo "$MESSAGE112"
+        echo "$output"
+        echo "$MESSAGE119"
+        echo "$MESSAGE66"
+    else
+        echo ""; echo "$MESSAGE120"
+        echo "$output"
+        while true; do
+            echo "$MESSAGE121"
+            read -p "$MESSAGE18" save_choice
+            case "$save_choice" in
+                0) echo "$MESSAGE122"; break ;;
+                1) $SB_PATH format -w -c $SB_CONFIG; echo "$MESSAGE123"; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    fi
+}
+
+config_sing_box() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+
+    while true; do
+        echo ""
+        echo "$MESSAGE124"
+        echo "$MESSAGE125"
+        echo "$MESSAGE126"
+        echo "$MESSAGE127"
+        echo "$MESSAGE128"
+        echo "$MESSAGE95"
+        read -p "$MESSAGE99" choice
+        case "$choice" in
+            1) echo ""; is_running && stop_sing_box; echo "$MESSAGE116"; nano $SB_CONFIG; update_sbs_interface; extract_listen_dns_port; check_ports; fakeip_check; echo "$MESSAGE129" ;;
+            2) check_sing_box ;;
+            3) format_sing_box ;;
+            0) break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+    update_sbs_interface
+    extract_listen_dns_port
+    check_ports
+    fakeip_check
+    is_running || sing_box_start
+}
+
+status_sing_box() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+
+    if is_running; then
+        echo "$MESSAGE30"
+    else
+        echo "$MESSAGE37"
+    fi
+
+    sbs_version=$(get_sbs_version $SCRIPT_PATH)
+    if [ -n "$sbs_version" ]; then
+        printf "$MESSAGE130\n" "$sbs_version"
+    else
+        echo "$MESSAGE131"
+    fi
+
+    sb_versplat=$(get_sb_versplat $SB_PATH)
+    if [ -n "$sb_versplat" ]; then
+        printf "$MESSAGE132\n" "$sb_versplat"
+    else
+        echo "$MESSAGE133"
+    fi
+
+    echo "$MESSAGE134"
+    echo "$MESSAGE135"
+}
+
+check_ports() {
+    current_ports=$(echo "$WAN_PORTS" | tr ' ' '\n')
+    updated_ports=""
+    for combination in $current_ports; do
+        proxy_type=$(echo "$combination" | cut -d':' -f1)
+        port=$(echo "$combination" | cut -d':' -f2)
+        found_match=0
+        in_inbounds=0
+        search_port=0
+        while read -r line; do
+            if echo "$line" | grep -q '"inbounds"'; then
+                in_inbounds=1
+            fi
+            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "\"type\": \"$proxy_type\""; then
+                search_port=1
+                continue
+            fi
+            if [ "$search_port" = "1" ] && echo "$line" | grep -q "\"listen_port\": $port\\b"; then
+                found_match=1
+                break
+            fi
+            if echo "$line" | grep -q '"type":'; then
+                search_port=0
+            fi
+        done < "$SB_CONFIG"
+        if [ "$found_match" -eq 1 ]; then
+            updated_ports="$updated_ports $combination"
+        fi
+    done
+    updated_ports=$(echo "$updated_ports" | tr -s ' ' | sed 's/^ //')
+    sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$updated_ports\"|" "$SBS_CONF"
+}
+
+add_del_ports() {
+    source "$SBS_CONF"
+    VALID_TYPES="vless vmess shadowsocks trojan naive hysteria shadowtls tuic hysteria2"
+    read -p "$MESSAGE136" input_combinations
+    if [ -z "$input_combinations" ]; then
+        echo "$MESSAGE137"
+    fi
+    combinations=$(echo "$input_combinations" | tr ' ' '\n')
+    current_ports=$(grep "^WAN_PORTS=" "$SBS_CONF" | cut -d '"' -f 2)
+    for combination in $combinations; do
+      found_match=0
+      proxy_type=$(echo "$combination" | cut -d':' -f1)
+      port=$(echo "$combination" | cut -d':' -f2)
+      if ! echo "$VALID_TYPES" | grep -qw "$proxy_type"; then
+        printf "$MESSAGE138\n" "$proxy_type"
+        continue
+      fi
+      in_inbounds=0
+      search_port=0
+      while read -r line; do
+        if echo "$line" | grep -q '"inbounds"'; then
+          in_inbounds=1
+        fi
+        if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "\"type\": \"$proxy_type\""; then
+          search_port=1
+          continue
+        fi
+        if [ "$search_port" = "1" ] && echo "$line" | grep -q "\"listen_port\": $port\\b"; then
+          found_match=1
+          break
+        fi
+        if echo "$line" | grep -q '"type":'; then
+          search_port=0
+        fi
+      done < "$SB_CONFIG"
+      if [ "$found_match" -eq 0 ]; then
+        printf "$MESSAGE139\n" "$proxy_type:$port"
+        continue
+      fi
+      if echo "$current_ports" | grep -wq "$proxy_type:$port"; then
+        current_ports=$(echo "$current_ports" | sed "s/\b$proxy_type:$port\b//g" | tr -s ' ' | sed 's/^ //')
+        printf "$MESSAGE140\n" "$proxy_type:$port"
+      else
+        if [ -n "$current_ports" ]; then
+          current_ports="$current_ports $proxy_type:$port"
+        else
+          current_ports="$proxy_type:$port"
+        fi
+        printf "$MESSAGE141\n" "$proxy_type:$port"
+      fi
+    done
+    sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$current_ports\"|" "$SBS_CONF"
+    source "$SBS_CONF"
+    echo ""
+    if [ -z "$WAN_PORTS" ]; then
+        echo "$MESSAGE142"
+    else
+        echo "$MESSAGE143"
+    fi
+    serv_sing_box
+}
+
+exch_ports() {
+    source "$SBS_CONF"
+    VALID_TYPES="vless vmess shadowsocks trojan naive hysteria shadowtls tuic hysteria2"
+    read -p "$MESSAGE136" input_combinations
+    if [ -z "$input_combinations" ];then
+        echo "$MESSAGE137"
+        sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"\"|" "$SBS_CONF"
+        source "$SBS_CONF"
+        echo ""
+        echo "$MESSAGE144"
+        serv_sing_box
+        return
+    fi
+    combinations=$(echo "$input_combinations" | tr ' ' '\n')
+    new_ports=""
+    invalid_combinations=0
+    for combination in $combinations; do
+        found_match=0
+        proxy_type=$(echo "$combination" | cut -d':' -f1)
+        port=$(echo "$combination" | cut -d':' -f2)
+        if ! echo "$VALID_TYPES" | grep -qw "$proxy_type"; then
+            printf "$MESSAGE138\n" "$proxy_type"
+            invalid_combinations=1
+            continue
+        fi
+        in_inbounds=0
+        search_port=0
+        while read -r line; do
+            if echo "$line" | grep -q '"inbounds"'; then
+                in_inbounds=1
+            fi
+            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "\"type\": \"$proxy_type\""; then
+                search_port=1
+                continue
+            fi
+            if [ "$search_port" = "1" ] && echo "$line" | grep -q "\"listen_port\": $port\\b"; then
+                found_match=1
+                break
+            fi
+            if echo "$line" | grep -q '"type":'; then
+                search_port=0
+            fi
+        done < "$SB_CONFIG"
+        if [ "$found_match" -eq 0 ]; then
+            printf "$MESSAGE139\n" "$proxy_type:$port"
+            invalid_combinations=1
+            continue
+        fi
+        if [ -n "$new_ports" ]; then
+            new_ports="$new_ports $proxy_type:$port"
+        else
+            new_ports="$proxy_type:$port"
+        fi
+    done
+    if [ -n "$new_ports" ]; then
+        sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$new_ports\"|" "$SBS_CONF"
+        source "$SBS_CONF"
+        echo ""
+        echo "$MESSAGE145"
+    else
+        echo "$MESSAGE146"
+        echo ""
+        echo "$MESSAGE143"
+    fi
+    serv_sing_box
+}
+
+server_sing_box() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+
+    echo ""
+    echo "$MESSAGE147"
+    echo "$MESSAGE148"
+    while true; do
+        read -p "$MESSAGE18" choices
+        case "$choices" in
+            0) echo "$MESSAGE90"; exit 0 ;;
+            1) is_running && stop_sing_box; break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+    echo ""
+    echo "$MESSAGE149"
+    echo "$MESSAGE150"
+    echo "$MESSAGE151"
+    echo "$MESSAGE152"
+    echo ""
+    check_ports
+    source "$SBS_CONF"
+    if [ -z "$WAN_PORTS" ]; then
+        echo "$MESSAGE142"
+    else
+        echo "$MESSAGE143"
+    fi
+    serv_sing_box
+}
+
+serv_sing_box() {
+    source "$SBS_CONF"
+    check_ports
+    source "$SBS_CONF"
+    if [ -z "$WAN_PORTS" ]; then
+        while true; do
+            echo "$MESSAGE153"
+            read -p "$MESSAGE18" init_portchoice
+            case "$init_portchoice" in
+                0) echo "$MESSAGE154"; break ;;
+                1) add_del_ports; exit 0 ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    else
+        while true; do
+            echo "$MESSAGE155"
+            echo "$MESSAGE156"
+            echo "$MESSAGE95"
+            read -p "$MESSAGE47" act_portchoice
+            case "$act_portchoice" in
+                1) add_del_ports; exit 0 ;;
+                2) exch_ports; exit 0 ;;
+                0) echo "$MESSAGE157"; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    fi
+    sing_box_start
+}
+
+install_sing_box() {
+    handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
+    echo "Выбор языка / Select language:"
+    while true; do
+        echo " 1 - Русский / Russian"
+        echo " 2 - Aнглийский / English"
+        echo " 0 - Выход / Exit"
+        read -p "Введите номер пункта / Enter item number: " language_choice
+        case "$language_choice" in
+            1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; sed -i 's/^LANG=".*"/LANG="ru"/' "$TEMP_SBS_CONF"; break ;;
+            2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; sed -i 's/^LANG=".*"/LANG="en"/' "$TEMP_SBS_CONF"; break ;;
+            0) delete_if_not_current_dir; rm -f "$TEMP_SBS_CONF"; exit 0 ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
+        esac
+    done
+
+    source "$TEMP_SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$TEMP_LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$TEMP_LANG_EN"
+    fi
+
+    echo "$MESSAGE158"
+    while true; do
+        read -p "$MESSAGE18" choice
+        case $choice in
+            0) delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
+            1) if is_running; then
+                echo "$MESSAGE160"
+                while true; do
+                   read -p "$MESSAGE18" continue_choice
+                   case "$continue_choice" in
+                       0) delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
+                       1) stop_sing_box; break ;;
+                       *) echo "$MESSAGE6" ;;
+                   esac
+                done
+               else break; fi; break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+
+    echo "$MESSAGE161"
+    create_or_use_existing "$JFFS_SB_DIR"
+    handle_existing_file "$SCRIPT_PATH" self_copy
+    ln -sf $SCRIPT_PATH $LN_PATH
+    handle_existing_file "$SBS_MON" create_sbs_monitor
+    check_file_existence_and_download "$SB_CONFIG" "$SB_CONFIG_URL"
+    chmod 664 "$SB_CONFIG"
+    check_copy_file "$TEMP_SBS_CONF" "$SBS_CONF"
+    check_copy_file "$TEMP_LANG_RU" "$LANG_RU"
+    check_copy_file "$TEMP_LANG_EN" "$LANG_EN"
+
+    if [ -n "$ROOT_DIR" ]; then
+        create_or_use_existing "$SB_DIR"
+    else
+        echo "$MESSAGE162"
+        delete_if_not_current_dir
+        rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
+        exit 1
+    fi
+
+    create_dir "$SB_DOWNLOAD_DIR"
+    if [ "$(uname -m)" = "aarch64" ]; then
+        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+    else
+        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+    fi
+    echo "$MESSAGE163"
+    wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    echo "$MESSAGE164"
+    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
+    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+
+    if [ -f "$SB_PATH" ]; then
+        echo "$MESSAGE165"
+        while true; do
+            read -p "$MESSAGE12" choice
+            case $choice in
+                0) echo "$MESSAGE13"; break ;;
+                1) if [ -f "$sing_box_file" ]; then
+                    cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; echo "$MESSAGE166"; break
+                else
+                    echo "$MESSAGE167"; break
+                fi ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        done
+    else
+        if [ -f "$sing_box_file" ]; then
+            cp "$sing_box_file" "$SB_DIR"; echo "$MESSAGE168"
+        else
+            echo "$MESSAGE169"
+        fi
+    fi
+
+    local current_dir=$(dirname "$(readlink -f "$0")")
+    if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
+      rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN "$(readlink -f "$0")"
+    else
+      rm -rf "$SB_DOWNLOAD_DIR"
+    fi
+
+    echo "$MESSAGE170"
+    echo ""
+    echo "$MESSAGE171"
+}
+
+remove_sing_box() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+
+    echo "$MESSAGE172"
+    while true; do
+        read -p "$MESSAGE18" choice
+        case $choice in
+            0) echo "$MESSAGE173"; exit 0 ;;
+            1) is_running && stop_sing_box; echo "$MESSAGE174"; rm -rf $SB_DIR $JFFS_SB_DIR $LN_PATH; echo "$MESSAGE175"; exit 0 ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+show_menu() {
+    source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
+
+    echo "$MESSAGE176"
+    echo "$MESSAGE177"
+    echo "$MESSAGE178"
+    echo "$MESSAGE179"
+    echo "$MESSAGE180"
+    echo "$MESSAGE181"
+    echo "$MESSAGE182"
+    echo "$MESSAGE183"
+    echo "$MESSAGE184"
+    echo "$MESSAGE185"
+    echo "$MESSAGE186"
+    echo "$MESSAGE187"
+}
+
+case "$1" in
+    install) install_sing_box ;;
+    start) start_sing_box ;;
+    stop) stop_sing_box ;;
+    restart) stop_sing_box; sleep 3; start_sing_box ;;
+    config) config_sing_box ;;
+    setup) setup_sing_box ;;
+    update) update_sing_box ;;
+    status) status_sing_box ;;
+    server) server_sing_box ;;
+    remove) remove_sing_box ;;
+    updmonandcore) updmonandcore_sing_box ;;
+    *)
+    while true; do
+        show_menu
+        read -p "$MESSAGE188" choice
+        case $choice in
+            1) start_sing_box; break ;;
+            2) stop_sing_box; break ;;
+            3) stop_sing_box; sleep 3; start_sing_box; break ;;
+            4) config_sing_box; break ;;
+            5) setup_sing_box; break ;;
+            6) update_sing_box; break ;;
+            7) status_sing_box; break ;;
+            8) server_sing_box; break ;;
+            10) remove_sing_box; break ;;
+            0) exit 0 ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done ;;
+esac
+
+# The developer of script is Dr4tez dr4tez@gmail.com https://github.com/Dr4tez/sing-box4asus
+# The sing-box core is used for work https://github.com/SagerNet/sing-box
