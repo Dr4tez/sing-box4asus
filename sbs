@@ -225,6 +225,28 @@ check_copy_file() {
     fi
 }
 
+change_language() {
+    while true; do
+        if [ "$LANG" = "ru" ]; then
+            echo "Перейти на английский?"
+            read -p "$MESSAGE18" choice
+            case "$choice" in
+                0) echo "$MESSAGE66"; break ;;
+                1) [ -f "$LANG_EN" ] || { wget -q -O $LANG_EN $LANG_EN_URL && chmod 664 $LANG_EN; }; source "$LANG_EN"; sed -i 's/^LANG=".*"/LANG="en"/' "$SBS_CONF"; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        elif [ "$LANG" = "en" ]; then
+            echo "Switch to Russian?"
+            read -p "$MESSAGE18" choice
+            case "$choice" in
+                0) echo "$MESSAGE66"; break ;;
+                1) [ -f "$LANG_RU" ] || { wget -q -O $LANG_RU $LANG_RU_URL && chmod 664 $LANG_RU; }; source "$LANG_RU"; sed -i 's/^LANG=".*"/LANG="ru"/' "$SBS_CONF"; break ;;
+                *) echo "$MESSAGE6" ;;
+            esac
+        fi
+    done
+}
+
 update_script() {
     [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
     echo "$2" | while IFS= read -r line; do
@@ -929,11 +951,13 @@ setup_sing_box() {
             echo "$MESSAGE92"
             echo "$MESSAGE93"
             echo "$MESSAGE94"
+            echo "3. $MESSAGE190"
             echo "$MESSAGE95"
             read -p "$MESSAGE47" if_choice
             case "$if_choice" in
                 1) configure_interface; source "$SBS_CONF" ;;
                 2) configure_table; source "$SBS_CONF" ;;
+                3) change_language; source "$SBS_CONF" ;;
                 0) break ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -946,12 +970,14 @@ setup_sing_box() {
             echo "$MESSAGE93"
             echo "$MESSAGE97"
             echo "$MESSAGE98"
+            echo "4. $MESSAGE190"
             echo "$MESSAGE95"
             read -p "$MESSAGE99" if_choice
             case "$if_choice" in
                 1) configure_interface; source "$SBS_CONF" ;;
                 2) configure_finterface; source "$SBS_CONF" ;;
                 3) configure_table; source "$SBS_CONF" ;;
+                4) change_language; source "$SBS_CONF" ;;
                 0) break ;;
                 *) echo "$MESSAGE6" ;;
             esac
