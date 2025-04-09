@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# !!! Этот скрипт для обновления ТОЛЬКО ru и test версий 1.7 до версии 1.8 !!!
+# !!! This script is for updating ONLY ru and test versions 1.7 to version 1.8 !!!
+
+rm -f /jffs/addons/sing-box-script/update_ru_test_1.7_to_1.8
+
+sbs stop &
+
+sleep 10
+
+rm -f /jffs/addons/sing-box-script/sbs-ru
+rm -f /jffs/addons/sing-box-script/sbs-test
+rm -f /opt/bin/sbs
+
+wget -O /jffs/addons/sing-box-script/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs && chmod 775 /jffs/addons/sing-box-script/sbs
+ln -sf /jffs/addons/sing-box-script/sbs /opt/bin/sbs
+
+sbs updmonandconf
