@@ -125,3 +125,13 @@ wget -O /jffs/scripts/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus
 4. Place your configuration file config.json in the directory /jffs/addons/sing-box-script instead of the template downloaded when installing the script. If desired, make changes to it to work with fakeip, according to the readme.
 5. Configure the script, according to the readme, by running the command in the router command line:
 sbs setup
+
+Version 1.8 from 04/09/25
+1. In the script code, 'curl' has been replaced with 'wget' to avoid errors on some routers.
+2. The Russian and English versions of the script have been combined into one. The desired language is selected when installing the script, but it can then be changed through the menu called by the 'sbs lang' command, or by selecting item 9 in the main menu called by the 'sbs' command.
+3. Optimization of some sections of the script code.
+4. After updating to version 1.8, all subsequent updates will be performed only through the menu called by the 'sbs update' command.
+
+Updating from script version 1.7 to 1.8 is performed by the command:
+wget -O /jffs/addons/sing-box-script/update_1.7_to_1.8 https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/update_1.7_to_1.8 && chmod 775 /jffs/addons/sing-box-script/update_1.7_to_1.8 && /jffs/addons/sing-box-script/update_1.7_to_1.8
+At the end of this command, the script update menu will appear, select item 1, despite the fact that the menu shows the same numbers for the installed and available versions of the script. Only after this the script will be finally updated to version 1.8. If you have fully configured the script version 1.7, then additional configuration after this update will not be required.
