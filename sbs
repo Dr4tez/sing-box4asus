@@ -51,7 +51,7 @@ create_sbs_conf() {
 # Создан в SBS 1.8
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении команды 'sbs setup'. Не рекомендуется изменять значения в нём напрямую, в обход команды 'sbs setup'.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
-
+#
 # Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском.
 # Строка DEVICE_IPS - тут между кавычками указываются IP-адреса устройств, трафик которых вы хотите направить через sing-box. IP-адреса должны быть в одну строку и между ними должно быть только по одному пробелу. Так же тут можно указать и подсеть в формате CIDR, например 192.168.50.0/24.
 # Строка EXC_DEVICE_IPS - если в строке DEVICE_IPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, трафик которых вы хотите исключить из направления через sing-box. Так же тут можно указать подсеть меньшего размера, которая входит в указанную в DEVICE_IPS, если это соответствует вашим целям.
@@ -61,7 +61,6 @@ create_sbs_conf() {
 # Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети.
 # Строки TUN_INTERFACE, LISTEN_DNS_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
 
-LANG=""
 DEVICE_IPS=""
 EXC_DEVICE_IPS=""
 DEVICE_FIPS=""
@@ -71,6 +70,7 @@ WAN_PORTS=""
 TUN_INTERFACE=""
 LISTEN_DNS_PORT=""
 FAKEIP_SUBNET=""
+LANG=""
 EOF
     chmod 664 "$1"
 }
@@ -1047,20 +1047,36 @@ update_sbs() {
     cat << EOF > $TEMP_UPDATE
 #!/bin/sh
 rm -f $TEMP_UPDATE
-exec $SCRIPT_PATH updmonandcore
+exec $SCRIPT_PATH updmonandconf
 EOF
     chmod 775 $TEMP_UPDATE
 
     exec $TEMP_UPDATE
 }
 
-updmonandcore_sing_box() {
+updmonandconf_sing_box() {
     source "$SBS_CONF"
     if [ "$LANG" = "ru" ]; then
         source "$LANG_RU"
     elif [ "$LANG" = "en" ]; then
         source "$LANG_EN"
     fi
+
+    # Выполняем слияние новой версии sbs-conf со старой, не теряя значений переменных из старой.
+    create_sbs_conf "$SBS_CONF"-tmp
+    existing_vars=$(grep '^[A-Za-z0-9_]\+=' "$SBS_CONF")
+    sed -i '/^#/d' "$SBS_CONF"
+    comments=$(grep '^#' "$SBS_CONF"-tmp)
+    vars_in_tmp=$(grep '^[A-Za-z0-9_]\+=' "$SBS_CONF"-tmp)
+    echo "$comments" > "$SBS_CONF"
+    echo "" >> "$SBS_CONF"
+    echo "$existing_vars" >> "$SBS_CONF"
+    for var in $vars_in_tmp; do
+        var_name=$(echo "$var" | cut -d= -f1)
+        if ! grep -q "^$var_name=" "$SBS_CONF"; then
+            echo "$var" >> "$SBS_CONF"
+        fi
+    done
 
     create_sbs_monitor "$SBS_MON"
     echo "$MESSAGE108"
@@ -1572,7 +1588,7 @@ case "$1" in
     status) status_sing_box ;;
     server) server_sing_box ;;
     remove) remove_sing_box ;;
-    updmonandcore) updmonandcore_sing_box ;;
+    updmonandconf) updmonandconf_sing_box ;;
     *)
     while true; do
         show_menu
