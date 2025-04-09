@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# !!! Этот скрипт для обновления ТОЛЬКО с версии SBS 1.7 до версии 1.8!!!
+# !!! This script is for upgrading ONLY from SBS 1.7 to 1.8!!!
+
+RU_FILE="/jffs/addons/sing-box-script/sbs-ru"
+TEST_FILE="/jffs/addons/sing-box-script/sbs-test"
+MAIN_FILE="/jffs/addons/sing-box-script/sbs"
+CONF_FILE="/jffs/addons/sing-box-script/sbs-conf"
+
+set_lang() {
+    LANG_VALUE="$1"
+    if grep -q "^LANG=" "$CONF_FILE"; then
+        sed -i "s/^LANG=.*/LANG=\"$LANG_VALUE\"/" "$CONF_FILE"
+    else
+        echo "LANG=\"$LANG_VALUE\"" >> "$CONF_FILE"
+    fi
+}
+
+sbs stop
+sleep 5
+
+if [ -f "$RU_FILE" ] || [ -f "$TEST_FILE" ]; then
+    rm -f "$RU_FILE"
+    rm -f "$TEST_FILE"
+    wget -O /jffs/addons/sing-box-script/sbs-lang-ru https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs-lang-ru && chmod 664 /jffs/addons/sing-box-script/sbs-lang-ru
+    set_lang ru
+elif [ -f "$MAIN_FILE" ]; then
+    rm -f "$MAIN_FILE"
+    wget -O /jffs/addons/sing-box-script/sbs-lang-en https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs-lang-en && chmod 664 /jffs/addons/sing-box-script/sbs-lang-en
+    set_lang en
+fi
+
+wget -O "$MAIN_FILE" https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs && chmod 775 "$MAIN_FILE"
+rm -f /opt/bin/sbs
+ln -sf "$MAIN_FILE" /opt/bin/sbs
+rm -f /jffs/addons/sing-box-script/update_1.7_to_1.8
+sbs update
