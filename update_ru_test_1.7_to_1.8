@@ -4,7 +4,8 @@
 # !!! This script is for upgrading ONLY ru and test versions of SBS 1.7 to version 1.8 or newer!!!
 
 rm -f /jffs/addons/sing-box-script/update_ru_test_1.7_to_1.8
-sbs stop 
+sbs stop
+sleep 5
 rm -f /jffs/addons/sing-box-script/sbs-ru
 rm -f /jffs/addons/sing-box-script/sbs-test
 rm -f /opt/bin/sbs
