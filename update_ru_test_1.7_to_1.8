@@ -1,33 +1,19 @@
 #!/bin/sh
 
-# !!! Этот скрипт для обновления ТОЛЬКО ru или test версий 1.7 до версии 1.8 !!!
-# !!! This script is for updating ONLY ru or test versions 1.7 to version 1.8 !!!
-
-FILE1="/jffs/addons/sing-box-script/sbs-ru"
-FILE2="/jffs/addons/sing-box-script/sbs-test"
-
-OLD1='SCRIPT_PATH="$JFFS_SB_DIR/sbs-ru"'
-OLD2='SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-ru"'
-OLD3='SCRIPT_PATH="$JFFS_SB_DIR/sbs-test"'
-OLD4='SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-test"'
-
-NEW1='SCRIPT_PATH="$JFFS_SB_DIR/sbs"'
-NEW2='SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs"'
-
-replace_lines() {
-    file="$1"
-    grep -q "$OLD1" "$file" && sed -i "s|$OLD1|$NEW1|" "$file"
-    grep -q "$OLD2" "$file" && sed -i "s|$OLD2|$NEW2|" "$file"
-    grep -q "$OLD3" "$file" && sed -i "s|$OLD3|$NEW1|" "$file"
-    grep -q "$OLD4" "$file" && sed -i "s|$OLD4|$NEW2|" "$file"
-}
-
-if [ -f "$FILE1" ]; then
-    replace_lines "$FILE1"
-elif [ -f "$FILE2" ]; then
-    replace_lines "$FILE2"
-fi
+# !!! Этот скрипт для обновления ТОЛЬКО ru и test версий 1.7 до версии 1.8 !!!
+# !!! This script is for updating ONLY ru and test versions 1.7 to version 1.8 !!!
 
 rm -f /jffs/addons/sing-box-script/update_ru_test_1.7_to_1.8
 
-sbs update
+sbs stop &
+
+sleep 10
+
+rm -f /jffs/addons/sing-box-script/sbs-ru
+rm -f /jffs/addons/sing-box-script/sbs-test
+rm -f /opt/bin/sbs
+
+wget -O /jffs/addons/sing-box-script/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs && chmod 775 /jffs/addons/sing-box-script/sbs
+ln -sf /jffs/addons/sing-box-script/sbs /opt/bin/sbs
+/jffs/addons/sing-box-script/sbs update
+
