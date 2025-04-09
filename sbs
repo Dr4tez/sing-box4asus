@@ -1056,6 +1056,11 @@ EOF
 
 updmonandconf_sing_box() {
     source "$SBS_CONF"
+    if [ "$LANG" = "ru" ]; then
+        source "$LANG_RU"
+    elif [ "$LANG" = "en" ]; then
+        source "$LANG_EN"
+    fi
 
     # Выполняем слияние новой версии sbs-conf со старой, не теряя значений переменных из старой.
     create_sbs_conf "$SBS_CONF"-tmp
@@ -1073,13 +1078,6 @@ updmonandconf_sing_box() {
         fi
     done
     rm -f "$SBS_CONF"-tmp
-
-    source "$SBS_CONF"
-    if [ "$LANG" = "ru" ] || [ "$LANG" = "" ]; then # Вариант с пустым значением нужен для наличия сообщений при обновлении ru и test версий с 1.7 до 1.8
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
 
     create_sbs_monitor "$SBS_MON"
     echo "$MESSAGE108"
