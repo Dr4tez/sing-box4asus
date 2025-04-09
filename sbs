@@ -1072,6 +1072,7 @@ updmonandconf_sing_box() {
             echo "$var" >> "$SBS_CONF"
         fi
     done
+    rm -f "$SBS_CONF"-tmp
 
     source "$SBS_CONF"
     if [ "$LANG" = "ru" ] || [ "$LANG" = "" ]; then # Вариант с пустым значением нужен для наличия сообщений при обновлении ru и test версий с 1.7 до 1.8
