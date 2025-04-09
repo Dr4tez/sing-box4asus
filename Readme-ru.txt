@@ -14,7 +14,7 @@ I. Основы.
 
 II. Установка скрипта.
 Выполните в консоли роутера команду:
-wget -O /jffs/scripts/sbs-ru https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-ru && chmod 775 /jffs/scripts/sbs-ru && /jffs/scripts/sbs-ru install
+wget -O /jffs/scripts/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs && chmod 775 /jffs/scripts/sbs && /jffs/scripts/sbs install
 
 III. Первоначальная настройка и запуск скрипта.
 После установки скрипта, перед первым стартом sing-box, обязательно выполните его настройку! Для этого выполните следующие действия.
