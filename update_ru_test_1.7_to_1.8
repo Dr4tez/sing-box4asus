@@ -4,18 +4,12 @@
 # !!! This script is for updating ONLY ru and test versions 1.7 to version 1.8 !!!
 
 rm -f /jffs/addons/sing-box-script/update_ru_test_1.7_to_1.8
-
-sbs stop &
-
-sleep 10
-
+sbs stop 
 rm -f /jffs/addons/sing-box-script/sbs-ru
 rm -f /jffs/addons/sing-box-script/sbs-test
 rm -f /opt/bin/sbs
-
 wget -O /jffs/addons/sing-box-script/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs && chmod 775 /jffs/addons/sing-box-script/sbs
 wget -O /jffs/addons/sing-box-script/sbs-lang-ru https://raw.githubusercontent.com/Dr4tez/sing-box4asus/Dev/sbs-lang-ru && chmod 664 /jffs/addons/sing-box-script/sbs-lang-ru
 echo 'LANG="ru"' >> /jffs/addons/sing-box-script/sbs-conf
 ln -sf /jffs/addons/sing-box-script/sbs /opt/bin/sbs
-
 sbs update
