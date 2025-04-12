@@ -76,58 +76,58 @@ EOF
 }
 
 create_sbs_monitor() {
-    cat << EOF > "$1"
-#!/bin/sh
-# Создан в SBS 1.9
+    script_path="$1"
+    script_content='#!/bin/sh
+# Создан в SBS 1.8
 
-source "$SBS_CONF"
-if [ -n "\$DEVICE_IPS" ]; then
-    m_sorted_all=\$(echo "\$DEVICE_IPS \$EXC_DEVICE_IPS" \$DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\$'; echo "\$DEVICE_IPS \$EXC_DEVICE_IPS \$DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2nr)
+source "/jffs/addons/sing-box-script/sbs-conf"
+if [ -n "$DEVICE_IPS" ]; then
+    m_sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"; echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2nr)
 fi
 m_ip_to_int() {
-    IFS=. read -r o1 o2 o3 o4 \<<EOF
-\$1
-\EOF
-    echo \$(( (o1 << 24) + (o2 << 16) + (o3 << 8) + o4 ))
+    IFS=. read -r o1 o2 o3 o4 <<EOF
+$1
+EOF
+    echo $(( (o1 << 24) + (o2 << 16) + (o3 << 8) + o4 ))
 }
 m_mask_bits_to_int() {
-    bits="\$1"
-    echo \$(( 0xFFFFFFFF << (32 - bits) & 0xFFFFFFFF ))
+    bits="$1"
+    echo $(( 0xFFFFFFFF << (32 - bits) & 0xFFFFFFFF ))
 }
 m_parse_cidr() {
-    case "\$1" in
-        */*) IFS=/ read -r ip bits \<<EOF
-\$1
-\EOF
+    case "$1" in
+        */*) IFS=/ read -r ip bits <<EOF
+$1
+EOF
             ;;
-        *) ip="\$1"
+        *) ip="$1"
            bits=32
            ;;
     esac
-    ip_int=\$(m_ip_to_int "\$ip")
-    mask=\$(m_mask_bits_to_int "\$bits")
-    net=\$(( ip_int & mask ))
-    echo "\$ip_int \$bits \$mask \$net"
+    ip_int=$(m_ip_to_int "$ip")
+    mask=$(m_mask_bits_to_int "$bits")
+    net=$(( ip_int & mask ))
+    echo "$ip_int $bits $mask $net"
 }
 m_cidr_in_cidr() {
-    cidr_a="\$1"
-    cidr_b="\$2"
+    cidr_a="$1"
+    cidr_b="$2"
 
-    set -- \$(m_parse_cidr "\$cidr_a")
-    a_ip="\$1"
-    a_bits="\$2"
-    a_mask="\$3"
-    a_net="\$4"
+    set -- $(m_parse_cidr "$cidr_a")
+    a_ip="$1"
+    a_bits="$2"
+    a_mask="$3"
+    a_net="$4"
 
-    set -- \$(m_parse_cidr "\$cidr_b")
-    b_ip="\$1"
-    b_bits="\$2"
-    b_mask="\$3"
-    b_net="\$4"
+    set -- $(m_parse_cidr "$cidr_b")
+    b_ip="$1"
+    b_bits="$2"
+    b_mask="$3"
+    b_net="$4"
 
-    [ "\$a_bits" -lt "\$b_bits" ] && return 1
+    [ "$a_bits" -lt "$b_bits" ] && return 1
 
-    if [ "\$(( a_net & b_mask ))" -eq "\$b_net" ]; then
+    if [ "$(( a_net & b_mask ))" -eq "$b_net" ]; then
         return 0
     else
         return 1
@@ -137,19 +137,19 @@ route_in_process=0
 
 sbs_monitor_rr() {
   { ip monitor route | while read _; do
-        if [ "\$route_in_process" -eq 0 ]; then
+        if [ "$route_in_process" -eq 0 ]; then
             route_in_process=1
-            if ! pidof "$SB_PATH" >/dev/null 2>&1; then
-                "$SB_PATH" run -c "$SB_CONFIG" &
+            if ! pidof "/opt/root/sing-box/sing-box" >/dev/null 2>&1; then
+                "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
             fi
-            ip route add default dev \$TUN_INTERFACE table \$ROUTE_TABLE 2>/dev/null
-            if [ -n "\$DEVICE_IPS" ]; then
-                ip route show table main | grep -v '^default' | while read ROUTE; do
-                    ip route add \$ROUTE table \$ROUTE_TABLE 2>/dev/null
+            ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE 2>/dev/null
+            if [ -n "$DEVICE_IPS" ]; then
+                ip route show table main | grep -v "^default" | while read ROUTE; do
+                    ip route add $ROUTE table $ROUTE_TABLE 2>/dev/null
                 done
-                ip route show table \$ROUTE_TABLE | grep -v '^default' | while read ROUTE; do
-                    if ! ip route show table main | grep -q "^\$ROUTE"; then
-                        ip route del \$ROUTE table \$ROUTE_TABLE 2>/dev/null
+                ip route show table $ROUTE_TABLE | grep -v "^default" | while read ROUTE; do
+                    if ! ip route show table main | grep -q "^$ROUTE"; then
+                        ip route del $ROUTE table $ROUTE_TABLE 2>/dev/null
                     fi
                 done
             fi; route_in_process=0
@@ -158,38 +158,38 @@ sbs_monitor_rr() {
 
     while true; do
         ip monitor rule | while read line; do
-            if [ -n "\$FAKEIP_SUBNET" ]; then
-                if ! ip rule show | grep -q "to \$FAKEIP_SUBNET lookup \$ROUTE_TABLE"; then
-                    ip rule add to \$FAKEIP_SUBNET lookup \$ROUTE_TABLE priority 553
+            if [ -n "$FAKEIP_SUBNET" ]; then
+                if ! ip rule show | grep -q "to $FAKEIP_SUBNET lookup $ROUTE_TABLE"; then
+                    ip rule add to $FAKEIP_SUBNET lookup $ROUTE_TABLE priority 553
                 fi
             fi
-            if [ -n "\$DEVICE_IPS" ]; then
-                for IP in \$DEVICE_IPS; do
-                    ip rule del from \$IP lookup \$ROUTE_TABLE >/dev/null 2>&1
+            if [ -n "$DEVICE_IPS" ]; then
+                for IP in $DEVICE_IPS; do
+                    ip rule del from $IP lookup $ROUTE_TABLE >/dev/null 2>&1
                 done
-                for IP in \$EXC_DEVICE_IPS; do
-                    ip rule del from \$IP lookup main >/dev/null 2>&1
+                for IP in $EXC_DEVICE_IPS; do
+                    ip rule del from $IP lookup main >/dev/null 2>&1
                 done
-                for IP in \$DEVICE_FIPS; do
-                    ip rule del from \$IP lookup main >/dev/null 2>&1
+                for IP in $DEVICE_FIPS; do
+                    ip rule del from $IP lookup main >/dev/null 2>&1
                 done
-                echo "\$m_sorted_all" | while read -r IP; do
-                    if echo "\$DEVICE_IPS" | grep -qw "\$IP"; then
-                        ip rule add from "\$IP" lookup "\$ROUTE_TABLE" priority 553
-                    elif echo "\$DEVICE_FIPS" | grep -qw "\$ip"; then
+                echo "$m_sorted_all" | while read -r IP; do
+                    if echo "$DEVICE_IPS" | grep -qw "$IP"; then
+                        ip rule add from "$IP" lookup "$ROUTE_TABLE" priority 553
+                    elif echo "$DEVICE_FIPS" | grep -qw "$ip"; then
                         matched=0
-                        for subnet in \$DEVICE_IPS; do
-                            if m_cidr_in_cidr "\$ip" "\$subnet"; then
-                                ip rule add from "\$ip" lookup main priority 553
+                        for subnet in $DEVICE_IPS; do
+                            if m_cidr_in_cidr "$ip" "$subnet"; then
+                                ip rule add from "$ip" lookup main priority 553
                                 matched=1
                                 break
                             fi
                         done
-                        if [ "\$matched" -eq 0 ]; then
+                        if [ "$matched" -eq 0 ]; then
                             continue
                         fi
                     else
-                        ip rule add from "\$IP" lookup main priority 553
+                        ip rule add from "$IP" lookup main priority 553
                     fi
                 done
             fi; break
@@ -197,10 +197,11 @@ sbs_monitor_rr() {
     done
 }
 
-trap '' SIGHUP
+trap "" SIGHUP
 sbs_monitor_rr 2>/dev/null
-EOF
-    chmod 775 "$1"
+'
+    echo "$script_content" > "$script_path"
+    chmod +x "$script_path"
 }
 
 check_file_existence_and_download() {
