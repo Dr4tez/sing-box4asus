@@ -34,7 +34,7 @@ After installing the script, before the first start of sing-box, be sure to conf
   2.4 When you select option 0 to exit the script setup menu, you will be prompted to run sing-box. If you are ready, agree.
 
 IV. About configuring device IP addresses to route them via regular routing or fakeip.
-The script has the ability to route device IP addresses via regular routing (using the first point of menu 'sbs setup'), and/or specify them for using fakeip (using the second point of menu 'sbs setup', if the config.json file contains fakeip settings). Different options require different, appropriately composed sing-box configuration files, which requires advanced skills in compiling them.
+The script has the ability to route the device IP addresses through normal routing using the first menu item 'sbs setup', and/or specify them for use by fakeip via the second menu item 'sbs setup', which will only appear if the config.json file contains fakeip settings. Different options require different, appropriately composed sing-box configuration files, which requires advanced skills in compiling them.
 Configuration file templates for sing-box 1.11.* for all the variants listed below can be found on the project page https://github.com/Dr4tez/sing-box4asus. If you want to use one of them with other versions of sing-box, then don't forget to change the config according to the Migration section of the sing-box documentation https://sing-box.sagernet.org/migration/ if necessary.
 
  1. If you want to route device IP addresses only via regular routing, then specify them only in the first point of the 'sbs setup' menu. If you specify a subnet in CIDR format here, for example 192.168.50.0/24, then after entering it, a prompt will appear to enter exception IP addresses that should not be routed via sing-box.
@@ -45,10 +45,10 @@ Configuration file templates for sing-box 1.11.* for all the variants listed bel
  2. If you want to configure IP addresses to work only via fakeip, then specify them only in the second point of the 'sbs setup' menu. If you specify a subnet in CIDR format here, then after entering it, a prompt will appear to enter IP addresses of exceptions that should not work through fakeip.
  For this option, the sing-box configuration file template is called config-2.json. If you want to use it, just copy its contents into the config.json file downloaded during script installation, replacing its contents.
 
- 3. If you want to route the entire subnet through regular routing, specifying it in the first point of the 'sbs setup' menu, and configure some IP addresses from it to work through fakeip, then you need to specify these IP addresses in the exceptions of regular routing and specify them in the second point.
+ 3. If you want to route the entire subnet via regular routing, specifying it in the first item of the 'sbs setup' menu, and configure some IP addresses from it to work via fakeip, then specify these IP addresses in the second item.
  For this option, the sing-box configuration file template is called config-3.json. If you want to use it, just copy its contents into the config.json file downloaded during script installation, replacing its contents. Instead of IP addresses 192.168.50.14 and 192.168.50.15 in this configuration file, you can insert your IP addresses of the devices that you want to configure to work via fakeip.
 
- 4. If you want to configure the entire subnet via fakeip by specifying it in the second point of the 'sbs setup' menu, and send some IP addresses from it via regular routing, then it is enough to specify these IP addresses only in the first point.
+ 4. If you want to route the entire subnet via fakeip, specifying it in the second item of the 'sbs setup' menu, and configure some IP addresses from it to work via regular routing, then specify these IP addresses in the first item.
  For this option, the sing-box configuration file template is called config-4.json. If you want to use it, just copy its contents into the config.json file downloaded during script installation, replacing its contents. Instead of IP addresses 192.168.50.14 and 192.168.50.15 in this configuration file, you can insert your IP addresses of devices that you want to route via the sing-box using regular routing.
 
 V. Features of configuring sing-box on a router.
