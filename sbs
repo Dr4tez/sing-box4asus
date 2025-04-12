@@ -1333,6 +1333,7 @@ status_sing_box() {
 
     echo "$MESSAGE134"
     echo "$MESSAGE135"
+    is_running && [ -n "$WAN_PORTS" ] && printf "$MESSAGE189\n" "$WAN_PORTS"
 }
 
 check_ports() {
