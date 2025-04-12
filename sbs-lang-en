@@ -192,3 +192,4 @@ MESSAGE185="8) server (Specify ports of inbound proxy servers to open them from 
 MESSAGE186="10) remove (!!!Remove sing-box completely!!!)"
 MESSAGE187="Enter your choice [0-10]: "
 MESSAGE188="The menu and message language has been changed to English."
+MESSAGE189="The script opened the following ports from WAN: %s"
