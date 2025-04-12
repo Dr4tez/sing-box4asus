@@ -78,7 +78,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 1.8
+# Создан в SBS 1.9
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 if [ -n "$DEVICE_IPS" ]; then
