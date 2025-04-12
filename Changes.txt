@@ -132,6 +132,13 @@ Version 1.8 from 04/09/25
 3. Optimization of some sections of the script code.
 4. After updating to version 1.8, all subsequent updates will be performed only through the menu called by the 'sbs update' command.
 
-Updating from script version 1.7 to 1.8 is performed by the command:
-wget -O /jffs/addons/sing-box-script/update_1.7_to_1.8 https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/update_1.7_to_1.8 && chmod 775 /jffs/addons/sing-box-script/update_1.7_to_1.8 && /jffs/addons/sing-box-script/update_1.7_to_1.8
-At the end of this command, the script update menu will appear, select item 1, despite the fact that the menu shows the same numbers for the installed and available versions of the script. Only after this the script will be finally updated to version 1.8. If you have fully configured the script version 1.7, then additional configuration after this update will not be required.
+Version 1.9 from 04/12/25
+1. The output of the 'sbs status' command now includes information about ports from the WAN opened by the script, if the ports are configured in the 'sbs server' menu and the script is running.
+2. Now, when using regular sing-box routing for some IP addresses/subnets and routing via fakeip for others, you don't need to manually add IP addresses/subnets configured for operation via fakeip to the exceptions of regular routing. In this regard, changes have been made to the Readme (section IV, items 3 and 4).
+3. Correction of the sorting order of subnets to form the correct order of routing rules.
+
+Updating from script version 1.8 to 1.9 is done through the menu called by the command 'sbs update', in which you just need to select the first item.
+
+Updating from script version 1.7 to 1.9 is performed by the command:
+wget -O /jffs/addons/sing-box-script/update_1.7_to_1.9 https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/update_1.7_to_1.9 && chmod 775 /jffs/addons/sing-box-script/update_1.7_to_1.9 && /jffs/addons/sing-box-script/update_1.7_to_1.9
+At the end of this command, the script update menu will appear, select item 1, despite the fact that the menu shows the same numbers for the installed and available versions of the script. Only after this the script will be finally updated to version 1.9. If you have fully configured the script version 1.7, then additional configuration after this update will not be required.
