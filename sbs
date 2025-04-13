@@ -483,6 +483,14 @@ start_sing_box() {
         source "$LANG_EN"
     fi
 
+    all_entries=$(printf "%s\n" $DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS)
+    duplicates=$(echo "$all_entries" | sort | uniq -d)
+    if [ -n "$duplicates" ]; then
+        echo ""
+        printf "$MESSAGE190\n" "$duplicates"
+        exit 0
+    fi
+
     echo ""
     log_msg "$MESSAGE20"
     is_running && { log_msg "$MESSAGE21"; exit 1; }
