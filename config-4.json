@@ -95,7 +95,7 @@
       "tag": "dns4tunin",
       "listen": "0.0.0.0",
       "listen_port": 55553,
-      "override_port": 53
+      "override_port": 553
     }
   ],
   "outbounds": [
