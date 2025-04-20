@@ -395,7 +395,7 @@ update_sbs_interface() {
 }
 
 extract_listen_dns_port() {
-    listen_dns_port=$(grep -B1 '"override_port": 53' "$SB_CONFIG" | grep '"listen_port"' | sed -E 's/.*"listen_port": ([0-9]+),.*/\1/')
+    listen_dns_port=$(grep -B1 '"override_port": 553' "$SB_CONFIG" | grep '"listen_port"' | sed -E 's/.*"listen_port": ([0-9]+),.*/\1/')
 
     if [ -z $listen_dns_port ]; then
         sed -i 's/^LISTEN_DNS_PORT=.*/LISTEN_DNS_PORT=""/' "$SBS_CONF"
