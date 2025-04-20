@@ -72,9 +72,9 @@ Here are listed the conditions that must be observed when creating sing-box conf
       "tag": "dns4tunin",
       "listen": "0.0.0.0",
       "listen_port": 55553,
-      "override_port": 53
+      "override_port": 5553
     }
-  This block is an inbound direct interface called dns4tunin. It accepts DNS requests on port 55553 from devices whose traffic is routed through the sing-box and redefines them to port 53. The listen_port value does not necessarily have to be 55553, if this port is already occupied by your router for other purposes, you can enter any free 4- or 5-digit port instead.
+  This block is an inbound direct interface called dns4tunin. It accepts DNS requests on port 55553 from devices whose traffic is routed through the sing-box and redefines them to port 5553. The listen_port value does not necessarily have to be 55553, if this port is already occupied by your router for other purposes, you can enter any free 4- or 5-digit port instead. The override_port value does not necessarily have to be 5553, if this port is already occupied by your router or sing-box for other purposes, you can enter any free 4- or 5-digit port instead.
   This block is present in the template of my config.json, downloaded during the installation of the script.
 
  3. The instructions for setting up the 3x-ui panel that I came across on the Internet do not mention one important nuance- if you want your DNS requests to be processed by DNS servers specified in the sing-box configuration file, then in the 3x-ui panel, in the connection settings, turn off Sniffing, otherwise DNS requests sent to the proxy tunnel will be processed by DNS servers configured on the server or in the 3x-ui panel itself.
