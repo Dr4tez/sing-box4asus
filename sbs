@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 1.9.1
+# Version 1.9.2
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -431,18 +431,46 @@ $line"
 }
 
 fakeip_check() {
-    fakeip_line=$(grep -E '^\s*"fakeip":\s*\{' "$SB_CONFIG")
-    if [ -n "$fakeip_line" ]; then
-        enabled_line=$(grep -A1 -E '^\s*"fakeip":\s*\{' "$SB_CONFIG" | tail -n1 | grep -q '"enabled": true')
-        if [ $? -eq 0 ]; then
-            inet4_range_line=$(grep -A2 -E '^\s*"fakeip":\s*\{' "$SB_CONFIG" | grep -E '"inet4_range":')
-            if [ -n "$inet4_range_line" ]; then
-                inet4_range=$(echo "$inet4_range_line" | sed -E 's/.*"inet4_range": "([^"]+)".*/\1/')
-                sed -i "s|^FAKEIP_SUBNET=.*|FAKEIP_SUBNET=\"$inet4_range\"|" "$SBS_CONF"
+    found_block=0
+    enabled_required=0
+    enabled_found=0
+    inet4_range=""
+    in_block=0
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [ $in_block -eq 0 ]; then
+            if echo "$line" | grep -qE '^\s*"fakeip":\s*\{' ; then
+                in_block=1
+                found_block=1
+                enabled_required=1
+                enabled_found=0
+                inet4_range=""
+                continue
+            fi
+            if echo "$line" | grep -q '"type": "fakeip"'; then
+                in_block=1
+                found_block=1
+                enabled_required=0
+                enabled_found=1
+                inet4_range=""
+                continue
             fi
         else
-            sed -i "s|^FAKEIP_SUBNET=.*|FAKEIP_SUBNET=\"\"|" "$SBS_CONF"
+            echo "$line" | grep -q '}' && in_block=0
+            if [ $in_block -eq 0 ]; then
+                break
+            fi
+            if [ $enabled_required -eq 1 ]; then
+                echo "$line" | grep -q '"enabled": true' && enabled_found=1
+            fi
+            if echo "$line" | grep -q '"inet4_range":'; then
+                inet4_range=$(echo "$line" | sed -E 's/.*"inet4_range": "([^"]+)".*/\1/')
+            fi
         fi
+    done < "$SB_CONFIG"
+
+    if [ $found_block -eq 1 ] && [ $enabled_found -eq 1 ] && [ -n "$inet4_range" ]; then
+        sed -i "s|^FAKEIP_SUBNET=.*|FAKEIP_SUBNET=\"$inet4_range\"|" "$SBS_CONF"
     else
         sed -i "s|^FAKEIP_SUBNET=.*|FAKEIP_SUBNET=\"\"|" "$SBS_CONF"
     fi
