@@ -1,4 +1,4 @@
-# For SBS version 1.9
+# For SBS version 2.0
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -88,7 +88,7 @@ MESSAGE84="Change it?"
 MESSAGE85="Refused to change the routing table number."
 MESSAGE86="Enter the new routing table number: "
 MESSAGE87="The routing table number for sing-box has been changed to %s"
-MESSAGE88="Your sing-box configuration file does not contain tun interfaces. Nothing to configure. Exiting."
+MESSAGE88="Your sing-box configuration file does not contain tun or tproxy interface. Nothing to configure. Exiting."
 MESSAGE89="Enter the script configuration menu? If sing-box is running, it will be stopped upon entering the menu."
 MESSAGE90="Exit."
 MESSAGE91="Script configuration menu."
@@ -196,3 +196,6 @@ MESSAGE189="The script opened the following ports from WAN: %s"
 MESSAGE190="Warning: duplicates of the following IP addresses were found in the script settings:
 %s
 Enter the script settings menu with the 'sbs setup' command and remove duplicates in the IP address settings."
+MESSAGE191="Loading TPROXY module..."
+MESSAGE192="Adding MANGLE rules."
+MESSAGE193="Removing MANGLE rules."
