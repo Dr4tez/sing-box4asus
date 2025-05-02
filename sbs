@@ -182,7 +182,7 @@ sbs_monitor_rr() {
                             fi
                         done
                     fi
-                elif [ -n "$TPROXY_PORT" ]; then
+                elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
                     ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE 2>/dev/null
                     iptables -t mangle -D PREROUTING -j SBTPROXY  2>/dev/null
                     iptables -t mangle -F SBTPROXY 2>/dev/null
@@ -260,7 +260,7 @@ fi ) & # sing-box-script-mangle"
             if [ -n "$ROUTE_TABLE" ] && [ -n "$FAKEIP_SUBNET" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ]; then
                 if [ -n "$TUN_INTERFACE" ]; then
                     ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE 2>/dev/null
-                elif [ -n "$TPROXY_PORT" ]; then
+                elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
                     ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE 2>/dev/null
                     iptables -t mangle -D PREROUTING -j SBTPROXY  2>/dev/null
                     iptables -t mangle -F SBTPROXY 2>/dev/null
@@ -321,7 +321,7 @@ fi ) & # sing-box-script-mangle"
                             fi
                         done
                     fi
-                elif [ -n "$TPROXY_PORT" ]; then
+                elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
                     if ! ip rule show | grep -q "from all fwmark ${TPROXY_MARK%%/*} lookup $ROUTE_TABLE"; then
                         ip rule add fwmark $TPROXY_MARK lookup $ROUTE_TABLE priority 553
                     fi
@@ -332,7 +332,7 @@ fi ) & # sing-box-script-mangle"
                     if ! ip rule show | grep -q "to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE"; then
                         ip rule add to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE priority 553
                     fi
-                elif [ -n "$TPROXY_PORT" ]; then
+                elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
                     if ! ip rule show | grep -q "from all fwmark ${TPROXY_MARK%%/*} lookup $ROUTE_TABLE"; then
                         ip rule add fwmark $TPROXY_MARK lookup $ROUTE_TABLE priority 553
                     fi
@@ -721,7 +721,7 @@ start_sing_box() {
         INPUT -i $TUN_INTERFACE -j ACCEPT
         OUTPUT -o $TUN_INTERFACE -j ACCEPT"
         lsmod | grep -q "^tun " || { log_msg "$MESSAGE22"; modprobe tun; sleep 3; }
-    elif [ -n "$TPROXY_PORT" ]; then
+    elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
         lsmod | grep -q "^xt_TPROXY " || { log_msg "$MESSAGE191"; modprobe xt_TPROXY; sleep 3; }
     fi
     $SB_PATH run -c $SB_CONFIG &
@@ -1051,7 +1051,7 @@ fi ) & # sing-box-script-mangle"
                     fi
                 done
             fi
-        elif [ -n "$TPROXY_PORT" ]; then
+        elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
             log_msg "$MESSAGE27"
             ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE
             ip rule add fwmark $TPROXY_MARK lookup $ROUTE_TABLE priority 553
@@ -1069,7 +1069,7 @@ fi ) & # sing-box-script-mangle"
             log_msg "$MESSAGE27"
             ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE
             ip rule add to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE priority 553
-        elif [ -n "$TPROXY_PORT" ]; then
+        elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
             log_msg "$MESSAGE27"
             ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE
             ip rule add fwmark $TPROXY_MARK lookup $ROUTE_TABLE priority 553
