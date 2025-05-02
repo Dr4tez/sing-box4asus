@@ -1495,7 +1495,7 @@ configure_table() {
     done
     echo "$MESSAGE66"
 }
-####
+
 setup_sing_box() {
     source "$SBS_CONF"
     if [ "$LANG" = "ru" ]; then
