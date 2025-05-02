@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# !!! Этот скрипт для обновления ТОЛЬКО с версии SBS 1.7 до версии 1.9!!!
-# !!! This script is for upgrading ONLY from SBS 1.7 to 1.9!!!
+# !!! Этот скрипт для обновления ТОЛЬКО с версии SBS 1.7 до версии 2.0!!!
+# !!! This script is for upgrading ONLY from SBS 1.7 to 2.0!!!
 
 RU_FILE="/jffs/addons/sing-box-script/sbs-ru"
 TEST_FILE="/jffs/addons/sing-box-script/sbs-test"
@@ -34,5 +34,5 @@ fi
 wget -O "$MAIN_FILE" https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/sbs && chmod 775 "$MAIN_FILE"
 rm -f /opt/bin/sbs
 ln -sf "$MAIN_FILE" /opt/bin/sbs
-rm -f /jffs/addons/sing-box-script/update_1.7_to_1.9
+rm -f /jffs/addons/sing-box-script/update_1.7_to_2.0
 sbs update
