@@ -1507,7 +1507,7 @@ setup_pro() {
                 *) echo "$MESSAGE6" ;;
             esac
         done
-    else
+    elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
         while true; do
             echo ""
             echo "$MESSAGE194"
