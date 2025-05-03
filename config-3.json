@@ -84,11 +84,9 @@
   },
   "inbounds": [
     {
-      "type": "tun",
-      "tag": "tunin",
-      "interface_name": "sbtun",
-      "mtu": 1500,
-      "address": "172.19.0.1/28"
+      "type": "tproxy",
+      "listen": "0.0.0.0",
+      "listen_port": 6543
     },
     {
       "type": "direct",
