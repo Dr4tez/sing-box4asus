@@ -1054,12 +1054,15 @@ stop_sing_box() {
             ip rule del from $IP lookup main >/dev/null 2>&1
         done
         ip route flush table $ROUTE_TABLE
-        log_msg "$MESSAGE35"
-        echo "$FW_RULES" | while read -r rule; do
-            manage_iptables "remove" "$rule" >/dev/null 2>&1
-        done
+        if [ -n "$TUN_INTERFACE" ]; then
+            log_msg "$MESSAGE35"
+            echo "$FW_RULES" | while read -r rule; do
+                manage_iptables "remove" "$rule" >/dev/null 2>&1
+            done
+        fi
 # Удаление правил mangle
         if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ] && [ -n "$TPROXY_MARK" ]; then
+            log_msg "$MESSAGE193"
             iptables -t mangle -D PREROUTING -j SBTPROXY  2>/dev/null
             iptables -t mangle -F SBTPROXY 2>/dev/null
             iptables -t mangle -X SBTPROXY  2>/dev/null
@@ -1094,10 +1097,18 @@ stop_sing_box() {
         ip rule del fwmark $TPROXY_MARK lookup $ROUTE_TABLE >/dev/null 2>&1
         ip rule del to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE >/dev/null 2>&1
         ip route flush table $ROUTE_TABLE
-        log_msg "$MESSAGE35"
-        echo "$FW_RULES" | while read -r rule; do
-            manage_iptables "remove" "$rule" >/dev/null 2>&1
-        done
+        if [ -n "$TUN_INTERFACE" ]; then
+            log_msg "$MESSAGE35"
+            echo "$FW_RULES" | while read -r rule; do
+                manage_iptables "remove" "$rule" >/dev/null 2>&1
+            done
+        fi
+        if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ] && [ -n "$TPROXY_MARK" ]; then
+            log_msg "$MESSAGE193"
+            iptables -t mangle -D PREROUTING -j SBTPROXY  2>/dev/null
+            iptables -t mangle -F SBTPROXY 2>/dev/null
+            iptables -t mangle -X SBTPROXY  2>/dev/null
+        fi
     fi
 
     PIDS=$(pidof "sing-box")
