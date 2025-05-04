@@ -1493,7 +1493,7 @@ setup_sing_box() {
 }
 
 setup_pro() {
-    if [ -z "$TPROXY_PORT" ]; then
+    if [ -n "$TUN_INTERFACE" ]; then
         while true; do
             echo ""
             echo "$MESSAGE194"
