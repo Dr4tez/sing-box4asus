@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.0
+# Version 2.0.1
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -528,12 +528,36 @@ sing_box_start() {
 }
 
 update_tun_interface() {
-    interfaces=$(awk -F'"' '/"interface_name":/ {print $4}' "$SB_CONFIG")
+    tun_interface=""
+    in_block=0
+    block=""
 
-    if [ -z "$interfaces" ]; then
-        sed -i 's/^TUN_INTERFACE=.*/TUN_INTERFACE=""/' "$SBS_CONF"
+    while IFS= read -r line; do
+        case "$line" in
+            *'{'*) 
+                block="$line"
+                in_block=1
+                continue ;;
+        esac
+
+        if [ "$in_block" -eq 1 ]; then
+            block="$block
+$line"
+            case "$line" in
+                *'}'*) 
+                    in_block=0
+                    echo "$block" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"tun\"" || continue
+                    echo "$block" | grep -q '^[[:space:]]*"interface_name"[[:space:]]*:' || continue
+                    tun_interface=$(echo "$block" | sed -n 's/^[[:space:]]*"interface_name"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p')
+                    [ -n "$tun_interface" ] && break ;;
+            esac
+        fi
+    done < "$SB_CONFIG"
+
+    if [ -z "$tun_interface" ]; then
+        sed -i "s/^TUN_INTERFACE=.*/TUN_INTERFACE=\"\"/" "$SBS_CONF"
     else
-        sed -i "s/^TUN_INTERFACE=.*/TUN_INTERFACE=\"$interfaces\"/" "$SBS_CONF"
+        sed -i "s/^TUN_INTERFACE=.*/TUN_INTERFACE=\"$tun_interface\"/" "$SBS_CONF"
     fi
 }
 
@@ -558,9 +582,9 @@ $line"
             case "$line" in
                 *'}'*) 
                     in_block=0
-                    echo "$block" | grep -q "\"type\"[[:space:]]*:[[:space:]]*\"$type_value\"" || continue
-                    echo "$block" | grep -q '"listen_port"[[:space:]]*:' || continue
-                    listen_port=$(echo "$block" | sed -n 's/.*"listen_port"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')
+                    echo "$block" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$type_value\"" || continue
+                    echo "$block" | grep -q '^[[:space:]]*"listen_port"[[:space:]]*:' || continue
+                    listen_port=$(echo "$block" | sed -n 's/^[[:space:]]*"listen_port"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')
                     [ -n "$listen_port" ] && break ;;
             esac
         fi
@@ -582,7 +606,7 @@ fakeip_check() {
 
     while IFS= read -r line || [ -n "$line" ]; do
         if [ $in_block -eq 0 ]; then
-            if echo "$line" | grep -qE '^\s*"fakeip":\s*\{' ; then
+            if echo "$line" | grep -q '^[[:space:]]*"fakeip"[[:space:]]*:[[:space:]]*{' ; then
                 in_block=1
                 found_block=1
                 enabled_required=1
@@ -590,7 +614,7 @@ fakeip_check() {
                 inet4_range=""
                 continue
             fi
-            if echo "$line" | grep -q '"type": "fakeip"'; then
+            if echo "$line" | grep -q '^[[:space:]]*"type"[[:space:]]*:[[:space:]]*"fakeip"'; then
                 in_block=1
                 found_block=1
                 enabled_required=0
@@ -604,10 +628,10 @@ fakeip_check() {
                 break
             fi
             if [ $enabled_required -eq 1 ]; then
-                echo "$line" | grep -q '"enabled": true' && enabled_found=1
+                echo "$line" | grep -q '^[[:space:]]*"enabled"[[:space:]]*:[[:space:]]*true' && enabled_found=1
             fi
-            if echo "$line" | grep -q '"inet4_range":'; then
-                inet4_range=$(echo "$line" | sed -E 's/.*"inet4_range": "([^"]+)".*/\1/')
+            if echo "$line" | grep -q '^[[:space:]]*"inet4_range"[[:space:]]*:'; then
+                inet4_range=$(echo "$line" | sed -n 's/^[[:space:]]*"inet4_range"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
             fi
         fi
     done < "$SB_CONFIG"
@@ -1761,18 +1785,18 @@ check_wan_ports() {
         in_inbounds=0
         search_port=0
         while read -r line; do
-            if echo "$line" | grep -q '"inbounds"'; then
+            if echo "$line" | grep -q '^[[:space:]]*"inbounds"'; then
                 in_inbounds=1
             fi
-            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "\"type\": \"$proxy_type\""; then
+            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$proxy_type\""; then
                 search_port=1
                 continue
             fi
-            if [ "$search_port" = "1" ] && echo "$line" | grep -q "\"listen_port\": $port\\b"; then
+            if [ "$search_port" = "1" ] && echo "$line" | grep -q "^[[:space:]]*\"listen_port\"[[:space:]]*:[[:space:]]*$port\\b"; then
                 found_match=1
                 break
             fi
-            if echo "$line" | grep -q '"type":'; then
+            if echo "$line" | grep -q '^[[:space:]]*"type"[[:space:]]*:[[:space:]]*'; then
                 search_port=0
             fi
         done < "$SB_CONFIG"
@@ -1804,18 +1828,18 @@ add_del_ports() {
       in_inbounds=0
       search_port=0
       while read -r line; do
-        if echo "$line" | grep -q '"inbounds"'; then
+        if echo "$line" | grep -q '^[[:space:]]*"inbounds"[[:space:]]*:'; then
           in_inbounds=1
         fi
-        if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "\"type\": \"$proxy_type\""; then
+        if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$proxy_type\""; then
           search_port=1
           continue
         fi
-        if [ "$search_port" = "1" ] && echo "$line" | grep -q "\"listen_port\": $port\\b"; then
+        if [ "$search_port" = "1" ] && echo "$line" | grep -q "^[[:space:]]*\"listen_port\"[[:space:]]*:[[:space:]]*$port\\b"; then
           found_match=1
           break
         fi
-        if echo "$line" | grep -q '"type":'; then
+        if echo "$line" | grep -q '^[[:space:]]*"type"[[:space:]]*:'; then
           search_port=0
         fi
       done < "$SB_CONFIG"
@@ -1874,18 +1898,18 @@ exch_ports() {
         in_inbounds=0
         search_port=0
         while read -r line; do
-            if echo "$line" | grep -q '"inbounds"'; then
+            if echo "$line" | grep -q '^[[:space:]]*"inbounds"[[:space:]]*:'; then
                 in_inbounds=1
             fi
-            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "\"type\": \"$proxy_type\""; then
+            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$proxy_type\""; then
                 search_port=1
                 continue
             fi
-            if [ "$search_port" = "1" ] && echo "$line" | grep -q "\"listen_port\": $port\\b"; then
+            if [ "$search_port" = "1" ] && echo "$line" | grep -q "^[[:space:]]*\"listen_port\"[[:space:]]*:[[:space:]]*$port\\b"; then
                 found_match=1
                 break
             fi
-            if echo "$line" | grep -q '"type":'; then
+            if echo "$line" | grep -q '^[[:space:]]*"type"[[:space:]]*:'; then
                 search_port=0
             fi
         done < "$SB_CONFIG"
