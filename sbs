@@ -246,14 +246,8 @@ iptables -t mangle -I SBTPROXY -p udp --dport 53 -j RETURN # sing-box-script-man
                     done
                     iptables -t mangle -I SBTPROXY -p udp --dport 67 -j RETURN
                     iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN
-                    iptables -t mangle -I SBTPROXY -d 224.0.0.0/4 -j RETURN
-                    iptables -t mangle -I SBTPROXY -p udp -m u32 --u32 "32=0x2112A442" -j RETURN
-                    iptables -t mangle -I SBTPROXY -p udp --dport 123 -j RETURN
                     m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBTPROXY -p udp --dport 67 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBTPROXY -d 224.0.0.0/4 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBTPROXY -p udp -m u32 --u32 "32=0x2112A442" -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBTPROXY -p udp --dport 123 -j RETURN; ) & # sing-box-script-mangle"
+iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN; ) & # sing-box-script-mangle"
                 fi
             fi
             if [ -n "$ROUTE_TABLE" ] && [ -n "$FAKEIP_SUBNET" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ]; then
@@ -919,14 +913,8 @@ iptables -t mangle -I SBTPROXY -p udp --dport 53 -j RETURN # sing-box-script-man
             done
             iptables -t mangle -I SBTPROXY -p udp --dport 67 -j RETURN
             iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN
-            iptables -t mangle -I SBTPROXY -d 224.0.0.0/4 -j RETURN
-            iptables -t mangle -I SBTPROXY -p udp -m u32 --u32 "32=0x2112A442" -j RETURN
-            iptables -t mangle -I SBTPROXY -p udp --dport 123 -j RETURN
             update_script "$NAT_SCRIPT" "iptables -t mangle -I SBTPROXY -p udp --dport 67 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBTPROXY -d 224.0.0.0/4 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBTPROXY -p udp -m u32 --u32 "32=0x2112A442" -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBTPROXY -p udp --dport 123 -j RETURN; ) & # sing-box-script-mangle"
+iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN; ) & # sing-box-script-mangle"
         fi
     fi
 # То же, но для использования sing-box в качестве чисто DNS сервера с fakeip для конечных устройств или для AGH, попросили такую возможность
