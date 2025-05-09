@@ -1,4 +1,4 @@
-# For SBS version 2.0
+# For SBS version 2.0.1
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -209,3 +209,4 @@ MESSAGE197="Current tproxy-mark for sing-box: %s
 Change it?"
 MESSAGE198="Enter a new tproxy-mark: "
 MESSAGE199="Refusal to change tproxy-mark."
+MESSAGE200="Parsing config.json configuration file..."
