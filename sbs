@@ -714,7 +714,7 @@ start_sing_box() {
     duplicates=$(echo "$all_entries" | sort | uniq -d)
     if [ -n "$duplicates" ]; then
         printf "$MESSAGE190\n" "$duplicates"
-        exit 0
+        exit 1
     fi
 
     log_msg "$MESSAGE200"
@@ -743,6 +743,7 @@ start_sing_box() {
     log_msg "$MESSAGE20"
     $SB_PATH run -c $SB_CONFIG &
     sleep 5
+    is_running || exit 1
 
 # Проверка наличия tun интерфейса
     if [ -n "$TUN_INTERFACE" ]; then
