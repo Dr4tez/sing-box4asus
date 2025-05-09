@@ -1675,7 +1675,7 @@ check_sing_box() {
                 esac
             done
         else
-            echo "$MESSAGE118"; echo "$MESSAGE200"; update_tun_interface; extract_listen_port LISTEN_DNS_PORT direct; check_wan_ports; fakeip_check; break
+            echo "$MESSAGE118"; break
         fi
     done
 }
@@ -1694,7 +1694,7 @@ format_sing_box() {
             read -p "$MESSAGE18" save_choice
             case "$save_choice" in
                 0) echo "$MESSAGE122"; break ;;
-                1) $SB_PATH format -w -c $SB_CONFIG; echo "$MESSAGE123"; echo "$MESSAGE200"; update_tun_interface; extract_listen_port LISTEN_DNS_PORT direct; check_wan_ports; fakeip_check; break ;;
+                1) $SB_PATH format -w -c $SB_CONFIG; echo "$MESSAGE123"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
         done
@@ -1719,7 +1719,7 @@ config_sing_box() {
         echo "0-$MESSAGE95"
         read -p "$MESSAGE99 [0-3]: " choice
         case "$choice" in
-            1) is_running && stop_sing_box; echo ""; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE129"; echo "$MESSAGE200"; update_tun_interface; extract_listen_port LISTEN_DNS_PORT direct; check_wan_ports; fakeip_check ;;
+            1) is_running && stop_sing_box; echo ""; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE129" ;;
             2) check_sing_box ;;
             3) format_sing_box ;;
             0) break ;;
