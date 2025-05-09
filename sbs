@@ -1468,9 +1468,7 @@ setup_sing_box() {
 
     echo "$MESSAGE200"
     update_tun_interface
-    extract_listen_port LISTEN_DNS_PORT direct
     extract_listen_port TPROXY_PORT tproxy
-    check_wan_ports
     fakeip_check
     source "$SBS_CONF"
 
