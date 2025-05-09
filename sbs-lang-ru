@@ -1,4 +1,4 @@
-# For SBS version 2.0
+# For SBS version 2.0.1
 # Файл русскоязычной локализации.
 
 MESSAGE1="Директория %s создана."
@@ -209,3 +209,4 @@ MESSAGE197="Текущая метка tproxy-mark для sing-box: %s
 Изменить её?"
 MESSAGE198="Введите новую метку tproxy-mark: "
 MESSAGE199="Отказ от изменения метки tproxy-mark."
+MESSAGE200="Парсинг конфигурационного файла config.json..."
