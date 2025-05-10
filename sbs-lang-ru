@@ -210,3 +210,4 @@ MESSAGE197="Текущая метка tproxy-mark для sing-box: %s
 MESSAGE198="Введите новую метку tproxy-mark: "
 MESSAGE199="Отказ от изменения метки tproxy-mark."
 MESSAGE200="Парсинг конфигурационного файла config.json..."
+MESSAGE201="Запуск не удался."
