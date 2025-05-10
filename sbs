@@ -743,7 +743,7 @@ start_sing_box() {
     log_msg "$MESSAGE20"
     $SB_PATH run -c $SB_CONFIG &
     sleep 5
-    is_running || exit 1
+    is_running || { log_msg "$MESSAGE201"; exit 1; }
 
 # Проверка наличия tun интерфейса
     if [ -n "$TUN_INTERFACE" ]; then
