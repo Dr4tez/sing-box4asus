@@ -7,13 +7,13 @@
     "servers": [
       {
         "tag": "dns-direct",
-        "address": "https://dns.adguard-dns.com/dns-query",
+        "address": "https://dns.google/dns-query",
         "address_resolver": "dns-resolver"
       },
       {
         "tag": "dns-remote",
-        "address": "https://aeza-fn.kyjiep.com:4443/dns-query",
-        "address_resolver": "dns-direct",
+        "address": "https://dns.google/dns-query",
+        "address_resolver": "dns-resolver",
         "detour": "My-VLESS"
       },
       {
@@ -27,52 +27,20 @@
     ],
     "rules": [
       {
-        "type": "logical",
-        "mode": "or",
-        "rules": [
-          {
-            "clash_mode": "Direct"
-          },
-          {
-            "outbound": "any"
-          }
-        ],
+        "outbound": "any",
         "server": "dns-direct"
       },
       {
-        "type": "logical",
-        "mode": "or",
-        "rules": [
-          {
-            "query_type": "A",
-            "source_ip_cidr": [
-              "192.168.50.14",
-              "192.168.50.15"
-            ],
-            "clash_mode": "Global"
-          },
-          {
-            "query_type": "A",
-            "source_ip_cidr": [
-              "192.168.50.14",
-              "192.168.50.15"
-            ],
-            "rule_set": "my-ruleset"
-          }
+        "query_type": "A",
+        "source_ip_cidr": [
+          "192.168.50.14",
+          "192.168.50.15"
         ],
+        "rule_set": "my-ruleset",
         "server": "fakeip-dns"
       },
       {
-        "type": "logical",
-        "mode": "or",
-        "rules": [
-          {
-            "clash_mode": "Global"
-          },
-          {
-            "rule_set": "my-ruleset"
-          }
-        ],
+        "rule_set": "my-ruleset",
         "server": "dns-remote"
       }
     ],
@@ -80,7 +48,8 @@
       "enabled": true,
       "inet4_range": "198.18.0.0/15"
     },
-    "strategy": "ipv4_only"
+    "strategy": "ipv4_only",
+    "reverse_mapping": true
   },
   "inbounds": [
     {
@@ -133,20 +102,7 @@
         "action": "hijack-dns"
       },
       {
-        "clash_mode": "Direct",
-        "outbound": "direct"
-      },
-      {
-        "type": "logical",
-        "mode": "or",
-        "rules": [
-          {
-            "clash_mode": "Global"
-          },
-          {
-            "rule_set": "my-ruleset"
-          }
-        ],
+        "rule_set": "my-ruleset",
         "outbound": "My-VLESS"
       }
     ],
@@ -155,8 +111,7 @@
         "type": "remote",
         "tag": "my-ruleset",
         "format": "binary",
-        "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs",
-        "download_detour": "My-VLESS"
+        "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs"
       }
     ]
   },
@@ -165,11 +120,6 @@
       "enabled": true,
       "path": "/opt/root/sing-box/cache.db",
       "store_fakeip": true
-    },
-    "clash_api": {
-      "external_controller": "0.0.0.0:9090",
-      "external_ui": "/opt/root/sing-box/ui",
-      "secret": "1809"
     }
   }
 }
