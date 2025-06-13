@@ -1690,7 +1690,7 @@ updmonandconf_sing_box() {
 
     create_sbs_monitor "$SBS_MON"
     echo "$MESSAGE108"
-    exec $SCRIPT_PATH updsingboxmenu
+    exec $SCRIPT_PATH update
 }
 
 updcore_sing_box() {
@@ -2202,7 +2202,6 @@ case "$1" in
     lang) change_language ;;
     remove) remove_sing_box ;;
     updmonandconf) updmonandconf_sing_box ;;
-    updsingboxmenu) update_sing_box_menu ;;
     *)
     while true; do
         show_menu
