@@ -87,9 +87,10 @@ create_sbs_monitor() {
 # Создан в SBS 2.1
 
 source "/jffs/addons/sing-box-script/sbs-conf"
+
 if [ -n "$DEVICE_IPS" ]; then
-    m_sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"; echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2nr)
-    m_sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2n)
+    m_sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"; echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2nr)
+    m_sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS}" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2n)
 fi
 
 m_remove_script_content() {
@@ -172,7 +173,7 @@ sbs_monitor_rr() {
             if ! ps | grep "[s]ing-box.*run" >/dev/null 2>&1; then
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
             fi
-            if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
+            if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
                 if [ -n "$TUN_INTERFACE" ]; then
                     ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE 2>/dev/null
                     if [ -n "$DEVICE_IPS" ]; then
@@ -207,7 +208,7 @@ iptables -t mangle -I SBTPROXY -p udp -s $subnet -j TPROXY --on-port $TPROXY_POR
                             elif echo "$EXC_DEVICE_IPS" | grep -qw "$subnet"; then
                                 iptables -t mangle -I SBTPROXY -s $subnet -j RETURN
                                 m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBTPROXY -s $subnet -j RETURN # sing-box-script-mangle"
-                            elif echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
+                            elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
                                 matchedm=0
                                 for subnetm in $DEVICE_IPS; do
                                     if cidr_in_cidr "$subnet" "$subnetm"; then
@@ -279,7 +280,7 @@ iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPR
 
     while true; do
         ip monitor rule | while read line; do
-            if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
+            if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
                 if [ -n "$TUN_INTERFACE" ]; then
                     if [ -n "$FAKEIP_SUBNET" ]; then
                         if ! ip rule show | grep -q "to $FAKEIP_SUBNET lookup $ROUTE_TABLE"; then
@@ -299,7 +300,7 @@ iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPR
                         echo "$m_sorted_all" | while read -r IP; do
                             if echo "$DEVICE_IPS" | grep -qw "$IP"; then
                                 ip rule add from "$IP" lookup "$ROUTE_TABLE" priority 553
-                            elif echo "$DEVICE_FIPS" | grep -qw "$ip"; then
+                            elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$ip"; then
                                 matched=0
                                 for subnet in $DEVICE_IPS; do
                                     if m_cidr_in_cidr "$ip" "$subnet"; then
@@ -721,7 +722,7 @@ start_sing_box() {
     echo ""
     is_running && { log_msg "$MESSAGE21"; exit 1; }
 
-    all_entries=$(printf "%s\n" $DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS)
+    all_entries=$(printf "%s\n" $DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS})
     duplicates=$(echo "$all_entries" | sort | uniq -d)
     if [ -n "$duplicates" ]; then
         printf "$MESSAGE190\n" "$duplicates"
@@ -736,9 +737,9 @@ start_sing_box() {
     fakeip_check
     source "$SBS_CONF"
 
-    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
-        sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n)
-        sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2nr)
+    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
+        sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS}" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n)
+        sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2nr)
     fi
 
     if [ -n "$TUN_INTERFACE" ]; then
@@ -765,7 +766,7 @@ start_sing_box() {
         fi
     fi
 # Добавление правил nat и обновление скрипта nat-start
-    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; } && [ -n "$LISTEN_DNS_PORT" ]; then
+    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$LISTEN_DNS_PORT" ]; then
         remove_script_content "$NAT_SCRIPT" "sing-box-script"
         iptables -t nat -D PREROUTING -j SBS-TNAT 2>/dev/null
         iptables -t nat -F SBS-TNAT 2>/dev/null
@@ -777,7 +778,7 @@ iptables -t nat -F SBS-TNAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -N SBS-TNAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script-nat"
         has_no_slash=0
-        for IP in $DEVICE_IPS $DEVICE_FIPS; do
+        for IP in $DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
             if ! echo "$IP" | grep -q '/'; then
                 has_no_slash=1
                 break
@@ -785,14 +786,14 @@ iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script-nat"
         done
         if [ $has_no_slash -eq 1 ]; then
             ipset create sbsinc-ipset hash:ip
-            for IP in $DEVICE_IPS $DEVICE_FIPS; do
+            for IP in $DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
                 if ! echo "$IP" | grep -q '/'; then
                     ipset add sbsinc-ipset "$IP"
                 fi
             done
         fi
         exchas_no_slash=0
-        for IP in $EXC_DEVICE_IPS $EXC_DEVICE_FIPS; do
+        for IP in $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$EXC_DEVICE_FIPS}; do
             if ! echo "$IP" | grep -q '/'; then
                 exchas_no_slash=1
                 break
@@ -800,7 +801,7 @@ iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script-nat"
         done
         if [ $exchas_no_slash -eq 1 ]; then
             ipset create sbsexc-ipset hash:ip
-            for IP in $EXC_DEVICE_IPS $EXC_DEVICE_FIPS; do
+            for IP in $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$EXC_DEVICE_FIPS}; do
                 if ! echo $IP | grep -q '/'; then
                     ipset add sbsexc-ipset $IP
                 fi
@@ -809,7 +810,7 @@ iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script-nat"
         log_msg "$MESSAGE25"
         if [ -n "$sorted_subnets" ]; then
             echo "$sorted_subnets" | while read -r subnet; do
-                if echo "$DEVICE_IPS $DEVICE_FIPS" | grep -qw "$subnet"; then
+                if echo "$DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | grep -qw "$subnet"; then
                     iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
                     iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
                     update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script-nat
@@ -859,7 +860,7 @@ iptables -t mangle -I PREROUTING -j SBTPROXY # sing-box-script-mangle"
                 done
             fi
             exchas_no_slashm=0
-            for IP in $EXC_DEVICE_IPS $DEVICE_FIPS; do
+            for IP in $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
                 if ! echo "$IP" | grep -q '/'; then
                     exchas_no_slashm=1
                     break
@@ -867,7 +868,7 @@ iptables -t mangle -I PREROUTING -j SBTPROXY # sing-box-script-mangle"
             done
             if [ $exchas_no_slashm -eq 1 ]; then
                 ipset create sbsexc-ipsetm hash:ip
-                for IP in $EXC_DEVICE_IPS $DEVICE_FIPS; do
+                for IP in $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
                     if ! echo $IP | grep -q '/'; then
                         ipset add sbsexc-ipsetm $IP
                     fi
@@ -883,7 +884,7 @@ iptables -t mangle -I SBTPROXY -p udp -s $subnet -j TPROXY --on-port $TPROXY_POR
                     elif echo "$EXC_DEVICE_IPS" | grep -qw "$subnet"; then
                         iptables -t mangle -I SBTPROXY -s $subnet -j RETURN
                         update_script "$NAT_SCRIPT" "iptables -t mangle -I SBTPROXY -s $subnet -j RETURN # sing-box-script-mangle"
-                    elif echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
+                    elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
                         matchedm=0
                         for subnetm in $DEVICE_IPS; do
                             if cidr_in_cidr "$subnet" "$subnetm"; then
@@ -948,7 +949,7 @@ iptables -t mangle -I PREROUTING -j SBTPROXY # sing-box-script-mangle"
 iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK; ) & # sing-box-script-mangle"
     fi
 # Добавление правил файрвола, маршрутов и правил маршрутизации и обновление скрипта firewall-start
-    if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
+    if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
         if [ -n "$TUN_INTERFACE" ]; then
             log_msg "$MESSAGE26"
             echo "$FW_RULES" | while read -r rule; do
@@ -965,7 +966,7 @@ iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPR
                 echo "$sorted_all" | while read -r ip; do
                     if echo "$DEVICE_IPS" | grep -qw "$ip"; then
                         ip rule add from "$ip" lookup "$ROUTE_TABLE" priority 553
-                    elif echo "$DEVICE_FIPS" | grep -qw "$ip"; then
+                    elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$ip"; then
                         matched=0
                         for subnet in $DEVICE_IPS; do
                             if cidr_in_cidr "$ip" "$subnet"; then
@@ -1060,7 +1061,7 @@ stop_sing_box() {
         done
     fi
 
-    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
+    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
         pids=$(pidof "sbs-monitor")
         for pid in $pids; do
             kill "$pid" >/dev/null 2>&1
@@ -1075,7 +1076,7 @@ stop_sing_box() {
         for IP in $EXC_DEVICE_IPS; do
             ip rule del from $IP lookup main >/dev/null 2>&1
         done
-        for IP in $DEVICE_FIPS; do
+        for IP in ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
             ip rule del from $IP lookup main >/dev/null 2>&1
         done
         ip route flush table $ROUTE_TABLE
