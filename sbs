@@ -58,8 +58,8 @@ create_sbs_conf() {
 # Строка TPROXY_MARK - если указанный в ней по умолчанию fwmark 0x4d3c2b1a уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значения задаются в меню 'sbs setup' в подменю продвинутых настроек.
 # Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети. Значения задаются в меню 'sbs server'.
 # Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском. Значения задаются в меню 'sbs lang'.
-# Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Значения "official", "custom1" или "custom2" задаются в 3-м пункте меню 'sbs update' и соответствуют официальному или двум кастомным репозиториям.
-# Строки CUSTOM_SB_REPO1 и CUSTOM_SB_REPO2 - в них указываются кастомные репозитории ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "Dr4tez/sing-box-mod". Настраиваются в 4-м пункте меню 'sbs update'.
+# Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Значения "original", "custom1" или "custom2" задаются в 3-м пункте меню 'sbs update' и соответствуют официальному или двум кастомным репозиториям.
+# Строки CUSTOM_REPO_A и CUSTOM_REPO_B - в них указываются кастомные репозитории ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "Dr4tez/sing-box-mod". Настраиваются в 4-м пункте меню 'sbs update'.
 # Строки TUN_INTERFACE, TPROXY_PORT, LISTEN_DNS_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
 
 DEVICE_IPS=""
@@ -70,9 +70,9 @@ ROUTE_TABLE="5553"
 TPROXY_MARK="0x4d3c2b1a"
 WAN_PORTS=""
 LANG=""
-SB_REPO="official"
-CUSTOM_SB_REPO1="Dr4tez/sing-box-mod"
-CUSTOM_SB_REPO2=""
+SB_REPO="original"
+CUSTOM_REPO_A="Dr4tez/sing-box-mod"
+CUSTOM_REPO_B=""
 TUN_INTERFACE=""
 TPROXY_PORT=""
 LISTEN_DNS_PORT=""
@@ -1566,9 +1566,9 @@ setup_pro() {
 download_updates() {
     UPD_SB_URL=$SB_URL
     if [ "$SB_REPO" = "custom1" ]; then
-        UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_SB_REPO1|")
+        UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO_A|")
     elif [ "$SB_REPO" = "custom2" ]; then
-        UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_SB_REPO2|")
+        UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO_B|")
     fi
     echo ""
     echo "$MESSAGE100"
@@ -1602,6 +1602,11 @@ update_sing_box() {
 
 update_sing_box_menu() {
     while true; do
+        case "$SB_REPO" in
+          original) additionally="$MESSAGE207" ;;
+          custom1) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
+          custom2) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
+        esac
         singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
         chmod 775 $singbox_file
         sbs_vers=$(get_sbs_version $SCRIPT_PATH)
@@ -1614,7 +1619,7 @@ update_sing_box_menu() {
         is_running && echo "$MESSAGE103"
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
         printf "$MESSAGE105\n" "$sb_vers" "$sb_vers_new"
-        printf "$MESSAGE202\n"
+        printf "$MESSAGE202\n" "$additionally"
         echo "$MESSAGE209"
         echo "0. $MESSAGE95"
         read -p "$MESSAGE99 [0-4]: " choice
@@ -1634,14 +1639,14 @@ change_sing_box_repo() {
         echo ""
         echo "$MESSAGE203"
         echo "1. $MESSAGE204"
-        echo "2. $MESSAGE205 1"
-        echo "3. $MESSAGE205 2"
+        printf "2. $MESSAGE205\n" "A: $CUSTOM_REPO_A"
+        printf "3. $MESSAGE205\n" "B: $CUSTOM_REPO_B"
         echo "0. $MESSAGE206"
         read -p "$MESSAGE99 [0-3]: " choice_repo
         case "$choice_repo" in
-            1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="official"|' "$SBS_CONF"; echo "$MESSAGE207" ;;
-            2) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="custom1"|' "$SBS_CONF"; echo "$MESSAGE208 1" ;;
-            3) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="custom2"|' "$SBS_CONF"; echo "$MESSAGE208 2" ;;
+            1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"; echo "$MESSAGE207" ;;
+            2) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="custom1"|' "$SBS_CONF"; printf "$MESSAGE208\n" "A: $CUSTOM_REPO_A" ;;
+            3) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="custom2"|' "$SBS_CONF"; printf "$MESSAGE208\n" "B: $CUSTOM_REPO_B" ;;
             0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
@@ -1652,16 +1657,19 @@ change_custom_repos() {
     echo ""
     echo "$MESSAGE210"
     while true; do
+        source "$SBS_CONF"
         echo ""
-        echo "1. $MESSAGE211 1."
-        echo "2. $MESSAGE211 2."
+        echo "1. $MESSAGE211 A."
+        printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
+        echo "2. $MESSAGE211 B."
+        printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
         echo "0. $MESSAGE206"
         read -p "$MESSAGE99 [0-2]: " repo_choice
         case "$repo_choice" in
-            1) read -p "$MESSAGE212 1: " newrepo1
-               [ -n "$newrepo1" ] && sed -i "s|^CUSTOM_SB_REPO1=\"[^\"]*\"|CUSTOM_SB_REPO1=\"$newrepo1\"|" "$SBS_CONF" ;;
-            2) read -p "$MESSAGE212 2: " newrepo2
-               [ -n "$newrepo2" ] && sed -i "s|^CUSTOM_SB_REPO2=\"[^\"]*\"|CUSTOM_SB_REPO2=\"$newrepo2\"|" "$SBS_CONF" ;;
+            1) read -p "$MESSAGE212 A: " newrepoa
+               [ -n "$newrepoa" ] && sed -i "s|^CUSTOM_REPO_A=\"[^\"]*\"|CUSTOM_REPO_A=\"$newrepoa\"|" "$SBS_CONF" ;;
+            2) read -p "$MESSAGE212 B: " newrepob
+               [ -n "$newrepob" ] && sed -i "s|^CUSTOM_REPO_B=\"[^\"]*\"|CUSTOM_REPO_B=\"$newrepob\"|" "$SBS_CONF" ;;
             0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
