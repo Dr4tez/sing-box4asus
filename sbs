@@ -58,7 +58,7 @@ create_sbs_conf() {
 # Строка TPROXY_MARK - если указанный в ней по умолчанию fwmark 0x4d3c2b1a уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значения задаются в меню 'sbs setup' в подменю продвинутых настроек.
 # Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети. Значения задаются в меню 'sbs server'.
 # Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском. Значения задаются в меню 'sbs lang'.
-# Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Значения "original", "custom1" или "custom2" задаются в 3-м пункте меню 'sbs update' и соответствуют официальному или двум кастомным репозиториям.
+# Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Значения "original", "customa" или "customb" задаются в 3-м пункте меню 'sbs update' и соответствуют официальному или двум кастомным репозиториям.
 # Строки CUSTOM_REPO_A и CUSTOM_REPO_B - в них указываются кастомные репозитории ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "Dr4tez/sing-box-mod". Настраиваются в 4-м пункте меню 'sbs update'.
 # Строки TUN_INTERFACE, TPROXY_PORT, LISTEN_DNS_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
 
@@ -1564,10 +1564,18 @@ setup_pro() {
 }
 
 download_updates() {
+    source "$SBS_CONF"
+    if [ "$SB_REPO" = "customa" ] && [ -z "$CUSTOM_REPO_A" ]; then
+        sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
+        SB_REPO="original"
+    elif [ "$SB_REPO" = "customb" ] && [ -z "$CUSTOM_REPO_B" ]; then
+        sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
+        SB_REPO="original"
+    fi
     UPD_SB_URL=$SB_URL
-    if [ "$SB_REPO" = "custom1" ]; then
+    if [ "$SB_REPO" = "customa" ]; then
         UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO_A|")
-    elif [ "$SB_REPO" = "custom2" ]; then
+    elif [ "$SB_REPO" = "customb" ]; then
         UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO_B|")
     fi
     echo ""
@@ -1604,8 +1612,8 @@ update_sing_box_menu() {
     while true; do
         case "$SB_REPO" in
           original) additionally="$MESSAGE207" ;;
-          custom1) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
-          custom2) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
+          customa) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
+          customb) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
         esac
         singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
         chmod 775 $singbox_file
@@ -1639,14 +1647,30 @@ change_sing_box_repo() {
         echo ""
         echo "$MESSAGE203"
         echo "1. $MESSAGE204"
-        printf "2. $MESSAGE205\n" "A: $CUSTOM_REPO_A"
-        printf "3. $MESSAGE205\n" "B: $CUSTOM_REPO_B"
+        if [ -n "$CUSTOM_REPO_A" ]; then
+            printf "2. $MESSAGE205\n" "A: $CUSTOM_REPO_A"
+        else
+            printf "2. $MESSAGE205\n" "A: $MESSAGE215"
+        fi
+        if [ -n "$CUSTOM_REPO_B" ]; then
+            printf "3. $MESSAGE205\n" "B: $CUSTOM_REPO_B"
+        else
+            printf "3. $MESSAGE205\n" "B: $MESSAGE215"
+        fi
         echo "0. $MESSAGE206"
         read -p "$MESSAGE99 [0-3]: " choice_repo
         case "$choice_repo" in
             1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"; echo "$MESSAGE207" ;;
-            2) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="custom1"|' "$SBS_CONF"; printf "$MESSAGE208\n" "A: $CUSTOM_REPO_A" ;;
-            3) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="custom2"|' "$SBS_CONF"; printf "$MESSAGE208\n" "B: $CUSTOM_REPO_B" ;;
+            2) if [ -n "$CUSTOM_REPO_A" ]; then
+                   sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customa"|' "$SBS_CONF"; printf "$MESSAGE208\n" "A: $CUSTOM_REPO_A"
+               else
+                   printf "$MESSAGE216\n" "A"
+               fi ;;
+            3) if [ -n "$CUSTOM_REPO_B" ]; then
+                   sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customb"|' "$SBS_CONF"; printf "$MESSAGE208\n" "B: $CUSTOM_REPO_B"
+               else
+                   printf "$MESSAGE216\n" "B"
+               fi ;;
             0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
@@ -1660,16 +1684,32 @@ change_custom_repos() {
         source "$SBS_CONF"
         echo ""
         echo "1. $MESSAGE211 A."
-        printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
+        if [ -n "$CUSTOM_REPO_A" ]; then
+            printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
+        fi
         echo "2. $MESSAGE211 B."
-        printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
+        if [ -n "$CUSTOM_REPO_B" ]; then
+            printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
+        fi
         echo "0. $MESSAGE206"
         read -p "$MESSAGE99 [0-2]: " repo_choice
         case "$repo_choice" in
             1) read -p "$MESSAGE212 A: " newrepoa
-               [ -n "$newrepoa" ] && sed -i "s|^CUSTOM_REPO_A=\"[^\"]*\"|CUSTOM_REPO_A=\"$newrepoa\"|" "$SBS_CONF" ;;
+               if [ -z "$newrepoa" ]; then
+                   sed -i 's|^CUSTOM_REPO_A="[^"]*"|CUSTOM_REPO_A=""|' "$SBS_CONF"
+               elif echo "$newrepoa" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
+                   echo "$MESSAGE217"
+               else
+                   sed -i "s|^CUSTOM_REPO_A=\"[^\"]*\"|CUSTOM_REPO_A=\"$newrepoa\"|" "$SBS_CONF"
+               fi ;;
             2) read -p "$MESSAGE212 B: " newrepob
-               [ -n "$newrepob" ] && sed -i "s|^CUSTOM_REPO_B=\"[^\"]*\"|CUSTOM_REPO_B=\"$newrepob\"|" "$SBS_CONF" ;;
+               if [ -z "$newrepob" ]; then
+                   sed -i 's|^CUSTOM_REPO_B="[^"]*"|CUSTOM_REPO_B=""|' "$SBS_CONF"
+               elif echo "$newrepob" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
+                   echo "$MESSAGE217"
+               else
+                   sed -i "s|^CUSTOM_REPO_B=\"[^\"]*\"|CUSTOM_REPO_B=\"$newrepob\"|" "$SBS_CONF"
+               fi ;;
             0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
