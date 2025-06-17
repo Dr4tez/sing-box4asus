@@ -1628,14 +1628,12 @@ update_sing_box_menu() {
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
         printf "$MESSAGE105\n" "$sb_vers" "$sb_vers_new"
         printf "$MESSAGE202\n" "$additionally"
-        echo "$MESSAGE209"
         echo "0. $MESSAGE95"
-        read -p "$MESSAGE99 [0-4]: " choice
+        read -p "$MESSAGE99 [0-3]: " choice
         case "$choice" in
             1) is_running && stop_sing_box; update_sbs; break ;;
             2) is_running && stop_sing_box; updcore_sing_box; source "$SBS_CONF"; download_updates; continue ;;
             3) change_sing_box_repo; source "$SBS_CONF"; download_updates; continue ;;
-            4) change_custom_repos; source "$SBS_CONF"; download_updates; continue ;;
             0) rm -rf "$SB_DOWNLOAD_DIR" "$SCRIPT_PATH"-tmp; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
             *) echo "$MESSAGE6" ;;
         esac
@@ -1657,8 +1655,9 @@ change_sing_box_repo() {
         else
             printf "3. $MESSAGE205\n" "B: $MESSAGE215"
         fi
+        echo "$MESSAGE209"
         echo "0. $MESSAGE206"
-        read -p "$MESSAGE99 [0-3]: " choice_repo
+        read -p "$MESSAGE99 [0-4]: " choice_repo
         case "$choice_repo" in
             1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"; echo "$MESSAGE207" ;;
             2) if [ -n "$CUSTOM_REPO_A" ]; then
@@ -1671,6 +1670,7 @@ change_sing_box_repo() {
                else
                    printf "$MESSAGE216\n" "B"
                fi ;;
+            4) change_custom_repos; source "$SBS_CONF"; continue ;;
             0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
@@ -1691,7 +1691,7 @@ change_custom_repos() {
         if [ -n "$CUSTOM_REPO_B" ]; then
             printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
         fi
-        echo "0. $MESSAGE206"
+        echo "0. $MESSAGE218"
         read -p "$MESSAGE99 [0-2]: " repo_choice
         case "$repo_choice" in
             1) read -p "$MESSAGE212 A: " newrepoa
