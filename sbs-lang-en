@@ -1,4 +1,4 @@
-# For SBS version 2.0.1
+# For SBS version 2.1
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -105,8 +105,10 @@ MESSAGE100="Checking the versions of the script and sing-box core..."
 MESSAGE101="Check completed successfully."
 MESSAGE102="Update menu."
 MESSAGE103="sing-box is running, if you select items 1 or 2 it will be stopped."
-MESSAGE104="1. Update the script. Installed version %s, available version %s"
-MESSAGE105="2. Update the sing-box core. Installed version: %s, available version: %s"
+MESSAGE104="1. Update the script.
+   Installed version %s, available version %s"
+MESSAGE105="2. Update the sing-box core.
+   Installed: %s, available: %s"
 MESSAGE106="Exiting from the update menu."
 MESSAGE107="Updating the script..."
 MESSAGE108="Script successfully updated. Returning to the menu."
@@ -211,3 +213,22 @@ MESSAGE198="Enter a new tproxy-mark: "
 MESSAGE199="Refusal to change tproxy-mark."
 MESSAGE200="Parsing config.json configuration file..."
 MESSAGE201="Launch failed."
+MESSAGE202="3. Select repository to download sing-box core.
+   %s"
+MESSAGE203="Selecting a repository."
+MESSAGE204="Select original repository: SagerNet/sing-box"
+MESSAGE205="Select a custom repository %s"
+MESSAGE206="Return to the update menu."
+MESSAGE207="Original repository selected: SagerNet/sing-box"
+MESSAGE208="Custom repository selected %s"
+MESSAGE209="4. Set up custom repositories."
+MESSAGE210="Specify repositories in the format 'github_profile_name/repository_name'.
+For example, my fork of sing-box: Dr4tez/sing-box-mod"
+MESSAGE211="Set a custom repository"
+MESSAGE212="Enter a custom repository"
+MESSAGE213="Custom repository selected"
+MESSAGE214="Specified %s"
+MESSAGE215="Not specified."
+MESSAGE216="Item is not selectable. Custom repository %s is not specified."
+MESSAGE217="Invalid format."
+MESSAGE218="Return to the repository selection menu."
