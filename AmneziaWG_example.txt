@@ -1,0 +1,27 @@
+  "endpoints": [
+    {
+      "type": "wireguard",
+      "tag": "My-WG",
+      "mtu": 1420,
+      "address": "XXXXXXXXXXXXXXX/32", // your wg-client local ip address
+      "private_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=",
+      "peers": [
+        {
+          "address": "XXXXXXXXXXXXXXXX", // your wg-server domain or ip address
+          "port": XXXXX,
+          "public_key": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX=",
+          "allowed_ips": "0.0.0.0/0"
+        }
+      ],
+      "detour": "direct",
+      "amnezia": {
+        "jc": 120,
+        "jmin": 23,
+        "jmax": 911,
+        "h1": 1,
+        "h2": 2,
+        "h3": 3,
+        "h4": 4
+      }
+    }
+  ]
