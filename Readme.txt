@@ -87,5 +87,21 @@ sbs remove
 You can see a complete list of commands with their descriptions by running the following command:
 sbs
 
-VII. About the sing-box core.
-During installation, by default, the latest stable release of sing-box core from the developer's GitHub page https://github.com/SagerNet/sing-box/releases/latest is downloaded and installed. If you want to use a different core version, you can replace the core file named sing-box in the /opt/root/sing-box directory with the one you need. Just don't forget to give it execute permissions and, if necessary, change the configuration file according to the Migration section (https://sing-box.sagernet.org/migration/) in the sing-box documentation.
+VII. Updating the script.
+
+ 1. From script versions 1.8 and newer, updating to the latest version is done through the menu called by the command 'sbs update', in which you just need to select the first item.
+
+ 2. Updating to the latest version of the script from versions 1.7 and older is possible only by reinstalling the script according to the following instructions:
+  1) Save your configuration file config.json located in the directory /jffs/addons/sing-box-script somewhere.
+  2) Remove the previous version using the 'sbs remove' command in the router command line.
+  3) Install the latest version by running the following command in the router command line:
+wget -O /jffs/scripts/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs && chmod 775 /jffs/scripts/sbs && /jffs/scripts/sbs install
+  4) Place your configuration file config.json in the directory /jffs/addons/sing-box-script instead of the template downloaded when installing the script.
+  5) Configure the script according to Section III of this Readme by running the 'sbs setup' command in the router command line.
+
+VIII. About the sing-box core.
+During the installation of the script, the latest stable release of the sing-box kernel is downloaded and installed by default from the developer's GitHub page https://github.com/SagerNet/sing-box/releases/latest.
+If instead of the original sing-box developer repository you want to use a custom repository (fork) with extended functionality of the sing-box kernel, then specify it in the 3rd item of the 'sbs update' menu. Up to two custom repositories can be specified. For example, mine with integrated AmneziaWG support: Dr4tez/sing-box-mod (https://github.com/Dr4tez/sing-box-mod/releases). The code for adding AmneziaWG support to my repository is taken from the shtorm-7/sing-box-extended repository (https://github.com/shtorm-7/sing-box-extended/releases), which you can also add if you wish. The sing-box kernels in it have more advanced functionality, but when using it, do not count on my support, since I cannot constantly monitor its code and guarantee its security and operability.
+Through custom repositories, as well as through the original, only the latest stable releases will be available to you.
+An example of using AmneziaWG in wireguard endpoint, when using the sing-box kernel from the Dr4tez/sing-box-mod or shtorm-7/sing-box-extended repositories, is in the AmneziaWG_example.txt file on the page of this project https://github.com/Dr4tez/sing-box4asus
+If you want to use not just another repository, but also another version of the kernel, you can manually replace the kernel file named sing-box in the /opt/root/sing-box directory with the one you need, downloaded manually. Just do not forget to give it execution rights and, if necessary, change the config according to the Migration section (https://sing-box.sagernet.org/migration/) of the sing-box documentation.
