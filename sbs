@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.0.1
+# Version 2.1
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -23,8 +23,6 @@ SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
 SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
 SB_ARCHIVE64_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
 SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
-SB_DOWNLOAD64_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
-SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
 TEMP_SBS_CONF="/jffs/scripts/sbs-conf"
 TEMP_LANG_RU="/jffs/scripts/sbs-lang-ru"
 TEMP_LANG_EN="/jffs/scripts/sbs-lang-en"
@@ -48,32 +46,37 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.0.1
-# Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении команды 'sbs setup'. Не рекомендуется изменять значения в нём напрямую, в обход команды 'sbs setup'.
+# Создан в SBS 2.1
+# Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update' или 'sbs server'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
-# Строка DEVICE_IPS - тут между кавычками указываются IP-адреса устройств, трафик которых вы хотите направить через sing-box. IP-адреса должны быть в одну строку и между ними должно быть только по одному пробелу. Так же тут можно указать и подсеть в формате CIDR, например 192.168.50.0/24.
-# Строка EXC_DEVICE_IPS - если в строке DEVICE_IPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, трафик которых вы хотите исключить из направления через sing-box. Так же тут можно указать подсеть меньшего размера, которая входит в указанную в DEVICE_IPS, если это соответствует вашим целям.
-# Строка DEVICE_FIPS - тут между кавычками указываются IP-адреса устройств, которые вы хотите заставить работать через fakeip. В остальном аналогично строке DEVICE_IPS.
-# Строка EXC_DEVICE_FIPS - если в строке DEVICE_FIPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, которые вы хотите исключить из работы через fakeip. В остальном аналогично строке EXC_DEVICE_IPS.
-# Строка ROUTE_TABLE - если указанный в ней по умолчанию номер таблицы маршрутизации 5553 уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят.
-# Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети.
-# Строка TPROXY_MARK - если указанный в ней по умолчанию fwmark 0x4d3c2b1a уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят.
+# Строка DEVICE_IPS - тут между кавычками указываются IP-адреса устройств, трафик которых вы хотите направить через sing-box. IP-адреса должны быть в одну строку и между ними должно быть только по одному пробелу. Так же тут можно указать и подсеть в формате CIDR, например 192.168.50.0/24. Значения задаются в первом пункте меню 'sbs setup'.
+# Строка EXC_DEVICE_IPS - если в строке DEVICE_IPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, трафик которых вы хотите исключить из направления через sing-box. Так же тут можно указать подсеть меньшего размера, которая входит в указанную в DEVICE_IPS, если это соответствует вашим целям. Значения задаются в первом пункте меню 'sbs setup'.
+# Строка DEVICE_FIPS - тут между кавычками указываются IP-адреса устройств, которые вы хотите заставить работать через fakeip. В остальном аналогично строке DEVICE_IPS. Значения задаются в меню 'sbs setup', только если в файле конфигурации config.json присутствуют настройки fakeip.
+# Строка EXC_DEVICE_FIPS - если в строке DEVICE_FIPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, которые вы хотите исключить из работы через fakeip. В остальном аналогично строке EXC_DEVICE_IPS. Значения задаются в меню 'sbs setup', только если в файле конфигурации config.json присутствуют настройки fakeip.
+# Строка ROUTE_TABLE - если указанный в ней по умолчанию номер таблицы маршрутизации 5553 уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значения задаются в меню 'sbs setup' в подменю продвинутых настроек.
+# Строка TPROXY_MARK - если указанный в ней по умолчанию fwmark 0x4d3c2b1a уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значения задаются в меню 'sbs setup' в подменю продвинутых настроек.
+# Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети. Значения задаются в меню 'sbs server'.
+# Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском. Значения задаются в меню 'sbs lang'.
+# Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Значения "original", "customa" или "customb" задаются при выборе репозитория в 3-м пункте меню 'sbs update' и соответствуют официальному или двум кастомным репозиториям.
+# Строки CUSTOM_REPO_A и CUSTOM_REPO_B - в них указываются кастомные репозитории ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "Dr4tez/sing-box-mod". Задаются в 3-м пункте меню 'sbs update'.
 # Строки TUN_INTERFACE, TPROXY_PORT, LISTEN_DNS_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
-# Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском.
 
 DEVICE_IPS=""
 EXC_DEVICE_IPS=""
 DEVICE_FIPS=""
 EXC_DEVICE_FIPS=""
 ROUTE_TABLE="5553"
+TPROXY_MARK="0x4d3c2b1a"
 WAN_PORTS=""
+LANG=""
+SB_REPO="original"
+CUSTOM_REPO_A="Dr4tez/sing-box-mod"
+CUSTOM_REPO_B=""
 TUN_INTERFACE=""
 TPROXY_PORT=""
-TPROXY_MARK="0x4d3c2b1a"
 LISTEN_DNS_PORT=""
 FAKEIP_SUBNET=""
-LANG=""
 EOF
     chmod 664 "$1"
 }
@@ -81,20 +84,15 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.0.1
+# Создан в SBS 2.1
 
 source "/jffs/addons/sing-box-script/sbs-conf"
+
 if [ -n "$DEVICE_IPS" ]; then
-    m_sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"; echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2nr)
-    m_sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2n)
+    m_sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"; echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2nr)
+    m_sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS}" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2n)
 fi
 
-m_remove_script_content() {
-    [ -f "$1" ] && echo "$2" | while read -r line; do
-        esc_line=$(printf "%s" "$line" | sed "s/[\/&]/\\\\&/g")
-        sed -i "/$esc_line/d" "$1"
-    done
-}
 m_update_script() {
     [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
     echo "$2" | while IFS= read -r line; do
@@ -166,10 +164,10 @@ sbs_monitor_rr() {
   { ip monitor route | while read _; do
         if [ "$route_in_process" -eq 0 ]; then
             route_in_process=1
-            if ! pidof "/opt/root/sing-box/sing-box" >/dev/null 2>&1; then
+            if ! ps | grep "[s]ing-box.*run" >/dev/null 2>&1; then
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
             fi
-            if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
+            if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
                 if [ -n "$TUN_INTERFACE" ]; then
                     ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE 2>/dev/null
                     if [ -n "$DEVICE_IPS" ]; then
@@ -184,7 +182,7 @@ sbs_monitor_rr() {
                     fi
                 elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
                     ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE 2>/dev/null
-                    m_remove_script_content /jffs/scripts/nat-start "sing-box-script-mangle"
+                    sed -i "/sing-box-script-mangle/d" /jffs/scripts/nat-start
                     iptables -t mangle -D PREROUTING -j SBTPROXY  2>/dev/null
                     iptables -t mangle -F SBTPROXY 2>/dev/null
                     iptables -t mangle -N SBTPROXY 2>/dev/null
@@ -204,7 +202,7 @@ iptables -t mangle -I SBTPROXY -p udp -s $subnet -j TPROXY --on-port $TPROXY_POR
                             elif echo "$EXC_DEVICE_IPS" | grep -qw "$subnet"; then
                                 iptables -t mangle -I SBTPROXY -s $subnet -j RETURN
                                 m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBTPROXY -s $subnet -j RETURN # sing-box-script-mangle"
-                            elif echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
+                            elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
                                 matchedm=0
                                 for subnetm in $DEVICE_IPS; do
                                     if cidr_in_cidr "$subnet" "$subnetm"; then
@@ -255,7 +253,7 @@ iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN; ) & # sing-box-scrip
                     ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE 2>/dev/null
                 elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
                     ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE 2>/dev/null
-                    m_remove_script_content /jffs/scripts/nat-start "sing-box-script-mangle"
+                    sed -i "/sing-box-script-mangle/d" /jffs/scripts/nat-start
                     iptables -t mangle -D PREROUTING -j SBTPROXY  2>/dev/null
                     iptables -t mangle -F SBTPROXY 2>/dev/null
                     iptables -t mangle -N SBTPROXY 2>/dev/null
@@ -276,7 +274,7 @@ iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPR
 
     while true; do
         ip monitor rule | while read line; do
-            if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
+            if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
                 if [ -n "$TUN_INTERFACE" ]; then
                     if [ -n "$FAKEIP_SUBNET" ]; then
                         if ! ip rule show | grep -q "to $FAKEIP_SUBNET lookup $ROUTE_TABLE"; then
@@ -296,7 +294,7 @@ iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPR
                         echo "$m_sorted_all" | while read -r IP; do
                             if echo "$DEVICE_IPS" | grep -qw "$IP"; then
                                 ip rule add from "$IP" lookup "$ROUTE_TABLE" priority 553
-                            elif echo "$DEVICE_FIPS" | grep -qw "$ip"; then
+                            elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$ip"; then
                                 matched=0
                                 for subnet in $DEVICE_IPS; do
                                     if m_cidr_in_cidr "$ip" "$subnet"; then
@@ -335,6 +333,14 @@ iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPR
 }
 
 trap "" SIGHUP
+(
+    while true; do
+        if ! ps | grep "[s]ing-box.*run" >/dev/null 2>&1; then
+            "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
+        fi
+        sleep 5
+    done
+) &
 sbs_monitor_rr 2>/dev/null
 '
     echo "$script_content" > "$script_path"
@@ -459,12 +465,6 @@ update_script() {
     [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
     echo "$2" | while IFS= read -r line; do
         grep -qF "$line" "$1" || echo "$line" >> "$1"
-    done
-}
-
-remove_script_content() {
-    [ -f "$1" ] && echo "$2" | while read -r line; do
-        sed -i "/$(echo "$line" | sed 's/[\/&]/\\&/g')/d" "$1"
     done
 }
 
@@ -710,7 +710,7 @@ start_sing_box() {
     echo ""
     is_running && { log_msg "$MESSAGE21"; exit 1; }
 
-    all_entries=$(printf "%s\n" $DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS)
+    all_entries=$(printf "%s\n" $DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS})
     duplicates=$(echo "$all_entries" | sort | uniq -d)
     if [ -n "$duplicates" ]; then
         printf "$MESSAGE190\n" "$duplicates"
@@ -725,9 +725,9 @@ start_sing_box() {
     fakeip_check
     source "$SBS_CONF"
 
-    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
-        sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n)
-        sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; echo "$DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2nr)
+    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
+        sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS}" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2n)
+        sorted_all=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | sort -t '/' -k2,2nr)
     fi
 
     if [ -n "$TUN_INTERFACE" ]; then
@@ -754,8 +754,8 @@ start_sing_box() {
         fi
     fi
 # Добавление правил nat и обновление скрипта nat-start
-    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; } && [ -n "$LISTEN_DNS_PORT" ]; then
-        remove_script_content "$NAT_SCRIPT" "sing-box-script"
+    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$LISTEN_DNS_PORT" ]; then
+        sed -i "/sing-box-script/d" "$NAT_SCRIPT"
         iptables -t nat -D PREROUTING -j SBS-TNAT 2>/dev/null
         iptables -t nat -F SBS-TNAT 2>/dev/null
         iptables -t nat -N SBS-TNAT 2>/dev/null
@@ -766,7 +766,7 @@ iptables -t nat -F SBS-TNAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -N SBS-TNAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script-nat"
         has_no_slash=0
-        for IP in $DEVICE_IPS $DEVICE_FIPS; do
+        for IP in $DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
             if ! echo "$IP" | grep -q '/'; then
                 has_no_slash=1
                 break
@@ -774,14 +774,14 @@ iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script-nat"
         done
         if [ $has_no_slash -eq 1 ]; then
             ipset create sbsinc-ipset hash:ip
-            for IP in $DEVICE_IPS $DEVICE_FIPS; do
+            for IP in $DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
                 if ! echo "$IP" | grep -q '/'; then
                     ipset add sbsinc-ipset "$IP"
                 fi
             done
         fi
         exchas_no_slash=0
-        for IP in $EXC_DEVICE_IPS $EXC_DEVICE_FIPS; do
+        for IP in $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$EXC_DEVICE_FIPS}; do
             if ! echo "$IP" | grep -q '/'; then
                 exchas_no_slash=1
                 break
@@ -789,7 +789,7 @@ iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script-nat"
         done
         if [ $exchas_no_slash -eq 1 ]; then
             ipset create sbsexc-ipset hash:ip
-            for IP in $EXC_DEVICE_IPS $EXC_DEVICE_FIPS; do
+            for IP in $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$EXC_DEVICE_FIPS}; do
                 if ! echo $IP | grep -q '/'; then
                     ipset add sbsexc-ipset $IP
                 fi
@@ -798,7 +798,7 @@ iptables -t nat -I PREROUTING -j SBS-TNAT # sing-box-script-nat"
         log_msg "$MESSAGE25"
         if [ -n "$sorted_subnets" ]; then
             echo "$sorted_subnets" | while read -r subnet; do
-                if echo "$DEVICE_IPS $DEVICE_FIPS" | grep -qw "$subnet"; then
+                if echo "$DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}" | grep -qw "$subnet"; then
                     iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
                     iptables -t nat -I SBS-TNAT -p udp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT
                     update_script "$NAT_SCRIPT" "iptables -t nat -I SBS-TNAT -p tcp -s $subnet --dport 53 -j REDIRECT --to-port $LISTEN_DNS_PORT # sing-box-script-nat
@@ -848,7 +848,7 @@ iptables -t mangle -I PREROUTING -j SBTPROXY # sing-box-script-mangle"
                 done
             fi
             exchas_no_slashm=0
-            for IP in $EXC_DEVICE_IPS $DEVICE_FIPS; do
+            for IP in $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
                 if ! echo "$IP" | grep -q '/'; then
                     exchas_no_slashm=1
                     break
@@ -856,7 +856,7 @@ iptables -t mangle -I PREROUTING -j SBTPROXY # sing-box-script-mangle"
             done
             if [ $exchas_no_slashm -eq 1 ]; then
                 ipset create sbsexc-ipsetm hash:ip
-                for IP in $EXC_DEVICE_IPS $DEVICE_FIPS; do
+                for IP in $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
                     if ! echo $IP | grep -q '/'; then
                         ipset add sbsexc-ipsetm $IP
                     fi
@@ -872,7 +872,7 @@ iptables -t mangle -I SBTPROXY -p udp -s $subnet -j TPROXY --on-port $TPROXY_POR
                     elif echo "$EXC_DEVICE_IPS" | grep -qw "$subnet"; then
                         iptables -t mangle -I SBTPROXY -s $subnet -j RETURN
                         update_script "$NAT_SCRIPT" "iptables -t mangle -I SBTPROXY -s $subnet -j RETURN # sing-box-script-mangle"
-                    elif echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
+                    elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
                         matchedm=0
                         for subnetm in $DEVICE_IPS; do
                             if cidr_in_cidr "$subnet" "$subnetm"; then
@@ -921,7 +921,7 @@ iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN; ) & # sing-box-scrip
 # То же, но для использования sing-box в качестве чисто DNS сервера с fakeip для конечных устройств или для AGH, попросили такую возможность
     if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && [ -n "$LISTEN_DNS_PORT" ] && [ -n "$FAKEIP_SUBNET" ] && [ -n "$TPROXY_MARK" ]; then
         log_msg "$MESSAGE192"
-        remove_script_content "$NAT_SCRIPT" "sing-box-script"
+        sed -i "/sing-box-script/d" "$NAT_SCRIPT"
         iptables -t mangle -D PREROUTING -j SBTPROXY 2>/dev/null
         iptables -t mangle -F SBTPROXY 2>/dev/null
         iptables -t mangle -N SBTPROXY 2>/dev/null
@@ -937,7 +937,7 @@ iptables -t mangle -I PREROUTING -j SBTPROXY # sing-box-script-mangle"
 iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK; ) & # sing-box-script-mangle"
     fi
 # Добавление правил файрвола, маршрутов и правил маршрутизации и обновление скрипта firewall-start
-    if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
+    if [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
         if [ -n "$TUN_INTERFACE" ]; then
             log_msg "$MESSAGE26"
             echo "$FW_RULES" | while read -r rule; do
@@ -954,7 +954,7 @@ iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPR
                 echo "$sorted_all" | while read -r ip; do
                     if echo "$DEVICE_IPS" | grep -qw "$ip"; then
                         ip rule add from "$ip" lookup "$ROUTE_TABLE" priority 553
-                    elif echo "$DEVICE_FIPS" | grep -qw "$ip"; then
+                    elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$ip"; then
                         matched=0
                         for subnet in $DEVICE_IPS; do
                             if cidr_in_cidr "$ip" "$subnet"; then
@@ -1034,10 +1034,10 @@ stop_sing_box() {
     fi
 
     log_msg "$MESSAGE32"
-    remove_script_content "$SS_SCRIPT" "sing-box-script"
+    sed -i "/sing-box-script/d" "$SS_SCRIPT"
 # Очистка скрипта firewall-start
     if [ -n "$WAN_PORTS" ] || [ -n "$TUN_INTERFACE" ]; then
-        remove_script_content "$FW_SCRIPT" "sing-box-script"
+        sed -i "/sing-box-script/d" "$FW_SCRIPT"
     fi
 # Удаление правил iptables для открытых WAN портов
     if [ -n "$WAN_PORTS" ]; then
@@ -1049,7 +1049,7 @@ stop_sing_box() {
         done
     fi
 
-    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || [ -n "$DEVICE_FIPS" ]; }; then
+    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
         pids=$(pidof "sbs-monitor")
         for pid in $pids; do
             kill "$pid" >/dev/null 2>&1
@@ -1064,7 +1064,7 @@ stop_sing_box() {
         for IP in $EXC_DEVICE_IPS; do
             ip rule del from $IP lookup main >/dev/null 2>&1
         done
-        for IP in $DEVICE_FIPS; do
+        for IP in ${FAKEIP_SUBNET:+$DEVICE_FIPS}; do
             ip rule del from $IP lookup main >/dev/null 2>&1
         done
         ip route flush table $ROUTE_TABLE
@@ -1090,7 +1090,7 @@ stop_sing_box() {
 # Удаление правил nat и обновления скрипта nat-start
         log_msg "$MESSAGE36"
         if iptables -t nat -L SBS-TNAT >/dev/null 2>&1; then
-            remove_script_content "$NAT_SCRIPT" "sing-box-script"
+            sed -i "/sing-box-script/d" "$NAT_SCRIPT"
             iptables -t nat -D PREROUTING -j SBS-TNAT
             iptables -t nat -F SBS-TNAT
             iptables -t nat -X SBS-TNAT
@@ -1551,6 +1551,40 @@ setup_pro() {
     fi
 }
 
+download_updates() {
+    source "$SBS_CONF"
+    if [ "$SB_REPO" = "customa" ] && [ -z "$CUSTOM_REPO_A" ]; then
+        sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
+        SB_REPO="original"
+    elif [ "$SB_REPO" = "customb" ] && [ -z "$CUSTOM_REPO_B" ]; then
+        sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
+        SB_REPO="original"
+    fi
+    UPD_SB_URL=$SB_URL
+    if [ "$SB_REPO" = "customa" ]; then
+        UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO_A|")
+    elif [ "$SB_REPO" = "customb" ]; then
+        UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO_B|")
+    fi
+    echo ""
+    echo "$MESSAGE100"
+    rm -rf "$SB_DOWNLOAD_DIR" "$SCRIPT_PATH"-tmp
+    wget -q -O "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
+    silent_create_dir "$SB_DOWNLOAD_DIR"
+    if [ "$(uname -m)" = "aarch64" ]; then
+        SB_DOWNLOAD64_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$UPD_SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
+        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+    else
+        SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$UPD_SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
+        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+    fi
+    wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
+    echo "$MESSAGE101"
+}
+
 update_sing_box() {
     source "$SBS_CONF"
     if [ "$LANG" = "ru" ]; then
@@ -1558,44 +1592,113 @@ update_sing_box() {
     elif [ "$LANG" = "en" ]; then
         source "$LANG_EN"
     fi
-    echo ""
-    echo "$MESSAGE100"
-    wget -q -O "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
-    silent_create_dir "$SB_DOWNLOAD_DIR"
-    if [ "$(uname -m)" = "aarch64" ]; then
-        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
-        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
-    else
-        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
-        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
-    fi
-    wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
-    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
-    echo "$MESSAGE101"
+    download_updates
     update_sing_box_menu
 }
 
 update_sing_box_menu() {
-    singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
-    chmod 775 $singbox_file
-    sbs_vers=$(get_sbs_version $SCRIPT_PATH)
-    sb_vers=$(get_sb_version $SB_PATH)
-    sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
-    sb_vers_new=$(get_sb_version $singbox_file)
-
     while true; do
+        case "$SB_REPO" in
+          original) additionally="$MESSAGE207" ;;
+          customa) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
+          customb) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
+        esac
+        singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+        chmod 775 $singbox_file
+        sbs_vers=$(get_sbs_version $SCRIPT_PATH)
+        sb_vers=$(get_sb_version $SB_PATH)
+        sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
+        sb_vers_new=$(get_sb_version $singbox_file)
         echo ""
         echo "$MESSAGE102"
         echo ""
         is_running && echo "$MESSAGE103"
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
         printf "$MESSAGE105\n" "$sb_vers" "$sb_vers_new"
+        printf "$MESSAGE202\n" "$additionally"
         echo "0. $MESSAGE95"
-        read -p "$MESSAGE47" choice
+        read -p "$MESSAGE99 [0-3]: " choice
         case "$choice" in
             1) is_running && stop_sing_box; update_sbs; break ;;
-            2) is_running && stop_sing_box; updcore_sing_box; break ;;
+            2) is_running && stop_sing_box; updcore_sing_box; source "$SBS_CONF"; download_updates; continue ;;
+            3) change_sing_box_repo; source "$SBS_CONF"; download_updates; continue ;;
             0) rm -rf "$SB_DOWNLOAD_DIR" "$SCRIPT_PATH"-tmp; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+change_sing_box_repo() {
+    while true; do
+        echo ""
+        echo "$MESSAGE203"
+        echo "1. $MESSAGE204"
+        if [ -n "$CUSTOM_REPO_A" ]; then
+            printf "2. $MESSAGE205\n" "A: $CUSTOM_REPO_A"
+        else
+            printf "2. $MESSAGE205\n" "A: $MESSAGE215"
+        fi
+        if [ -n "$CUSTOM_REPO_B" ]; then
+            printf "3. $MESSAGE205\n" "B: $CUSTOM_REPO_B"
+        else
+            printf "3. $MESSAGE205\n" "B: $MESSAGE215"
+        fi
+        echo "$MESSAGE209"
+        echo "0. $MESSAGE206"
+        read -p "$MESSAGE99 [0-4]: " choice_repo
+        case "$choice_repo" in
+            1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"; echo "$MESSAGE207" ;;
+            2) if [ -n "$CUSTOM_REPO_A" ]; then
+                   sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customa"|' "$SBS_CONF"; printf "$MESSAGE208\n" "A: $CUSTOM_REPO_A"
+               else
+                   printf "$MESSAGE216\n" "A"
+               fi ;;
+            3) if [ -n "$CUSTOM_REPO_B" ]; then
+                   sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customb"|' "$SBS_CONF"; printf "$MESSAGE208\n" "B: $CUSTOM_REPO_B"
+               else
+                   printf "$MESSAGE216\n" "B"
+               fi ;;
+            4) change_custom_repos; source "$SBS_CONF"; continue ;;
+            0) return ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+change_custom_repos() {
+    echo ""
+    echo "$MESSAGE210"
+    while true; do
+        source "$SBS_CONF"
+        echo ""
+        echo "1. $MESSAGE211 A."
+        if [ -n "$CUSTOM_REPO_A" ]; then
+            printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
+        fi
+        echo "2. $MESSAGE211 B."
+        if [ -n "$CUSTOM_REPO_B" ]; then
+            printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
+        fi
+        echo "0. $MESSAGE218"
+        read -p "$MESSAGE99 [0-2]: " repo_choice
+        case "$repo_choice" in
+            1) read -p "$MESSAGE212 A: " newrepoa
+               if [ -z "$newrepoa" ]; then
+                   sed -i 's|^CUSTOM_REPO_A="[^"]*"|CUSTOM_REPO_A=""|' "$SBS_CONF"
+               elif echo "$newrepoa" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
+                   echo "$MESSAGE217"
+               else
+                   sed -i "s|^CUSTOM_REPO_A=\"[^\"]*\"|CUSTOM_REPO_A=\"$newrepoa\"|" "$SBS_CONF"
+               fi ;;
+            2) read -p "$MESSAGE212 B: " newrepob
+               if [ -z "$newrepob" ]; then
+                   sed -i 's|^CUSTOM_REPO_B="[^"]*"|CUSTOM_REPO_B=""|' "$SBS_CONF"
+               elif echo "$newrepob" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
+                   echo "$MESSAGE217"
+               else
+                   sed -i "s|^CUSTOM_REPO_B=\"[^\"]*\"|CUSTOM_REPO_B=\"$newrepob\"|" "$SBS_CONF"
+               fi ;;
+            0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1646,14 +1749,14 @@ updmonandconf_sing_box() {
 
     create_sbs_monitor "$SBS_MON"
     echo "$MESSAGE108"
-    update_sing_box_menu
+    exec $SCRIPT_PATH update
 }
 
 updcore_sing_box() {
     echo ""
     echo "$MESSAGE109"
     cp "$singbox_file" "$SB_DIR"; echo "$MESSAGE110"
-    update_sing_box_menu
+    return
 }
 
 check_sing_box() {
@@ -2055,9 +2158,11 @@ install_sing_box() {
 
     create_dir "$SB_DOWNLOAD_DIR"
     if [ "$(uname -m)" = "aarch64" ]; then
+        SB_DOWNLOAD64_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
         DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
         ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
     else
+        SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
         DOWNLOAD_URL="$SB_DOWNLOAD_URL"
         ARCHIVE_PATH="$SB_ARCHIVE_PATH"
     fi
