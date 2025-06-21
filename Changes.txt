@@ -135,16 +135,7 @@ Version 2.0 from 05/03/25
 5. The option to change the routing table number has been moved to the submenu of advanced settings of the 'sbs setup' menu. Also, the ability to change the tproxy-mark has been added to this submenu, which appears if the tproxy interface is specified in the sing-box configuration file.
 6. Optimization of some sections of the old code.
 
-Updating to version 2.0 from script versions 1.8 and 1.9 is done through the menu called by the command 'sbs update', in which you just need to select the first item.
-
-Updating to version 2.0 from script version 1.7 is done by the command:
-wget -O /jffs/addons/sing-box-script/update_1.7_to_2.0 https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/update_1.7_to_2.0 && chmod 775 /jffs/addons/sing-box-script/update_1.7_to_2.0 && /jffs/addons/sing-box-script/update_1.7_to_2.0
-At the end of this command, the script update menu will appear, select item 1, despite the fact that the menu shows the same numbers for the installed and available versions of the script. Only after this the script will be finally updated to version 2.0. If you have fully configured the script version 1.7, then additional configuration after this update will not be required.
-
-You can update to version 2.0 from script version 1.6 and older only by reinstalling the script according to the following instructions:
-1. Save your configuration file config.json located in the directory /jffs/addons/sing-box-script somewhere.
-2. Remove the previous version using the 'sbs remove' command in the router command line.
-3. Install version 2.0 by running the command in the router command line:
-wget -O /jffs/scripts/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs && chmod 775 /jffs/scripts/sbs && /jffs/scripts/sbs install
-4. Place your configuration file config.json in the directory /jffs/addons/sing-box-script instead of the template downloaded when installing the script.
-5. Configure the script, according to the readme, by running the 'sbs setup' command in the router command line.
+Version 2.1 from 06/21/25
+1. When parsing the config.json configuration file by the script, commented lines are now ignored.
+2. Added the ability to select a repository for installing the sing-box kernel. The official and 2 custom ones to choose from. For this, a 3rd item has been added to the sbs update menu to change the sing-box kernel repository and configure custom repositories.
+3. Several optimizations and improvements to the code of the main script and the monitor script.
