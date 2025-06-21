@@ -93,12 +93,6 @@ if [ -n "$DEVICE_IPS" ]; then
     m_sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS}" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2n)
 fi
 
-m_remove_script_content() {
-    [ -f "$1" ] && echo "$2" | while read -r line; do
-        esc_line=$(printf "%s" "$line" | sed "s/[\/&]/\\\\&/g")
-        sed -i "/$esc_line/d" "$1"
-    done
-}
 m_update_script() {
     [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
     echo "$2" | while IFS= read -r line; do
@@ -188,7 +182,7 @@ sbs_monitor_rr() {
                     fi
                 elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
                     ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE 2>/dev/null
-                    m_remove_script_content /jffs/scripts/nat-start "sing-box-script-mangle"
+                    sed -i "/sing-box-script-mangle/d" /jffs/scripts/nat-start
                     iptables -t mangle -D PREROUTING -j SBTPROXY  2>/dev/null
                     iptables -t mangle -F SBTPROXY 2>/dev/null
                     iptables -t mangle -N SBTPROXY 2>/dev/null
@@ -259,7 +253,7 @@ iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN; ) & # sing-box-scrip
                     ip route add default dev $TUN_INTERFACE table $ROUTE_TABLE 2>/dev/null
                 elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
                     ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE 2>/dev/null
-                    m_remove_script_content /jffs/scripts/nat-start "sing-box-script-mangle"
+                    sed -i "/sing-box-script-mangle/d" /jffs/scripts/nat-start
                     iptables -t mangle -D PREROUTING -j SBTPROXY  2>/dev/null
                     iptables -t mangle -F SBTPROXY 2>/dev/null
                     iptables -t mangle -N SBTPROXY 2>/dev/null
@@ -471,12 +465,6 @@ update_script() {
     [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
     echo "$2" | while IFS= read -r line; do
         grep -qF "$line" "$1" || echo "$line" >> "$1"
-    done
-}
-
-remove_script_content() {
-    [ -f "$1" ] && echo "$2" | while read -r line; do
-        sed -i "/$(echo "$line" | sed 's/[\/&]/\\&/g')/d" "$1"
     done
 }
 
@@ -767,7 +755,7 @@ start_sing_box() {
     fi
 # Добавление правил nat и обновление скрипта nat-start
     if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$LISTEN_DNS_PORT" ]; then
-        remove_script_content "$NAT_SCRIPT" "sing-box-script"
+        sed -i "/sing-box-script/d" "$NAT_SCRIPT"
         iptables -t nat -D PREROUTING -j SBS-TNAT 2>/dev/null
         iptables -t nat -F SBS-TNAT 2>/dev/null
         iptables -t nat -N SBS-TNAT 2>/dev/null
@@ -933,7 +921,7 @@ iptables -t mangle -I SBTPROXY -p udp --dport 68 -j RETURN; ) & # sing-box-scrip
 # То же, но для использования sing-box в качестве чисто DNS сервера с fakeip для конечных устройств или для AGH, попросили такую возможность
     if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && [ -n "$LISTEN_DNS_PORT" ] && [ -n "$FAKEIP_SUBNET" ] && [ -n "$TPROXY_MARK" ]; then
         log_msg "$MESSAGE192"
-        remove_script_content "$NAT_SCRIPT" "sing-box-script"
+        sed -i "/sing-box-script/d" "$NAT_SCRIPT"
         iptables -t mangle -D PREROUTING -j SBTPROXY 2>/dev/null
         iptables -t mangle -F SBTPROXY 2>/dev/null
         iptables -t mangle -N SBTPROXY 2>/dev/null
@@ -1046,10 +1034,10 @@ stop_sing_box() {
     fi
 
     log_msg "$MESSAGE32"
-    remove_script_content "$SS_SCRIPT" "sing-box-script"
+    sed -i "/sing-box-script/d" "$SS_SCRIPT"
 # Очистка скрипта firewall-start
     if [ -n "$WAN_PORTS" ] || [ -n "$TUN_INTERFACE" ]; then
-        remove_script_content "$FW_SCRIPT" "sing-box-script"
+        sed -i "/sing-box-script/d" "$FW_SCRIPT"
     fi
 # Удаление правил iptables для открытых WAN портов
     if [ -n "$WAN_PORTS" ]; then
@@ -1102,7 +1090,7 @@ stop_sing_box() {
 # Удаление правил nat и обновления скрипта nat-start
         log_msg "$MESSAGE36"
         if iptables -t nat -L SBS-TNAT >/dev/null 2>&1; then
-            remove_script_content "$NAT_SCRIPT" "sing-box-script"
+            sed -i "/sing-box-script/d" "$NAT_SCRIPT"
             iptables -t nat -D PREROUTING -j SBS-TNAT
             iptables -t nat -F SBS-TNAT
             iptables -t nat -X SBS-TNAT
