@@ -2162,8 +2162,7 @@ install_sing_box() {
         create_or_use_existing "$SB_DIR"
     else
         printf "$MESSAGE162\n" "$ROOT_DIR"
-        delete_if_not_current_dir
-        rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
+        delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
         exit 1
     fi
 
@@ -2202,16 +2201,11 @@ install_sing_box() {
             echo "$MESSAGE167 $MESSAGE13"
         else
             echo "$MESSAGE167 $MESSAGE220"
+            echo "$MESSAGE159"
+            delete_if_not_current_dir; rm -rf $SB_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN $JFFS_SB_DIR $LN_PATH; exit 1
         fi
     fi
-
-    local current_dir=$(dirname "$(readlink -f "$0")")
-    if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
-      rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN "$(readlink -f "$0")"
-    else
-      rm -rf "$SB_DOWNLOAD_DIR"
-    fi
-
+    delete_if_not_current_dir; rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
     printf "$MESSAGE170\n" "$SB_DOWNLOAD_DIR"
     echo ""
     echo "$MESSAGE171"
