@@ -1625,7 +1625,7 @@ update_sing_box_menu() {
         echo ""
         is_running && echo "$MESSAGE103"
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
-        printf "$MESSAGE105\n" "${sb_vers:-$MESSAGE220}" "${sb_vers_new:-$MESSAGE220.}"
+        printf "$MESSAGE105\n" "${sb_vers:-$MESSAGE169}" "${sb_vers_new:-$MESSAGE169.}"
         printf "$MESSAGE202\n" "$additionally"
         echo "0. $MESSAGE95"
         read -p "$MESSAGE99 [0-3]: " choice
@@ -2178,30 +2178,30 @@ install_sing_box() {
         ARCHIVE_PATH="$SB_ARCHIVE_PATH"
     fi
     echo "$MESSAGE163"
-    wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
-    echo "$MESSAGE164"
-    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
-    sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
 
-    if [ -f "$SB_PATH" ]; then
-        echo "$MESSAGE165"
-        while true; do
-            read -p "$MESSAGE12" choice
-            case $choice in
-                0) echo "$MESSAGE13"; break ;;
-                1) if [ -f "$sing_box_file" ]; then
-                    cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; printf "$MESSAGE166\n" "$SB_PATH"; break
-                else
-                    echo "$MESSAGE167"; break
-                fi ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
-    else
-        if [ -f "$sing_box_file" ]; then
-            cp "$sing_box_file" "$SB_DIR"; printf "$MESSAGE168\n" "$SB_DIR"
+    if wget --spider -q "$DOWNLOAD_URL"; then
+        wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+        echo "$MESSAGE164"
+        tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
+        sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+        if [ -f "$SB_PATH" ]; then
+            echo "$MESSAGE165"
+            while true; do
+                read -p "$MESSAGE12" choice
+                case $choice in
+                    0) echo "$MESSAGE13"; break ;;
+                    1) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; printf "$MESSAGE166\n" "$SB_PATH"; break ;;
+                    *) echo "$MESSAGE6" ;;
+                esac
+            done
         else
-            echo "$MESSAGE169"
+            cp "$sing_box_file" "$SB_DIR"; printf "$MESSAGE168\n" "$SB_DIR"
+        fi
+    else
+        if [ -f "$SB_PATH" ]; then
+            echo "$MESSAGE167 $MESSAGE13"
+        else
+            echo "$MESSAGE167 $MESSAGE220"
         fi
     fi
 
