@@ -1,4 +1,4 @@
-# For SBS version 2.1
+# For SBS version 2.1.1
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -232,3 +232,5 @@ MESSAGE215="Not specified."
 MESSAGE216="Item is not selectable. Custom repository %s is not specified."
 MESSAGE217="Invalid format."
 MESSAGE218="Return to the repository selection menu."
+MESSAGE219="No sing-box core available for update was found."
+MESSAGE220="no core found"
