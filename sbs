@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.1
+# Version 2.1.1
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -46,7 +46,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.1
+# Создан в SBS 2.1.1
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update' или 'sbs server'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -84,7 +84,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.1
+# Создан в SBS 2.1.1
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -1580,9 +1580,13 @@ download_updates() {
         DOWNLOAD_URL="$SB_DOWNLOAD_URL"
         ARCHIVE_PATH="$SB_ARCHIVE_PATH"
     fi
-    wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
-    tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
-    echo "$MESSAGE101"
+    if wget --spider -q "$DOWNLOAD_URL"; then
+        wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+        tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
+        echo "$MESSAGE101"
+    else
+        echo "$MESSAGE219"
+    fi
 }
 
 update_sing_box() {
@@ -1603,24 +1607,31 @@ update_sing_box_menu() {
           customa) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
           customb) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
         esac
-        singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
-        chmod 775 $singbox_file
+        [ -f "$ARCHIVE_PATH" ] && singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print) && [ -n "$singbox_file" ] && chmod 775 "$singbox_file"
         sbs_vers=$(get_sbs_version $SCRIPT_PATH)
-        sb_vers=$(get_sb_version $SB_PATH)
+        if [ -f "$SB_PATH" ]; then
+            sb_vers=$(get_sb_version "$SB_PATH")
+        else
+            sb_vers=""
+        fi
         sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
-        sb_vers_new=$(get_sb_version $singbox_file)
+        if [ -f "$singbox_file" ]; then
+            sb_vers_new=$(get_sb_version $singbox_file)
+        else
+            sb_vers_new=""
+        fi
         echo ""
         echo "$MESSAGE102"
         echo ""
         is_running && echo "$MESSAGE103"
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
-        printf "$MESSAGE105\n" "$sb_vers" "$sb_vers_new"
+        printf "$MESSAGE105\n" "${sb_vers:-$MESSAGE220}" "${sb_vers_new:-$MESSAGE220.}"
         printf "$MESSAGE202\n" "$additionally"
         echo "0. $MESSAGE95"
         read -p "$MESSAGE99 [0-3]: " choice
         case "$choice" in
             1) is_running && stop_sing_box; update_sbs; break ;;
-            2) is_running && stop_sing_box; updcore_sing_box; source "$SBS_CONF"; download_updates; continue ;;
+            2) [ -n "$sb_vers_new" ] && { is_running && stop_sing_box; updcore_sing_box; source "$SBS_CONF"; download_updates; continue; } || echo "$MESSAGE219" ;;
             3) change_sing_box_repo; source "$SBS_CONF"; download_updates; continue ;;
             0) rm -rf "$SB_DOWNLOAD_DIR" "$SCRIPT_PATH"-tmp; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
             *) echo "$MESSAGE6" ;;
