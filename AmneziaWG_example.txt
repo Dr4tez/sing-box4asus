@@ -15,9 +15,9 @@
       ],
       "detour": "direct",
       "amnezia": {
-        "jc": 120,
-        "jmin": 23,
-        "jmax": 911,
+        "jc": 4,
+        "jmin": 40,
+        "jmax": 70,
         "h1": 1,
         "h2": 2,
         "h3": 3,
