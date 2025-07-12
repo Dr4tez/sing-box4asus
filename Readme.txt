@@ -69,12 +69,12 @@ Here are listed the conditions that must be observed when creating sing-box conf
   2.3 The following block should be present in the inbounds section of config.json:
     {
       "type": "direct",
-      "tag": "dns4tunin",
+      "tag": "dns-in",
       "listen": "0.0.0.0",
       "listen_port": 55553,
       "override_port": 5553
     }
-  This block is an inbound direct interface called dns4tunin. It accepts DNS requests on port 55553 from devices whose traffic is routed through the sing-box and redefines them to port 5553. The listen_port value does not necessarily have to be 55553, if this port is already occupied by your router for other purposes, you can enter any free 4- or 5-digit port instead. The override_port value does not necessarily have to be 5553, if this port is already occupied by your router or sing-box for other purposes, you can enter any free 4- or 5-digit port instead.
+  This block is an inbound direct interface called dns-in. It accepts DNS requests on port 55553 from devices whose traffic is routed through the sing-box and redefines them to port 5553. The listen_port value does not necessarily have to be 55553, if this port is already occupied by your router for other purposes, you can enter any free 4- or 5-digit port instead. The override_port value does not necessarily have to be 5553, if this port is already occupied by your router or sing-box for other purposes, you can enter any free 4- or 5-digit port instead.
   This block is present in the template of my config.json, downloaded during the installation of the script.
 
 VI. Script management commands.
