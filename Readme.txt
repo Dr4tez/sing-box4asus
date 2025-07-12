@@ -4,7 +4,7 @@ I. Basics.
 
  1. You should be able to create configuration files for sing-box. Documentation: https://sing-box.sagernet.org/.
 
- 2. Only routers with ARM/AArch processor architectures are supported (you can find out by running the 'uname -m' command in the router command line) and a system kernel version not lower than 4.1 (you can find out by running the 'uname -r' command in the router command line).
+ 2. Only routers with ARM/AArch processor architectures are supported (you can find out by running the 'uname -m' command in the router command line) and a system kernel version not lower than 4.0 (you can find out by running the 'uname -r' command in the router command line).
 
  3. If IPv6 is enabled in your router settings, it is not recommended to use this script, as it will likely not function as intended in most cases.
 
