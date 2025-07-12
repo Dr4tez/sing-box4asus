@@ -43,7 +43,7 @@
     },
     {
       "type": "direct",
-      "tag": "dns4tunin",
+      "tag": "dns-in",
       "listen": "0.0.0.0",
       "listen_port": 55553,
       "override_port": 5553
