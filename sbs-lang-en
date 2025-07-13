@@ -1,4 +1,4 @@
-# For SBS version 2.1.1
+# For SBS version 2.2
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -213,7 +213,7 @@ MESSAGE198="Enter a new tproxy-mark: "
 MESSAGE199="Refusal to change tproxy-mark."
 MESSAGE200="Parsing config.json configuration file..."
 MESSAGE201="Launch failed."
-MESSAGE202="3. Select repository to download sing-box core.
+MESSAGE202="1. Select repository to download sing-box core.
    %s"
 MESSAGE203="Selecting a repository."
 MESSAGE204="Select original repository: SagerNet/sing-box"
@@ -234,3 +234,30 @@ MESSAGE217="Invalid format."
 MESSAGE218="Return to the repository selection menu."
 MESSAGE219="No sing-box core available for update was found."
 MESSAGE220="Core is not installed."
+MESSAGE221="2. Select sing-box core version.
+   %s"
+MESSAGE222="Select latest stable release."
+MESSAGE223="Select latest pre-release."
+MESSAGE224="Select specified version."
+MESSAGE225="Set version.
+   Specified: %s"
+MESSAGE226="Selected latest stable release."
+MESSAGE227="Selected latest pre-release."
+MESSAGE228="Selected specified version:"
+MESSAGE229="Select core version."
+MESSAGE230="No version specified."
+MESSAGE231="Item not selectable. No version specified."
+MESSAGE232="Enter the desired version of the sing-box core.
+For example: '1.11.14' or '1.12.0-beta.5'"
+MESSAGE233="Set search depth.
+   Specified: %s latest releases."
+MESSAGE234="Specified version: %s"
+MESSAGE235="3. Settings and selection of the sing-box core repository and version.
+   %s
+   %s"
+MESSAGE236="Menu for selecting the sing-box core repository and version."
+MESSAGE237="Return to the menu for selecting the sing-box core repository and version."
+MESSAGE238="Specified search depth: %s latest releases."
+MESSAGE239="Enter the desired depth of release search. For example: '90'.
+The specified version, as well as the latest stable release and the latest pre-release, will be searched among this number of recent releases.
+If not specified, the default value of 30 is used"
