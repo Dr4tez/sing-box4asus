@@ -2378,14 +2378,7 @@ install_sing_box() {
             echo "$MESSAGE167 $MESSAGE220"
         fi
     fi
-
-    local current_dir=$(dirname "$(readlink -f "$0")")
-    if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
-      rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN "$(readlink -f "$0")"
-    else
-      rm -rf "$SB_DOWNLOAD_DIR"
-    fi
-
+    delete_if_not_current_dir; rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
     printf "$MESSAGE170\n" "$SB_DOWNLOAD_DIR"
     echo ""
     echo "$MESSAGE171"
