@@ -1694,9 +1694,9 @@ update_sing_box_menu() {
         printf "$MESSAGE105\n" "${sb_vers:-$MESSAGE169}" "${sb_vers_new:-$MESSAGE169.}"
         printf "$MESSAGE235\n" "$additionally" "$given_value"
         if [ -n "$NUM_RELEASES" ]; then
-            printf "   $MESSAGE238\n" "$NUM_RELEASES"
+            printf "   $MESSAGE209\n" "$NUM_RELEASES"
         else
-            printf "   $MESSAGE238\n" "30"
+            printf "   $MESSAGE209\n" "30"
         fi
         echo "0. $MESSAGE95"
         read -p "$MESSAGE99 [0-3]: " choice
@@ -1713,13 +1713,13 @@ update_sing_box_menu() {
 change_repo_vers() {
     while true; do
         echo ""
-        echo "$MESSAGE236"
+        echo "$MESSAGE234"
         printf "$MESSAGE202\n" "$additionally"
         printf "$MESSAGE221\n" "$given_value"
         if [ -n "$NUM_RELEASES" ]; then
-            printf "   $MESSAGE238\n" "$NUM_RELEASES"
+            printf "   $MESSAGE209\n" "$NUM_RELEASES"
         else
-            printf "   $MESSAGE238\n" "30"
+            printf "   $MESSAGE209\n" "30"
         fi
         echo "0. $MESSAGE206"
         read -p "$MESSAGE99 [0-2]: " choice_repo_vers
@@ -1735,13 +1735,8 @@ change_repo_vers() {
 change_sing_box_repo() {
     while true; do
         source "$SBS_CONF"
-        if [ "$SB_REPO" = "customa" ] && [ -z "$CUSTOM_REPO_A" ]; then
-            sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
-            SB_REPO="original"
-        elif [ "$SB_REPO" = "customb" ] && [ -z "$CUSTOM_REPO_B" ]; then
-            sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
-            SB_REPO="original"
-        fi
+        [ "$SB_REPO" = "customa" ] && [ -z "$CUSTOM_REPO_A" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" && SB_REPO="original"
+        [ "$SB_REPO" = "customb" ] && [ -z "$CUSTOM_REPO_B" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" && SB_REPO="original"
         case "$SB_REPO" in
           original) additionally="$MESSAGE207" ;;
           customa) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
@@ -1751,56 +1746,21 @@ change_sing_box_repo() {
         echo "$MESSAGE203"
         echo "$additionally"
         echo "1. $MESSAGE204"
-        if [ -n "$CUSTOM_REPO_A" ]; then
-            printf "2. $MESSAGE205\n" "A: $CUSTOM_REPO_A"
-        else
-            printf "2. $MESSAGE205\n" "A: $MESSAGE215"
-        fi
-        if [ -n "$CUSTOM_REPO_B" ]; then
-            printf "3. $MESSAGE205\n" "B: $CUSTOM_REPO_B"
-        else
-            printf "3. $MESSAGE205\n" "B: $MESSAGE215"
-        fi
-        echo "$MESSAGE209"
-        echo "0. $MESSAGE237"
-        read -p "$MESSAGE99 [0-4]: " choice_repo
-        case "$choice_repo" in
-            1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"; echo "$MESSAGE207" ;;
-            2) if [ -n "$CUSTOM_REPO_A" ]; then
-                   sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customa"|' "$SBS_CONF"; printf "$MESSAGE208\n" "A: $CUSTOM_REPO_A"
-               else
-                   printf "$MESSAGE216\n" "A"
-               fi ;;
-            3) if [ -n "$CUSTOM_REPO_B" ]; then
-                   sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customb"|' "$SBS_CONF"; printf "$MESSAGE208\n" "B: $CUSTOM_REPO_B"
-               else
-                   printf "$MESSAGE216\n" "B"
-               fi ;;
-            4) change_custom_repos; source "$SBS_CONF"; continue ;;
-            0) return ;;
-            *) echo "$MESSAGE6" ;;
-        esac
-    done
-}
-
-change_custom_repos() {
-    echo ""
-    echo "$MESSAGE210"
-    while true; do
-        source "$SBS_CONF"
-        echo ""
-        echo "1. $MESSAGE211 A."
-        if [ -n "$CUSTOM_REPO_A" ]; then
-            printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
-        fi
-        echo "2. $MESSAGE211 B."
-        if [ -n "$CUSTOM_REPO_B" ]; then
-            printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
-        fi
+        printf "2. $MESSAGE205\n" "A"
+        printf "3. $MESSAGE205\n" "B"
+        echo "4. $MESSAGE211 A."
+        [ -n "$CUSTOM_REPO_A" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
+        echo "5. $MESSAGE211 B."
+        [ -n "$CUSTOM_REPO_B" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
         echo "0. $MESSAGE218"
-        read -p "$MESSAGE99 [0-2]: " repo_choice
-        case "$repo_choice" in
-            1) read -p "$MESSAGE212 A: " newrepoa
+        read -p "$MESSAGE99 [0-5]: " choice_repo
+        case "$choice_repo" in
+            1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" ;;
+            2) [ -n "$CUSTOM_REPO_A" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customa"|' "$SBS_CONF" || printf "$MESSAGE216\n" "A" ;;
+            3) [ -n "$CUSTOM_REPO_B" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customb"|' "$SBS_CONF" || printf "$MESSAGE216\n" "B" ;;
+            4) echo ""
+               echo "$MESSAGE210"
+               read -p "$MESSAGE212 A: " newrepoa
                if [ -z "$newrepoa" ]; then
                    sed -i 's|^CUSTOM_REPO_A="[^"]*"|CUSTOM_REPO_A=""|' "$SBS_CONF"
                elif echo "$newrepoa" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
@@ -1808,7 +1768,9 @@ change_custom_repos() {
                else
                    sed -i "s|^CUSTOM_REPO_A=\"[^\"]*\"|CUSTOM_REPO_A=\"$newrepoa\"|" "$SBS_CONF"
                fi ;;
-            2) read -p "$MESSAGE212 B: " newrepob
+            5) echo ""
+               echo "$MESSAGE210"
+               read -p "$MESSAGE212 B: " newrepob
                if [ -z "$newrepob" ]; then
                    sed -i 's|^CUSTOM_REPO_B="[^"]*"|CUSTOM_REPO_B=""|' "$SBS_CONF"
                elif echo "$newrepob" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
@@ -1821,13 +1783,11 @@ change_custom_repos() {
         esac
     done
 }
+
 change_core_vers() {
     while true; do
         source "$SBS_CONF"
-        if [ "$CORE_VERS" = "given" ] && [ -z "$GIVEN_VERS" ]; then
-            sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF"
-            CORE_VERS="release"
-        fi
+        [ "$CORE_VERS" = "given" ] && [ -z "$GIVEN_VERS" ] && sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF" && CORE_VERS="release"
         case "$CORE_VERS" in
           release) given_value="$MESSAGE226" ;;
           pre_release) given_value="$MESSAGE227" ;;
@@ -1839,40 +1799,18 @@ change_core_vers() {
         echo "1. $MESSAGE222"
         echo "2. $MESSAGE223"
         echo "3. $MESSAGE224"
-        if [ -n "$GIVEN_VERS" ]; then
-            printf "4. $MESSAGE225\n" "$GIVEN_VERS"
-        else
-            printf "4. $MESSAGE225\n" "$MESSAGE230"
-        fi
-        if [ -n "$NUM_RELEASES" ]; then
-            printf "5. $MESSAGE233\n" "$NUM_RELEASES"
-        else
-            printf "5. $MESSAGE233\n" "30"
-        fi
-        echo "0. $MESSAGE237"
+        echo "4. $MESSAGE225"
+        [ -n "$GIVEN_VERS" ] && printf "   $MESSAGE214\n" ": $GIVEN_VERS"
+        echo "5. $MESSAGE233"
+        [ -n "$NUM_RELEASES" ] && { printf "   $MESSAGE214" "$NUM_RELEASES"; echo " $MESSAGE215"; } || { printf "   $MESSAGE214" "30"; echo " $MESSAGE215"; }
+        echo "0. $MESSAGE218"
         read -p "$MESSAGE99 [0-4]: " choice_vers
         case "$choice_vers" in
-            1) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF"; echo "$MESSAGE226" ;;
-            2) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="pre_release"|' "$SBS_CONF"; echo "$MESSAGE227" ;;
-            3) if [ -n "$GIVEN_VERS" ]; then
-                   sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="given"|' "$SBS_CONF"
-               else
-                   echo "$MESSAGE231"
-               fi ;;
-            4) echo ""
-               read -p "$MESSAGE232: " new_given_vers
-               if [ -z "$new_given_vers" ]; then
-                   sed -i 's|^GIVEN_VERS="[^"]*"|GIVEN_VERS=""|' "$SBS_CONF"; echo"$MESSAGE230"
-               else
-                   sed -i "s|^GIVEN_VERS=\"[^\"]*\"|GIVEN_VERS=\"$new_given_vers\"|" "$SBS_CONF"; printf "$MESSAGE234\n" "$GIVEN_VERS"
-               fi ;;
-            5) echo ""
-               read -p "$MESSAGE239: " new_num_releases
-               if [ -z "$new_num_releases" ]; then
-                   sed -i 's|^NUM_RELEASES="[^"]*"|NUM_RELEASES=""|' "$SBS_CONF"
-               else
-                   sed -i "s|^NUM_RELEASES=\"[^\"]*\"|NUM_RELEASES=\"$new_num_releases\"|" "$SBS_CONF"
-               fi ;;
+            1) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF" ;;
+            2) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="pre_release"|' "$SBS_CONF" ;;
+            3) [ -n "$GIVEN_VERS" ] && sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="given"|' "$SBS_CONF" || echo "$MESSAGE231" ;;
+            4) echo ""; read -p "$MESSAGE232: " new_given_vers; [ -z "$new_given_vers" ] && { sed -i 's|^GIVEN_VERS="[^"]*"|GIVEN_VERS=""|' "$SBS_CONF"; echo "$MESSAGE230"; } || { sed -i "s|^GIVEN_VERS=\"[^\"]*\"|GIVEN_VERS=\"$new_given_vers\"|" "$SBS_CONF"; } ;;
+            5) echo ""; read -p "$MESSAGE208: " new_num_releases; [ -z "$new_num_releases" ] && { sed -i 's|^NUM_RELEASES="[^"]*"|NUM_RELEASES=""|' "$SBS_CONF"; } || { sed -i "s|^NUM_RELEASES=\"[^\"]*\"|NUM_RELEASES=\"$new_num_releases\"|" "$SBS_CONF"; } ;;
             0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
