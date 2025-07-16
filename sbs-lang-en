@@ -255,3 +255,5 @@ MESSAGE234="Menu for selecting the sing-box core repository and version."
 MESSAGE235="3. Settings and selection of the sing-box core repository and version.
    %s
    %s"
+MESSAGE236="The CPU architecture of this router is not supported. Installation cancelled."
+MESSAGE237="System core version is lower than 4.1. Installation cancelled."
