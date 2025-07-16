@@ -372,12 +372,9 @@ check_file_existence_and_download() {
     fi
 }
 
-delete_if_not_current_dir() {
-  local current_dir=$(dirname "$(readlink -f "$0")")
-
-  if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
-    rm -f "$(readlink -f "$0")"
-  fi
+del_if_notcurrent() {
+    local current_path="$(readlink -f "$0")"
+    [ "$current_path" != "$SCRIPT_PATH" ] && rm -f "$current_path"
 }
 
 create_or_use_existing() {
@@ -388,7 +385,7 @@ create_or_use_existing() {
         while true; do
             read -p "$MESSAGE9" choice
             case $choice in
-                0) delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0 ;;
+                0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0 ;;
                 1) printf "$MESSAGE11\n" "$dir_path"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -438,12 +435,8 @@ check_copy_file() {
 
 change_language() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
-
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     while true; do
         if [ "$LANG" = "ru" ]; then
             echo "Перейти на английский?"
@@ -474,9 +467,9 @@ update_script() {
 
 manage_iptables() {
     if [ "$1" = "add" ]; then
-        iptables -C $2 2>/dev/null || iptables -I $2 || log_msg "$(printf "$MESSAGE15\n" "$2")"
+        iptables -C "$2" 2>/dev/null || iptables -I "$2" || log_msg "$(printf "$MESSAGE15\n" "$2")"
     elif [ "$1" = "remove" ]; then
-        iptables -C $2 2>/dev/null && iptables -D $2 || log_msg "$(printf "$MESSAGE16\n" "$2")"
+        iptables -C "$2" 2>/dev/null && iptables -D "$2" || log_msg "$(printf "$MESSAGE16\n" "$2")"
     fi
 }
 
@@ -705,12 +698,8 @@ get_main_ips() {
 
 start_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
-
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     echo ""
     is_running && { log_msg "$MESSAGE21"; exit 1; }
 
@@ -1021,12 +1010,8 @@ iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
 
 stop_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
-
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     echo ""
     log_msg "$MESSAGE31"
 
@@ -1452,11 +1437,8 @@ configure_tpmark() {
 
 setup_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
 
     if is_running; then
         echo ""
@@ -1652,11 +1634,8 @@ EOF
 
 update_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     download_updates
     update_sing_box_menu
 }
@@ -1836,12 +1815,8 @@ EOF
 
 updmonandconf_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
-
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     # Выполняем слияние новой версии sbs-conf со старой, не теряя значений переменных из старой.
     create_sbs_conf "$SBS_CONF"-tmp
     existing_vars=$(grep '^[A-Za-z0-9_]\+=' "$SBS_CONF")
@@ -1917,11 +1892,8 @@ format_sing_box() {
 
 config_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     while true; do
         echo ""
         echo "$MESSAGE124"
@@ -1945,11 +1917,8 @@ config_sing_box() {
 
 status_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
 
     if is_running; then
         echo "$MESSAGE30"
@@ -2140,11 +2109,8 @@ exch_ports() {
 
 server_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     if is_running; then
         echo ""
         echo "$MESSAGE148"
@@ -2206,8 +2172,8 @@ serv_sing_box() {
 }
 
 install_sing_box() {
-    uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; delete_if_not_current_dir; exit 1; }
-    { [ "$(uname -r | cut -d. -f1)" -gt 4 ] || [ "$(uname -r | cut -d. -f1)" -eq 4 -a "$(uname -r | cut -d. -f2)" -ge 1 ]; } || { echo "$MESSAGE237"; delete_if_not_current_dir; exit 1; }
+    uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; exit 1; }
+    { [ "$(uname -r | cut -d. -f1)" -gt 4 ] || [ "$(uname -r | cut -d. -f1)" -eq 4 -a "$(uname -r | cut -d. -f2)" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; exit 1; }
     handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
     echo "Выбор языка / Select language:"
     while true; do
@@ -2218,29 +2184,26 @@ install_sing_box() {
         case "$language_choice" in
             1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; sed -i 's/^LANG=".*"/LANG="ru"/' "$TEMP_SBS_CONF"; break ;;
             2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; sed -i 's/^LANG=".*"/LANG="en"/' "$TEMP_SBS_CONF"; break ;;
-            0) delete_if_not_current_dir; rm -f "$TEMP_SBS_CONF"; exit 0 ;;
+            0) del_if_notcurrent; rm -f "$TEMP_SBS_CONF"; exit 0 ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
         esac
     done
 
     source "$TEMP_SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$TEMP_LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$TEMP_LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$TEMP_LANG_RU"
+    [ "$LANG" = "en" ] && source "$TEMP_LANG_EN"
 
     echo "$MESSAGE158"
     while true; do
         read -p "$MESSAGE18" choice
         case $choice in
-            0) delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
+            0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
             1) if is_running; then
                 echo "$MESSAGE160"
                 while true; do
                    read -p "$MESSAGE18" continue_choice
                    case "$continue_choice" in
-                       0) delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
+                       0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
                        1) stop_sing_box; break ;;
                        *) echo "$MESSAGE6" ;;
                    esac
@@ -2265,7 +2228,7 @@ install_sing_box() {
         create_or_use_existing "$SB_DIR"
     else
         printf "$MESSAGE162\n" "$ROOT_DIR"
-        delete_if_not_current_dir
+        del_if_notcurrent
         rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
         exit 1
     fi
@@ -2318,7 +2281,7 @@ install_sing_box() {
             echo "$MESSAGE167 $MESSAGE220"
         fi
     fi
-    delete_if_not_current_dir; rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
+    del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
     printf "$MESSAGE170\n" "$SB_DOWNLOAD_DIR"
     echo ""
     echo "$MESSAGE171"
@@ -2326,11 +2289,8 @@ install_sing_box() {
 
 remove_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
 
     echo "$MESSAGE172"
     while true; do
@@ -2345,11 +2305,8 @@ remove_sing_box() {
 
 show_menu() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
 
     echo "$MESSAGE176"
     echo "$MESSAGE177"
