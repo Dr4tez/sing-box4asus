@@ -2206,6 +2206,10 @@ serv_sing_box() {
 }
 
 install_sing_box() {
+##
+    uname -m | grep -Eq 'arm|aarch64' || { echo "$MESSAGE236"; exit 1; }
+    { [ "$(uname -r | cut -d. -f1)" -gt 4 ] || [ "$(uname -r | cut -d. -f1)" -eq 4 -a "$(uname -r | cut -d. -f2)" -ge 1 ]; } || { echo "$MESSAGE237"; exit 1; }
+##
     handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
     echo "Выбор языка / Select language:"
     while true; do
