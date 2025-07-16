@@ -221,8 +221,7 @@ MESSAGE205="Select a custom repository %s"
 MESSAGE206="Return to the update menu."
 MESSAGE207="Original repository selected: SagerNet/sing-box"
 MESSAGE208="Enter the desired depth of release search. For example: '90'.
-The specified version, as well as the latest stable release and the latest pre-release, will be searched among this number of recent releases.
-If not specified, the default value of 30 is used"
+If not specified, the default value of '30' is used"
 MESSAGE209="Specified search depth: %s latest releases."
 MESSAGE210="Specify repositories in the format 'github_profile_name/repository_name'.
 For example, my fork of sing-box: Dr4tez/sing-box-mod"
