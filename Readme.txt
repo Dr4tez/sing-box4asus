@@ -4,7 +4,7 @@ I. Basics.
 
  1. You should be able to create configuration files for sing-box. Documentation: https://sing-box.sagernet.org/.
 
- 2. Only routers with ARM/AArch processor architectures are supported (you can find out by running the 'uname -m' command in the router command line) and a system kernel version not lower than 4.0 (you can find out by running the 'uname -r' command in the router command line).
+ 2. Only routers with ARM/AArch processor architectures are supported (you can find out by running the 'uname -m' command in the router command line) and a system core version not lower than 4.1 (you can find out by running the 'uname -r' command in the router command line). If the router's CPU architecture or the system core version does not meet these requirements, the script installation will be cancelled.
 
  3. If IPv6 is enabled in your router settings, it is not recommended to use this script, as it will likely not function as intended in most cases.
 
@@ -100,8 +100,12 @@ wget -O /jffs/scripts/sbs https://raw.githubusercontent.com/Dr4tez/sing-box4asus
   5) Configure the script according to Section III of this Readme by running the 'sbs setup' command in the router command line.
 
 VIII. About the sing-box core.
-During the installation of the script, the latest stable release of the sing-box kernel is downloaded and installed by default from the developer's GitHub page https://github.com/SagerNet/sing-box/releases/latest.
-If instead of the original sing-box developer repository you want to use a custom repository (fork) with extended functionality of the sing-box kernel, then specify it in the 3rd item of the 'sbs update' menu. Up to two custom repositories can be specified. For example, mine with integrated AmneziaWG support: Dr4tez/sing-box-mod (https://github.com/Dr4tez/sing-box-mod/releases). The code for adding AmneziaWG support to my repository is taken from the shtorm-7/sing-box-extended repository (https://github.com/shtorm-7/sing-box-extended/releases), which you can also add if you wish. The sing-box cores in it have more advanced functionality, but when using it, as with any other third-party repositories, do not count on my support, since I cannot constantly monitor their code and guarantee their security and operability.
-Through custom repositories, as well as through the original, only the latest stable releases will be available to you.
-An example of using AmneziaWG in wireguard endpoint, when using the sing-box kernel from the Dr4tez/sing-box-mod or shtorm-7/sing-box-extended repositories, is in the AmneziaWG_example.txt file on the page of this project https://github.com/Dr4tez/sing-box4asus
-If you want to use not just another repository, but also another version of the kernel, you can manually replace the kernel file named sing-box in the /opt/root/sing-box directory with the one you need, downloaded manually. Just do not forget to give it execution rights and, if necessary, change the config according to the Migration section (https://sing-box.sagernet.org/migration/) of the sing-box documentation.
+
+ 1. During the installation of the script, the latest stable release of the sing-box core is downloaded and installed by default from the developer's GitHub page https://github.com/SagerNet/sing-box/releases/latest.
+
+ 2. If instead of the original sing-box developer repository you want to use a custom repository (fork) with extended functionality of the sing-box core, you can specify and select it in the repository selection menu, which is located along the following path: menu 'sbs update' -> item 3 -> item 1. You can specify up to two custom repositories. For example, mine with integrated AmneziaWG support: Dr4tez/sing-box-mod (https://github.com/Dr4tez/sing-box-mod/releases). The code for adding AmneziaWG support to my repository is taken from the shtorm-7/sing-box-extended repository (https://github.com/shtorm-7/sing-box-extended/releases), which you can also add if you wish. The sing-box cores in it have more advanced functionality, but when using it, like any other third-party repositories, do not count on my support, since I cannot constantly monitor their code and guarantee their security and operability.
+ An example of using AmneziaWG in wireguard endpoint, when using the sing-box core from the Dr4tez/sing-box-mod or shtorm-7/sing-box-extended repositories, is in the AmneziaWG_example.txt file on the page of this project https://github.com/Dr4tez/sing-box4asus
+
+ 3. If you want to use a different core version instead of the latest stable release of the sing-box core, you can select it in the core version selection menu, which is located at the following path: menu 'sbs update'->item 3->item 2. In this menu, you can select the latest stable release, the latest pre-release, or a specified version.
+ In this menu, you can also set the search depth, for example '90', and the specified version, as well as the latest stable release or the latest pre-release, will be searched among the specified number of recent releases. If not specified, the default value is used - 30.
+ After changing the core version, do not forget, if necessary, to change the config according to the Migration section (https://sing-box.sagernet.org/migration/) of the sing-box documentation.
