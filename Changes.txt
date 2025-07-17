@@ -139,3 +139,8 @@ Version 2.1 from 06/21/25
 1. When parsing the config.json configuration file by the script, commented lines are now ignored.
 2. Added the ability to select a repository for installing the sing-box kernel. The official and 2 custom ones to choose from. For this, a 3rd item has been added to the sbs update menu to change the sing-box kernel repository and configure custom repositories.
 3. Several optimizations and improvements to the code of the main script and the monitor script.
+
+Version 2.2 from 07/17/25
+1. In the 'sbs update' menu, item 3 has been changed. Now, in addition to the submenu for selecting a repository, a submenu for selecting the sing-box kernel version has been added.
+2. Automatic checks of the router's CPU architecture and the system kernel version have been added when installing the script. If the minimum requirements are not met, the installation is canceled with a message about the discrepancy between one or the other.
+3. Some optimizations of the old code.
