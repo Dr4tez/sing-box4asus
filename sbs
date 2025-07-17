@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.1.1
+# Version 2.2
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -19,10 +19,8 @@ LANG_EN_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-lan
 ROOT_DIR="/opt/root"
 SB_DIR="$ROOT_DIR/sing-box"
 SB_PATH="$SB_DIR/sing-box"
-SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
+SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
 SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
-SB_ARCHIVE64_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
-SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
 TEMP_SBS_CONF="/jffs/scripts/sbs-conf"
 TEMP_LANG_RU="/jffs/scripts/sbs-lang-ru"
 TEMP_LANG_EN="/jffs/scripts/sbs-lang-en"
@@ -46,20 +44,23 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.1.1
+# Создан в SBS 2.2
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update' или 'sbs server'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
 # Строка DEVICE_IPS - тут между кавычками указываются IP-адреса устройств, трафик которых вы хотите направить через sing-box. IP-адреса должны быть в одну строку и между ними должно быть только по одному пробелу. Так же тут можно указать и подсеть в формате CIDR, например 192.168.50.0/24. Значения задаются в первом пункте меню 'sbs setup'.
 # Строка EXC_DEVICE_IPS - если в строке DEVICE_IPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, трафик которых вы хотите исключить из направления через sing-box. Так же тут можно указать подсеть меньшего размера, которая входит в указанную в DEVICE_IPS, если это соответствует вашим целям. Значения задаются в первом пункте меню 'sbs setup'.
-# Строка DEVICE_FIPS - тут между кавычками указываются IP-адреса устройств, которые вы хотите заставить работать через fakeip. В остальном аналогично строке DEVICE_IPS. Значения задаются в меню 'sbs setup', только если в файле конфигурации config.json присутствуют настройки fakeip.
+# Строка DEVICE_FIPS - тут указываются IP-адреса устройств, которые вы хотите заставить работать через fakeip. В остальном аналогично строке DEVICE_IPS. Значения задаются в меню 'sbs setup', только если в файле конфигурации config.json присутствуют настройки fakeip.
 # Строка EXC_DEVICE_FIPS - если в строке DEVICE_FIPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, которые вы хотите исключить из работы через fakeip. В остальном аналогично строке EXC_DEVICE_IPS. Значения задаются в меню 'sbs setup', только если в файле конфигурации config.json присутствуют настройки fakeip.
 # Строка ROUTE_TABLE - если указанный в ней по умолчанию номер таблицы маршрутизации 5553 уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значения задаются в меню 'sbs setup' в подменю продвинутых настроек.
 # Строка TPROXY_MARK - если указанный в ней по умолчанию fwmark 0x4d3c2b1a уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значения задаются в меню 'sbs setup' в подменю продвинутых настроек.
 # Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети. Значения задаются в меню 'sbs server'.
 # Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском. Значения задаются в меню 'sbs lang'.
-# Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Значения "original", "customa" или "customb" задаются при выборе репозитория в 3-м пункте меню 'sbs update' и соответствуют официальному или двум кастомным репозиториям.
-# Строки CUSTOM_REPO_A и CUSTOM_REPO_B - в них указываются кастомные репозитории ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "Dr4tez/sing-box-mod". Задаются в 3-м пункте меню 'sbs update'.
+# Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Возможные значения "original", "customa" и "customb" соответствуют официальному и двум кастомным репозиториям. Значение задаётся при выборе одного из первых трёх пунктов в подменю 3-1 меню 'sbs update'.
+# Строки CUSTOM_REPO_A и CUSTOM_REPO_B - в них указываются кастомные репозитории ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "Dr4tez/sing-box-mod". Значения задаются в первых двух пунктах подменю 3-1-4 меню 'sbs update'.
+# Строка CORE_VERS - тут указывается какое ядро sing-box будет установлено. Значения "release", "pre_release" или "given" - соответствуют новейшему стабильному релизу, новейшему пре-релизу и заданной версии. Значение задаётся при выборе одного из первых трёх пунктов в подменю 3-2 меню 'sbs update'.
+# Строка GIVEN_VERS - тут указывается какая конкретно версия ядра sing-box может быть установлена, если значение строки CORE_VERS будет "given". Значение задаётся в пункте 3-2-4 меню 'sbs update'. Например "1.11.14" или "1.12.0-beta.32".
+# Строка NUM_RELEASES - тут указывается глубина поиска, т.е. количество последних релизов, среди которого будут искаться заданная версия ядра, новейший стабильный релиз или новейший пре-релиз ядра. Значение задаётся в пункте 3-2-5 меню 'sbs update'. Например "90".
 # Строки TUN_INTERFACE, TPROXY_PORT, LISTEN_DNS_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
 
 DEVICE_IPS=""
@@ -73,6 +74,9 @@ LANG=""
 SB_REPO="original"
 CUSTOM_REPO_A="Dr4tez/sing-box-mod"
 CUSTOM_REPO_B=""
+CORE_VERS="release"
+GIVEN_VERS=""
+NUM_RELEASES=""
 TUN_INTERFACE=""
 TPROXY_PORT=""
 LISTEN_DNS_PORT=""
@@ -84,7 +88,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.1.1
+# Создан в SBS 2.2
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -368,12 +372,9 @@ check_file_existence_and_download() {
     fi
 }
 
-delete_if_not_current_dir() {
-  local current_dir=$(dirname "$(readlink -f "$0")")
-
-  if [ "$current_dir" != "$JFFS_SB_DIR" ]; then
-    rm -f "$(readlink -f "$0")"
-  fi
+del_if_notcurrent() {
+    local current_path="$(readlink -f "$0")"
+    [ "$current_path" != "$SCRIPT_PATH" ] && rm -f "$current_path"
 }
 
 create_or_use_existing() {
@@ -384,7 +385,7 @@ create_or_use_existing() {
         while true; do
             read -p "$MESSAGE9" choice
             case $choice in
-                0) delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0 ;;
+                0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0 ;;
                 1) printf "$MESSAGE11\n" "$dir_path"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -434,12 +435,8 @@ check_copy_file() {
 
 change_language() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
-
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     while true; do
         if [ "$LANG" = "ru" ]; then
             echo "Перейти на английский?"
@@ -470,9 +467,9 @@ update_script() {
 
 manage_iptables() {
     if [ "$1" = "add" ]; then
-        iptables -C $2 2>/dev/null || iptables -I $2 || log_msg "$(printf "$MESSAGE15\n" "$2")"
+        iptables -C "$2" 2>/dev/null || iptables -I "$2" || log_msg "$(printf "$MESSAGE15\n" "$2")"
     elif [ "$1" = "remove" ]; then
-        iptables -C $2 2>/dev/null && iptables -D $2 || log_msg "$(printf "$MESSAGE16\n" "$2")"
+        iptables -C "$2" 2>/dev/null && iptables -D "$2" || log_msg "$(printf "$MESSAGE16\n" "$2")"
     fi
 }
 
@@ -701,12 +698,8 @@ get_main_ips() {
 
 start_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
-
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     echo ""
     is_running && { log_msg "$MESSAGE21"; exit 1; }
 
@@ -1017,12 +1010,8 @@ iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
 
 stop_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
-
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     echo ""
     log_msg "$MESSAGE31"
 
@@ -1448,11 +1437,8 @@ configure_tpmark() {
 
 setup_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
 
     if is_running; then
         echo ""
@@ -1553,12 +1539,23 @@ setup_pro() {
 
 download_updates() {
     source "$SBS_CONF"
+    if [ "$(uname -m)" = "aarch64" ]; then
+        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
+        ARCHIVE_SUFFIX="linux-arm64.tar.gz"
+    else
+        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
+        ARCHIVE_SUFFIX="linux-armv7.tar.gz"
+    fi
     if [ "$SB_REPO" = "customa" ] && [ -z "$CUSTOM_REPO_A" ]; then
         sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
         SB_REPO="original"
     elif [ "$SB_REPO" = "customb" ] && [ -z "$CUSTOM_REPO_B" ]; then
         sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
         SB_REPO="original"
+    fi
+    if [ "$CORE_VERS" = "given" ] && [ -z "$GIVEN_VERS" ]; then
+        sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF"
+        CORE_VERS="release"
     fi
     UPD_SB_URL=$SB_URL
     if [ "$SB_REPO" = "customa" ]; then
@@ -1571,15 +1568,61 @@ download_updates() {
     rm -rf "$SB_DOWNLOAD_DIR" "$SCRIPT_PATH"-tmp
     wget -q -O "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
     silent_create_dir "$SB_DOWNLOAD_DIR"
-    if [ "$(uname -m)" = "aarch64" ]; then
-        SB_DOWNLOAD64_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$UPD_SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
-        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
-        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
-    else
-        SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$UPD_SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
-        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
-        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
-    fi
+
+    MAX_RELEASES=${NUM_RELEASES:-30}
+    MAX_PAGES=$(( (MAX_RELEASES + 29) / 30 ))
+    SB_DOWNLOAD_URL=""
+    page=1
+    while [ "$page" -le "$MAX_PAGES" ]; do
+        json=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$UPD_SB_URL?page=$page")
+        case "$CORE_VERS" in
+            release)
+                SB_DOWNLOAD_URL=$(awk -v suffix="$ARCHIVE_SUFFIX" '
+                    BEGIN { found=0 }
+                    /"prerelease": false/ { found=1 }
+                    found && /"browser_download_url":/ && $0 ~ suffix {
+                        gsub(/^.*"browser_download_url": *"/, "")
+                        gsub(/".*$/, "")
+                        print
+                        exit
+                    }
+                ' <<EOF
+$json
+EOF
+) ;;
+            pre_release)
+                SB_DOWNLOAD_URL=$(awk -v suffix="$ARCHIVE_SUFFIX" '
+                    BEGIN { found=0 }
+                    /"prerelease": true/ { found=1 }
+                    found && /"browser_download_url":/ && $0 ~ suffix {
+                        gsub(/^.*"browser_download_url": *"/, "")
+                        gsub(/".*$/, "")
+                        print
+                        exit
+                    }
+                ' <<EOF
+$json
+EOF
+) ;;
+            given)
+                SB_DOWNLOAD_URL=$(awk -v search="$GIVEN_VERS" -v suffix="$ARCHIVE_SUFFIX" '
+                    index($0, "\"browser_download_url\"") && index($0, suffix) && index($0, search) {
+                        gsub(/^.*"browser_download_url": *"/, "")
+                        gsub(/".*$/, "")
+                        print
+                        exit
+                    }
+                ' <<EOF
+$json
+EOF
+) ;;
+        esac
+        [ -n "$SB_DOWNLOAD_URL" ] && break
+        page=$((page + 1))
+    done
+    ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+    DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+
     if wget --spider -q "$DOWNLOAD_URL"; then
         wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
         tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR" > /dev/null
@@ -1591,11 +1634,8 @@ download_updates() {
 
 update_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     download_updates
     update_sing_box_menu
 }
@@ -1606,6 +1646,11 @@ update_sing_box_menu() {
           original) additionally="$MESSAGE207" ;;
           customa) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
           customb) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
+        esac
+        case "$CORE_VERS" in
+          release) given_value="$MESSAGE226" ;;
+          pre_release) given_value="$MESSAGE227" ;;
+          given) given_value="$MESSAGE228 $GIVEN_VERS" ;;
         esac
         [ -f "$ARCHIVE_PATH" ] && singbox_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print) && [ -n "$singbox_file" ] && chmod 775 "$singbox_file"
         sbs_vers=$(get_sbs_version $SCRIPT_PATH)
@@ -1626,14 +1671,41 @@ update_sing_box_menu() {
         is_running && echo "$MESSAGE103"
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
         printf "$MESSAGE105\n" "${sb_vers:-$MESSAGE169}" "${sb_vers_new:-$MESSAGE169.}"
-        printf "$MESSAGE202\n" "$additionally"
+        printf "$MESSAGE235\n" "$additionally" "$given_value"
+        if [ -n "$NUM_RELEASES" ]; then
+            printf "   $MESSAGE209\n" "$NUM_RELEASES"
+        else
+            printf "   $MESSAGE209\n" "30"
+        fi
         echo "0. $MESSAGE95"
         read -p "$MESSAGE99 [0-3]: " choice
         case "$choice" in
             1) is_running && stop_sing_box; update_sbs; break ;;
             2) [ -n "$sb_vers_new" ] && { is_running && stop_sing_box; updcore_sing_box; source "$SBS_CONF"; download_updates; continue; } || echo "$MESSAGE219" ;;
-            3) change_sing_box_repo; source "$SBS_CONF"; download_updates; continue ;;
+            3) change_repo_vers; source "$SBS_CONF"; download_updates; continue ;;
             0) rm -rf "$SB_DOWNLOAD_DIR" "$SCRIPT_PATH"-tmp; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+change_repo_vers() {
+    while true; do
+        echo ""
+        echo "$MESSAGE234"
+        printf "$MESSAGE202\n" "$additionally"
+        printf "$MESSAGE221\n" "$given_value"
+        if [ -n "$NUM_RELEASES" ]; then
+            printf "   $MESSAGE209\n" "$NUM_RELEASES"
+        else
+            printf "   $MESSAGE209\n" "30"
+        fi
+        echo "0. $MESSAGE206"
+        read -p "$MESSAGE99 [0-2]: " choice_repo_vers
+        case "$choice_repo_vers" in
+            1) change_sing_box_repo; source "$SBS_CONF"; continue ;;
+            2) change_core_vers; source "$SBS_CONF"; continue ;;
+            0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1641,59 +1713,33 @@ update_sing_box_menu() {
 
 change_sing_box_repo() {
     while true; do
+        source "$SBS_CONF"
+        [ "$SB_REPO" = "customa" ] && [ -z "$CUSTOM_REPO_A" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" && SB_REPO="original"
+        [ "$SB_REPO" = "customb" ] && [ -z "$CUSTOM_REPO_B" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" && SB_REPO="original"
+        case "$SB_REPO" in
+          original) additionally="$MESSAGE207" ;;
+          customa) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
+          customb) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
+        esac
         echo ""
         echo "$MESSAGE203"
+        echo "$additionally"
         echo "1. $MESSAGE204"
-        if [ -n "$CUSTOM_REPO_A" ]; then
-            printf "2. $MESSAGE205\n" "A: $CUSTOM_REPO_A"
-        else
-            printf "2. $MESSAGE205\n" "A: $MESSAGE215"
-        fi
-        if [ -n "$CUSTOM_REPO_B" ]; then
-            printf "3. $MESSAGE205\n" "B: $CUSTOM_REPO_B"
-        else
-            printf "3. $MESSAGE205\n" "B: $MESSAGE215"
-        fi
-        echo "$MESSAGE209"
-        echo "0. $MESSAGE206"
-        read -p "$MESSAGE99 [0-4]: " choice_repo
-        case "$choice_repo" in
-            1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"; echo "$MESSAGE207" ;;
-            2) if [ -n "$CUSTOM_REPO_A" ]; then
-                   sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customa"|' "$SBS_CONF"; printf "$MESSAGE208\n" "A: $CUSTOM_REPO_A"
-               else
-                   printf "$MESSAGE216\n" "A"
-               fi ;;
-            3) if [ -n "$CUSTOM_REPO_B" ]; then
-                   sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customb"|' "$SBS_CONF"; printf "$MESSAGE208\n" "B: $CUSTOM_REPO_B"
-               else
-                   printf "$MESSAGE216\n" "B"
-               fi ;;
-            4) change_custom_repos; source "$SBS_CONF"; continue ;;
-            0) return ;;
-            *) echo "$MESSAGE6" ;;
-        esac
-    done
-}
-
-change_custom_repos() {
-    echo ""
-    echo "$MESSAGE210"
-    while true; do
-        source "$SBS_CONF"
-        echo ""
-        echo "1. $MESSAGE211 A."
-        if [ -n "$CUSTOM_REPO_A" ]; then
-            printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
-        fi
-        echo "2. $MESSAGE211 B."
-        if [ -n "$CUSTOM_REPO_B" ]; then
-            printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
-        fi
+        printf "2. $MESSAGE205\n" "A"
+        printf "3. $MESSAGE205\n" "B"
+        echo "4. $MESSAGE211 A."
+        [ -n "$CUSTOM_REPO_A" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
+        echo "5. $MESSAGE211 B."
+        [ -n "$CUSTOM_REPO_B" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
         echo "0. $MESSAGE218"
-        read -p "$MESSAGE99 [0-2]: " repo_choice
-        case "$repo_choice" in
-            1) read -p "$MESSAGE212 A: " newrepoa
+        read -p "$MESSAGE99 [0-5]: " choice_repo
+        case "$choice_repo" in
+            1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" ;;
+            2) [ -n "$CUSTOM_REPO_A" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customa"|' "$SBS_CONF" || printf "$MESSAGE216\n" "A" ;;
+            3) [ -n "$CUSTOM_REPO_B" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customb"|' "$SBS_CONF" || printf "$MESSAGE216\n" "B" ;;
+            4) echo ""
+               echo "$MESSAGE210"
+               read -p "$MESSAGE212 A: " newrepoa
                if [ -z "$newrepoa" ]; then
                    sed -i 's|^CUSTOM_REPO_A="[^"]*"|CUSTOM_REPO_A=""|' "$SBS_CONF"
                elif echo "$newrepoa" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
@@ -1701,7 +1747,9 @@ change_custom_repos() {
                else
                    sed -i "s|^CUSTOM_REPO_A=\"[^\"]*\"|CUSTOM_REPO_A=\"$newrepoa\"|" "$SBS_CONF"
                fi ;;
-            2) read -p "$MESSAGE212 B: " newrepob
+            5) echo ""
+               echo "$MESSAGE210"
+               read -p "$MESSAGE212 B: " newrepob
                if [ -z "$newrepob" ]; then
                    sed -i 's|^CUSTOM_REPO_B="[^"]*"|CUSTOM_REPO_B=""|' "$SBS_CONF"
                elif echo "$newrepob" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
@@ -1715,6 +1763,38 @@ change_custom_repos() {
     done
 }
 
+change_core_vers() {
+    while true; do
+        source "$SBS_CONF"
+        [ "$CORE_VERS" = "given" ] && [ -z "$GIVEN_VERS" ] && sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF" && CORE_VERS="release"
+        case "$CORE_VERS" in
+          release) given_value="$MESSAGE226" ;;
+          pre_release) given_value="$MESSAGE227" ;;
+          given) given_value="$MESSAGE228 $GIVEN_VERS" ;;
+        esac
+        echo ""
+        echo "$MESSAGE229"
+        echo "$given_value"
+        echo "1. $MESSAGE222"
+        echo "2. $MESSAGE223"
+        echo "3. $MESSAGE224"
+        echo "4. $MESSAGE225"
+        [ -n "$GIVEN_VERS" ] && printf "   $MESSAGE214\n" ": $GIVEN_VERS"
+        echo "5. $MESSAGE233"
+        [ -n "$NUM_RELEASES" ] && { printf "   $MESSAGE214" "$NUM_RELEASES"; echo " $MESSAGE215"; } || { printf "   $MESSAGE214" "30"; echo " $MESSAGE215"; }
+        echo "0. $MESSAGE218"
+        read -p "$MESSAGE99 [0-4]: " choice_vers
+        case "$choice_vers" in
+            1) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF" ;;
+            2) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="pre_release"|' "$SBS_CONF" ;;
+            3) [ -n "$GIVEN_VERS" ] && sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="given"|' "$SBS_CONF" || echo "$MESSAGE231" ;;
+            4) echo ""; read -p "$MESSAGE232: " new_given_vers; [ -z "$new_given_vers" ] && { sed -i 's|^GIVEN_VERS="[^"]*"|GIVEN_VERS=""|' "$SBS_CONF"; echo "$MESSAGE230"; } || { sed -i "s|^GIVEN_VERS=\"[^\"]*\"|GIVEN_VERS=\"$new_given_vers\"|" "$SBS_CONF"; } ;;
+            5) echo ""; read -p "$MESSAGE208: " new_num_releases; [ -z "$new_num_releases" ] && { sed -i 's|^NUM_RELEASES="[^"]*"|NUM_RELEASES=""|' "$SBS_CONF"; } || { sed -i "s|^NUM_RELEASES=\"[^\"]*\"|NUM_RELEASES=\"$new_num_releases\"|" "$SBS_CONF"; } ;;
+            0) return ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
 update_sbs() {
     echo ""
     echo "$MESSAGE107"
@@ -1735,12 +1815,8 @@ EOF
 
 updmonandconf_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
-
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     # Выполняем слияние новой версии sbs-conf со старой, не теряя значений переменных из старой.
     create_sbs_conf "$SBS_CONF"-tmp
     existing_vars=$(grep '^[A-Za-z0-9_]\+=' "$SBS_CONF")
@@ -1816,11 +1892,8 @@ format_sing_box() {
 
 config_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     while true; do
         echo ""
         echo "$MESSAGE124"
@@ -1844,11 +1917,8 @@ config_sing_box() {
 
 status_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
 
     if is_running; then
         echo "$MESSAGE30"
@@ -2039,11 +2109,8 @@ exch_ports() {
 
 server_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
     if is_running; then
         echo ""
         echo "$MESSAGE148"
@@ -2105,6 +2172,8 @@ serv_sing_box() {
 }
 
 install_sing_box() {
+    uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; exit 1; }
+    { [ "$(uname -r | cut -d. -f1)" -gt 4 ] || [ "$(uname -r | cut -d. -f1)" -eq 4 -a "$(uname -r | cut -d. -f2)" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; exit 1; }
     handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
     echo "Выбор языка / Select language:"
     while true; do
@@ -2115,29 +2184,26 @@ install_sing_box() {
         case "$language_choice" in
             1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; sed -i 's/^LANG=".*"/LANG="ru"/' "$TEMP_SBS_CONF"; break ;;
             2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; sed -i 's/^LANG=".*"/LANG="en"/' "$TEMP_SBS_CONF"; break ;;
-            0) delete_if_not_current_dir; rm -f "$TEMP_SBS_CONF"; exit 0 ;;
+            0) del_if_notcurrent; rm -f "$TEMP_SBS_CONF"; exit 0 ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
         esac
     done
 
     source "$TEMP_SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$TEMP_LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$TEMP_LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$TEMP_LANG_RU"
+    [ "$LANG" = "en" ] && source "$TEMP_LANG_EN"
 
     echo "$MESSAGE158"
     while true; do
         read -p "$MESSAGE18" choice
         case $choice in
-            0) delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
+            0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
             1) if is_running; then
                 echo "$MESSAGE160"
                 while true; do
                    read -p "$MESSAGE18" continue_choice
                    case "$continue_choice" in
-                       0) delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
+                       0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
                        1) stop_sing_box; break ;;
                        *) echo "$MESSAGE6" ;;
                    esac
@@ -2162,22 +2228,34 @@ install_sing_box() {
         create_or_use_existing "$SB_DIR"
     else
         printf "$MESSAGE162\n" "$ROOT_DIR"
-        delete_if_not_current_dir; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
+        del_if_notcurrent
+        rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
         exit 1
     fi
 
     create_dir "$SB_DOWNLOAD_DIR"
     if [ "$(uname -m)" = "aarch64" ]; then
-        SB_DOWNLOAD64_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-arm64.tar.gz"' | grep -o 'https://.*linux-arm64.tar.gz')
-        DOWNLOAD_URL="$SB_DOWNLOAD64_URL"
-        ARCHIVE_PATH="$SB_ARCHIVE64_PATH"
+        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
+        ARCHIVE_SUFFIX="linux-arm64.tar.gz"
     else
-        SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | grep -o '"browser_download_url":\s*"[^"]*linux-armv7.tar.gz"' | grep -o 'https://.*linux-armv7.tar.gz')
-        DOWNLOAD_URL="$SB_DOWNLOAD_URL"
-        ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
+        ARCHIVE_SUFFIX="linux-armv7.tar.gz"
     fi
-    echo "$MESSAGE163"
+    SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | \
+    awk -v suffix="$ARCHIVE_SUFFIX" '
+        BEGIN { found=0 }
+        /"prerelease": false/ { found=1 }
+        found && /"browser_download_url":/ && $0 ~ suffix {
+            gsub(/^.*"browser_download_url": *"/, "")
+            gsub(/".*$/, "")
+            print
+            exit
+        }
+    ')
+    DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+    ARCHIVE_PATH="$SB_ARCHIVE_PATH"
 
+    echo "$MESSAGE163"
     if wget --spider -q "$DOWNLOAD_URL"; then
         wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
         echo "$MESSAGE164"
@@ -2201,11 +2279,9 @@ install_sing_box() {
             echo "$MESSAGE167 $MESSAGE13"
         else
             echo "$MESSAGE167 $MESSAGE220"
-            echo "$MESSAGE159"
-            delete_if_not_current_dir; rm -rf $SB_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN $JFFS_SB_DIR $LN_PATH; exit 1
         fi
     fi
-    delete_if_not_current_dir; rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
+    del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
     printf "$MESSAGE170\n" "$SB_DOWNLOAD_DIR"
     echo ""
     echo "$MESSAGE171"
@@ -2213,11 +2289,8 @@ install_sing_box() {
 
 remove_sing_box() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
 
     echo "$MESSAGE172"
     while true; do
@@ -2232,11 +2305,8 @@ remove_sing_box() {
 
 show_menu() {
     source "$SBS_CONF"
-    if [ "$LANG" = "ru" ]; then
-        source "$LANG_RU"
-    elif [ "$LANG" = "en" ]; then
-        source "$LANG_EN"
-    fi
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
 
     echo "$MESSAGE176"
     echo "$MESSAGE177"
