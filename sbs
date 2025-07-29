@@ -467,9 +467,9 @@ update_script() {
 
 manage_iptables() {
     if [ "$1" = "add" ]; then
-        iptables -C "$2" 2>/dev/null || iptables -I "$2" || log_msg "$(printf "$MESSAGE15\n" "$2")"
+        iptables -C $2 2>/dev/null || iptables -I $2 || log_msg "$(printf "$MESSAGE15\n" "$2")"
     elif [ "$1" = "remove" ]; then
-        iptables -C "$2" 2>/dev/null && iptables -D "$2" || log_msg "$(printf "$MESSAGE16\n" "$2")"
+        iptables -C $2 2>/dev/null && iptables -D $2 || log_msg "$(printf "$MESSAGE16\n" "$2")"
     fi
 }
 
