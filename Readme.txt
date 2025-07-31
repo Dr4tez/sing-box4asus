@@ -8,7 +8,7 @@ I. Basics.
 
  3. If IPv6 is enabled in your router settings, it is not recommended to use this script, as it will likely not function as intended in most cases.
 
- 4. A USB drive with Entware installed must be connected to your router. The sing-box core will be installed on it, and during its operation, a directory with UI and a cache file will be created there. Installing these components in the router's internal memory is not desirable and often impossible due to its limitations, and is not considered.
+ 4. A USB drive with Entware installed must be connected to your router, the sing-box core will be installed in it. Installing the core into the router's internal memory is not desirable, and sometimes impossible due to its limitations, and is not considered.
 
  5. If you notice bugs in the script or can improve/optimize the script, please share this information with me.
 
