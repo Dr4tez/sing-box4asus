@@ -1,13 +1,12 @@
 #!/bin/sh
 
-# Version 2.2.1
+# Version 2.2.2
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
 SB_CONFIG="$JFFS_SB_DIR/config.json"
 SCRIPT_PATH="$JFFS_SB_DIR/sbs"
-TEMP_UPDATE="$JFFS_SB_DIR/temp-update"
 SBS_CONF="$JFFS_SB_DIR/sbs-conf"
 SBS_MON="$JFFS_SB_DIR/sbs-monitor"
 LANG_RU="$JFFS_SB_DIR/sbs-lang-ru"
@@ -21,9 +20,11 @@ SB_DIR="$ROOT_DIR/sing-box"
 SB_PATH="$SB_DIR/sing-box"
 SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
 SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
-TEMP_SBS_CONF="/jffs/scripts/sbs-conf"
-TEMP_LANG_RU="/jffs/scripts/sbs-lang-ru"
-TEMP_LANG_EN="/jffs/scripts/sbs-lang-en"
+TEMP_UPDATE="$SB_DOWNLOAD_DIR/temp-update"
+TEMP_SCRIPT_PATH="$SB_DOWNLOAD_DIR/sbs"
+TEMP_SBS_CONF="$SB_DOWNLOAD_DIR/sbs-conf"
+TEMP_LANG_RU="$SB_DOWNLOAD_DIR/sbs-lang-ru"
+TEMP_LANG_EN="$SB_DOWNLOAD_DIR/sbs-lang-en"
 FW_SCRIPT="/jffs/scripts/firewall-start"
 NAT_SCRIPT="/jffs/scripts/nat-start"
 SS_SCRIPT="/jffs/scripts/services-start"
@@ -44,7 +45,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.2.1
+# Создан в SBS 2.2.2
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update' или 'sbs server'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -88,7 +89,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.2.1
+# Создан в SBS 2.2.2
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -1565,9 +1566,9 @@ download_updates() {
     fi
     echo ""
     echo "$MESSAGE100"
-    rm -rf "$SB_DOWNLOAD_DIR" "$SCRIPT_PATH"-tmp
-    wget -q -O "$SCRIPT_PATH"-tmp "$SCRIPT_URL"
+    rm -rf "$SB_DOWNLOAD_DIR"
     silent_create_dir "$SB_DOWNLOAD_DIR"
+    wget -q -O $TEMP_SCRIPT_PATH "$SCRIPT_URL"
 
     MAX_RELEASES=${NUM_RELEASES:-30}
     MAX_PAGES=$(( (MAX_RELEASES + 29) / 30 ))
@@ -1659,7 +1660,7 @@ update_sing_box_menu() {
         else
             sb_vers=""
         fi
-        sbs_vers_new=$(get_sbs_version "$SCRIPT_PATH"-tmp)
+        sbs_vers_new=$(get_sbs_version $TEMP_SCRIPT_PATH)
         if [ -f "$singbox_file" ]; then
             sb_vers_new=$(get_sb_version $singbox_file)
         else
@@ -1683,7 +1684,7 @@ update_sing_box_menu() {
             1) is_running && stop_sing_box; update_sbs; break ;;
             2) [ -n "$sb_vers_new" ] && { is_running && stop_sing_box; updcore_sing_box; source "$SBS_CONF"; download_updates; continue; } || echo "$MESSAGE219" ;;
             3) change_repo_vers; source "$SBS_CONF"; download_updates; continue ;;
-            0) rm -rf "$SB_DOWNLOAD_DIR" "$SCRIPT_PATH"-tmp; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
+            0) rm -rf "$SB_DOWNLOAD_DIR"; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1798,18 +1799,18 @@ change_core_vers() {
 update_sbs() {
     echo ""
     echo "$MESSAGE107"
-    cp "$SCRIPT_PATH"-tmp $SCRIPT_PATH
+    cp $TEMP_SCRIPT_PATH $SCRIPT_PATH
     chmod 775 $SCRIPT_PATH
     [ -f "$LANG_EN" ] && { wget -q -O $LANG_EN $LANG_EN_URL && chmod 664 $LANG_EN; }
     [ -f "$LANG_RU" ] && { wget -q -O $LANG_RU $LANG_RU_URL && chmod 664 $LANG_RU; }
 
     cat << EOF > $TEMP_UPDATE
 #!/bin/sh
-rm -f $TEMP_UPDATE
 exec $SCRIPT_PATH updmonandconf
 EOF
     chmod 775 $TEMP_UPDATE
-
+    # Удаляем файл, не используемый с версии 2.2.2
+    rm -f $JFFS_SB_DIR/sbs-tmp
     exec $TEMP_UPDATE
 }
 
@@ -1818,11 +1819,11 @@ updmonandconf_sing_box() {
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
     # Выполняем слияние новой версии sbs-conf со старой, не теряя значений переменных из старой.
-    create_sbs_conf "$SBS_CONF"-tmp
+    create_sbs_conf $TEMP_SBS_CONF
     existing_vars=$(grep '^[A-Za-z0-9_]\+=' "$SBS_CONF")
     sed -i '/^#/d' "$SBS_CONF"
-    comments=$(grep '^#' "$SBS_CONF"-tmp)
-    vars_in_tmp=$(grep '^[A-Za-z0-9_]\+=' "$SBS_CONF"-tmp)
+    comments=$(grep '^#' $TEMP_SBS_CONF)
+    vars_in_tmp=$(grep '^[A-Za-z0-9_]\+=' $TEMP_SBS_CONF)
     echo "$comments" > "$SBS_CONF"
     echo "" >> "$SBS_CONF"
     echo "$existing_vars" >> "$SBS_CONF"
@@ -1832,7 +1833,7 @@ updmonandconf_sing_box() {
             echo "$var" >> "$SBS_CONF"
         fi
     done
-    rm -f "$SBS_CONF"-tmp
+    rm -f $TEMP_SBS_CONF
 
     create_sbs_monitor "$SBS_MON"
     echo "$MESSAGE108"
@@ -2174,6 +2175,14 @@ serv_sing_box() {
 install_sing_box() {
     uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; exit 1; }
     { [ "$(uname -r | cut -d. -f1)" -gt 4 ] || [ "$(uname -r | cut -d. -f1)" -eq 4 -a "$(uname -r | cut -d. -f2)" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; exit 1; }
+    if [ -n "$ROOT_DIR" ]; then
+        create_or_use_existing "$SB_DIR"
+    else
+        printf "$MESSAGE162\n" "$ROOT_DIR"
+        del_if_notcurrent
+        exit 1
+    fi
+    create_dir "$SB_DOWNLOAD_DIR"
     handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
     echo "Выбор языка / Select language:"
     while true; do
@@ -2224,16 +2233,6 @@ install_sing_box() {
     check_copy_file "$TEMP_LANG_RU" "$LANG_RU"
     check_copy_file "$TEMP_LANG_EN" "$LANG_EN"
 
-    if [ -n "$ROOT_DIR" ]; then
-        create_or_use_existing "$SB_DIR"
-    else
-        printf "$MESSAGE162\n" "$ROOT_DIR"
-        del_if_notcurrent
-        rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
-        exit 1
-    fi
-
-    create_dir "$SB_DOWNLOAD_DIR"
     if [ "$(uname -m)" = "aarch64" ]; then
         SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
         ARCHIVE_SUFFIX="linux-arm64.tar.gz"
