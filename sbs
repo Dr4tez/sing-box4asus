@@ -2175,6 +2175,14 @@ serv_sing_box() {
 install_sing_box() {
     uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; exit 1; }
     { [ "$(uname -r | cut -d. -f1)" -gt 4 ] || [ "$(uname -r | cut -d. -f1)" -eq 4 -a "$(uname -r | cut -d. -f2)" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; exit 1; }
+    if [ -n "$ROOT_DIR" ]; then
+        create_or_use_existing "$SB_DIR"
+    else
+        printf "$MESSAGE162\n" "$ROOT_DIR"
+        del_if_notcurrent
+        exit 1
+    fi
+    create_dir "$SB_DOWNLOAD_DIR"
     handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
     echo "Выбор языка / Select language:"
     while true; do
@@ -2225,16 +2233,6 @@ install_sing_box() {
     check_copy_file "$TEMP_LANG_RU" "$LANG_RU"
     check_copy_file "$TEMP_LANG_EN" "$LANG_EN"
 
-    if [ -n "$ROOT_DIR" ]; then
-        create_or_use_existing "$SB_DIR"
-    else
-        printf "$MESSAGE162\n" "$ROOT_DIR"
-        del_if_notcurrent
-        rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
-        exit 1
-    fi
-
-    create_dir "$SB_DOWNLOAD_DIR"
     if [ "$(uname -m)" = "aarch64" ]; then
         SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
         ARCHIVE_SUFFIX="linux-arm64.tar.gz"
