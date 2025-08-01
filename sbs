@@ -1809,7 +1809,8 @@ update_sbs() {
 exec $SCRIPT_PATH updmonandconf
 EOF
     chmod 775 $TEMP_UPDATE
-
+    # Удаляем файл, не используемый с версии 2.2.2
+    rm -f $JFFS_SB_DIR/sbs-tmp
     exec $TEMP_UPDATE
 }
 
