@@ -1806,7 +1806,6 @@ update_sbs() {
 
     cat << EOF > $TEMP_UPDATE
 #!/bin/sh
-rm -f $TEMP_UPDATE
 exec $SCRIPT_PATH updmonandconf
 EOF
     chmod 775 $TEMP_UPDATE
