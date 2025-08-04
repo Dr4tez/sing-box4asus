@@ -6,30 +6,31 @@
   "dns": {
     "servers": [
       {
+        "type": "https",
         "tag": "dns-direct",
-        "address": "https://dns.google/dns-query",
-        "address_resolver": "dns-resolver"
+        "server": "8.8.8.8",
+        "tls": {
+          "enabled": true,
+          "server_name": "dns.google"
+        }
       },
       {
+        "type": "https",
         "tag": "dns-remote",
-        "address": "https://dns.google/dns-query",
-        "address_resolver": "dns-resolver",
-        "detour": "My-VLESS"
+        "detour": "My-VLESS",
+        "server": "8.8.8.8",
+        "tls": {
+          "enabled": true,
+          "server_name": "dns.google"
+        }
       },
       {
-        "tag": "fakeip-dns",
-        "address": "fakeip"
-      },
-      {
-        "tag": "dns-resolver",
-        "address": "8.8.8.8"
+        "type": "fakeip",
+        "tag": "dns-fakeip",
+        "inet4_range": "198.18.0.0/15"
       }
     ],
     "rules": [
-      {
-        "outbound": "any",
-        "server": "dns-direct"
-      },
       {
         "query_type": "A",
         "source_ip_cidr": [
@@ -37,19 +38,15 @@
           "192.168.50.15"
         ],
         "rule_set": "my-ruleset",
-        "server": "fakeip-dns"
+        "server": "dns-fakeip"
       },
       {
         "rule_set": "my-ruleset",
         "server": "dns-remote"
       }
     ],
-    "fakeip": {
-      "enabled": true,
-      "inet4_range": "198.18.0.0/15"
-    },
-    "strategy": "ipv4_only",
-    "reverse_mapping": true
+    "reverse_mapping": true,
+    "strategy": "ipv4_only"
   },
   "inbounds": [
     {
@@ -113,7 +110,8 @@
         "format": "binary",
         "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs"
       }
-    ]
+    ],
+    "default_domain_resolver": "dns-direct"
   },
   "experimental": {
     "cache_file": {
