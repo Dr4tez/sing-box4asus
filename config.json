@@ -6,26 +6,26 @@
   "dns": {
     "servers": [
       {
+        "type": "https",
         "tag": "dns-direct",
-        "address": "https://dns.google/dns-query",
-        "address_resolver": "dns-resolver"
+        "server": "8.8.8.8",
+        "tls": {
+          "enabled": true,
+          "server_name": "dns.google"
+        }
       },
       {
+        "type": "https",
         "tag": "dns-remote",
-        "address": "https://dns.google/dns-query",
-        "address_resolver": "dns-resolver",
-        "detour": "My-VLESS"
-      },
-      {
-        "tag": "dns-resolver",
-        "address": "8.8.8.8"
+        "detour": "My-VLESS",
+        "server": "8.8.8.8",
+        "tls": {
+          "enabled": true,
+          "server_name": "dns.google"
+        }
       }
     ],
     "rules": [
-      {
-        "outbound": "any",
-        "server": "dns-direct"
-      },
       {
         "rule_set": "my-ruleset",
         "server": "dns-remote"
@@ -97,7 +97,8 @@
         "format": "binary",
         "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs"
       }
-    ]
+    ],
+    "default_domain_resolver": "dns-direct"
   },
   "experimental": {
     "cache_file": {
