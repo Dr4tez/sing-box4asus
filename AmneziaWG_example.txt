@@ -1,3 +1,5 @@
+// wireguard endpoint с AmneziaWG выглядит так:
+
   "endpoints": [
     {
       "type": "wireguard",
@@ -25,3 +27,11 @@
       }
     }
   ]
+
+// Чтобы wireguard endpoint на версии sing-box 1.12.* работал, direct outbound должен выглядеть так:
+
+    {
+      "type": "direct",
+      "tag": "direct",
+      "connect_timeout": "5s"
+    }
