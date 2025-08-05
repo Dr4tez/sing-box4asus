@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.2.2
+# Version 2.2.3
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -45,7 +45,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.2.2
+# Создан в SBS 2.2.3
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update' или 'sbs server'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -89,7 +89,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.2.2
+# Создан в SBS 2.2.3
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -970,7 +970,6 @@ iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPR
             ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE
             ip rule add fwmark $TPROXY_MARK lookup $ROUTE_TABLE priority 553
         fi
-        $SBS_MON &
     fi
 # То же, но для использования sing-box в качестве чисто DNS сервера с fakeip для конечных устройств или для AGH, попросили такую возможность
     if [ -n "$ROUTE_TABLE" ] && [ -n "$FAKEIP_SUBNET" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ]; then
@@ -988,7 +987,6 @@ iptables -t mangle -I SBTPROXY -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $TPR
             ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE
             ip rule add fwmark $TPROXY_MARK lookup $ROUTE_TABLE priority 553
         fi
-        $SBS_MON &
     fi
     if [ -n "$WAN_PORTS" ]; then
         log_msg "$(printf "$MESSAGE28\n" "$WAN_PORTS")"
@@ -1005,6 +1003,7 @@ iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
         done
     fi
     log_msg "$MESSAGE29"
+    $SBS_MON &
     update_script "$SS_SCRIPT" "$SS_LINES # sing-box-script"
     log_msg "$MESSAGE30"
 }
@@ -1015,6 +1014,11 @@ stop_sing_box() {
     [ "$LANG" = "en" ] && source "$LANG_EN"
     echo ""
     log_msg "$MESSAGE31"
+
+    pids=$(pidof "sbs-monitor")
+    for pid in $pids; do
+        kill "$pid" >/dev/null 2>&1
+    done
 
     if [ -n "$TUN_INTERFACE" ]; then
         FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
@@ -1038,12 +1042,7 @@ stop_sing_box() {
             iptables -D INPUT -p tcp --dport "$wan_port" -j ACCEPT
         done
     fi
-
     if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
-        pids=$(pidof "sbs-monitor")
-        for pid in $pids; do
-            kill "$pid" >/dev/null 2>&1
-        done
 # Удаление правил маршрутизации, маршрутов и правил файрвола
         log_msg "$MESSAGE34"
         ip rule del fwmark $TPROXY_MARK lookup $ROUTE_TABLE >/dev/null 2>&1
@@ -1093,10 +1092,6 @@ stop_sing_box() {
         fi
     fi
     if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && [ -n "$FAKEIP_SUBNET" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ]; then
-        pids=$(pidof "sbs-monitor")
-        for pid in $pids; do
-            kill "$pid" >/dev/null 2>&1
-        done
         log_msg "$MESSAGE34"
         ip rule del fwmark $TPROXY_MARK lookup $ROUTE_TABLE >/dev/null 2>&1
         ip rule del to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE >/dev/null 2>&1
@@ -1440,7 +1435,11 @@ setup_sing_box() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
-
+    if [ -z "$TUN_INTERFACE" ] && [ -z "$TPROXY_PORT" ]; then
+        echo ""
+        echo "$MESSAGE88"
+        exit 0
+    fi
     if is_running; then
         echo ""
         echo "$MESSAGE89"
@@ -1460,11 +1459,6 @@ setup_sing_box() {
     fakeip_check
     source "$SBS_CONF"
 
-    if [ -z "$TUN_INTERFACE" ] && [ -z "$TPROXY_PORT" ]; then
-        echo ""
-        echo "$MESSAGE88"
-        exit 0
-    fi
     if [ -z "$FAKEIP_SUBNET" ]; then
         while true; do
             echo "$MESSAGE91"
