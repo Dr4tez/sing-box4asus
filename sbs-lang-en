@@ -1,4 +1,4 @@
-# For SBS version 2.2.3
+# For SBS version 2.2.4
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -26,7 +26,7 @@ MESSAGE22="Loading TUN module..."
 MESSAGE23="TUN interface %s found."
 MESSAGE24="No TUN interfaces found."
 MESSAGE25="Adding NAT rules."
-MESSAGE26="Adding firewall rules."
+MESSAGE26="Adding iptables rules."
 MESSAGE27="Adding routes and routing rules."
 MESSAGE28="Opening ports from WAN to router: %s"
 MESSAGE29="Adding the script to autostart."
@@ -35,7 +35,7 @@ MESSAGE31="Stopping sing-box..."
 MESSAGE32="Removing the script from autostart."
 MESSAGE33="Closing ports from WAN to router: %s"
 MESSAGE34="Removing routes and routing rules."
-MESSAGE35="Removing firewall rules."
+MESSAGE35="Removing iptables rules."
 MESSAGE36="Removing NAT rules."
 MESSAGE37="sing-box stopped."
 MESSAGE38="Do you want to enter the IP addresses of the devices to be routed through sing-box?"
