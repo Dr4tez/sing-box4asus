@@ -676,8 +676,8 @@ iptables -t nat -D PREROUTING -j SBS-NAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -F SBS-NAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -N SBS-NAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -I PREROUTING -j SBS-NAT # sing-box-script-nat
-iptables -t nat -I PREROUTING -p tcp -m mark --mark $SET_MARK -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script-nat
-iptables -t nat -I PREROUTING -p udp -m mark --mark $SET_MARK -j DNAT --to-destination :$LISTEN_DNS_PORT; ) & # sing-box-script-nat"
+iptables -t nat -I SBS-NAT -p tcp -m mark --mark $SET_MARK -j DNAT --to-destination :$LISTEN_DNS_PORT # sing-box-script-nat
+iptables -t nat -I SBS-NAT -p udp -m mark --mark $SET_MARK -j DNAT --to-destination :$LISTEN_DNS_PORT; ) & # sing-box-script-nat"
     fi
 # Добавление правил mangle и обновление скрипта nat-start
     if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$TPROXY_MARK" ]; then
