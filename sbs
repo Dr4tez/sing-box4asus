@@ -141,32 +141,20 @@ iptables -t mangle -I PREROUTING -j SBS-MANGLE # sing-box-script-mangle"
                             iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN
                             m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle"
                             if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
-                                iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                                iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                                iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
-                                iptables -t mangle -I SBS-MANGLE -p udp -s $subnet ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
-                                m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -s $subnet ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle"
+                                iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
+                                iptables -t mangle -I SBS-MANGLE -p udp -s $subnet -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
+                                m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle"
                             else
-                                iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                                iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
                                 iptables -t mangle -I SBS-MANGLE -s $subnet -j MARK --set-mark $TPROXY_MARK
-                                m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -s $subnet -j MARK --set-mark $TPROXY_MARK # sing-box-script-mangle"
+                                m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -s $subnet -j MARK --set-mark $TPROXY_MARK # sing-box-script-mangle"
                             fi
                         elif echo "$EXC_DEVICE_IPS" | grep -qw "$subnet"; then
                             iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN
                             m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle"
                         elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
                             iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN
-                            iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                            iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                            m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+                            m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle"
                         elif [ -n "$FAKEIP_SUBNET" ] && echo "$EXC_DEVICE_FIPS" | grep -qw "$subnet"; then
                             iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN
                             m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle"
@@ -181,30 +169,18 @@ iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark
                     iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j RETURN
                     m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j RETURN # sing-box-script-mangle"
                     if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
-                        iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-                        iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-                        iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
-                        iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
-                        m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle"
+                        iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
+                        iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
+                        m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle"
                     else
-                        iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-                        iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
                         iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j MARK --set-mark $TPROXY_MARK
-                        m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j MARK --set-mark $TPROXY_MARK # sing-box-script-mangle"
+                        m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j MARK --set-mark $TPROXY_MARK # sing-box-script-mangle"
                     fi
                 fi
                 if ipset list sbsfinc-ipset >/dev/null 2>&1; then
                     iptables -t mangle -I SBS-MANGLE -m set --match-set sbsfinc-ipset src -j RETURN
-                    iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-                    iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-                    m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -m set --match-set sbsfinc-ipset src -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+                    m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -m set --match-set sbsfinc-ipset src -j RETURN # sing-box-script-mangle"
                 fi
                 if [ -n "$FAKEIP_SUBNET" ]; then
                     iptables -t mangle -I SBS-MANGLE -d $FAKEIP_SUBNET -j RETURN
@@ -226,7 +202,67 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
                 iptables -t mangle -I SBS-MANGLE -p udp --dport 67 -j RETURN
                 iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN
                 m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p udp --dport 67 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN; ) & # sing-box-script-mangle"
+iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN"
+
+                if [ -n "$m_sorted_subnets" ]; then
+                    echo "$m_sorted_subnets" | while read -r subnet; do
+                        if echo "$DEVICE_IPS" | grep -qw "$subnet"; then
+                            iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN
+                            iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN
+                            iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
+                            iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
+                            m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+                        elif echo "$EXC_DEVICE_IPS" | grep -qw "$subnet"; then
+                            iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN
+                            iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN
+                            m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle"
+                        elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
+                            iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN
+                            iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN
+                            iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
+                            iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
+                            m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+                        elif [ -n "$FAKEIP_SUBNET" ] && echo "$EXC_DEVICE_FIPS" | grep -qw "$subnet"; then
+                            iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN
+                            iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN
+                            m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle"
+                        fi
+                    done
+                fi
+                if ipset list sbsexc-ipset >/dev/null 2>&1; then
+                    iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsexc-ipset src --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsexc-ipset src --dport 53 -j RETURN
+                    m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsexc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsexc-ipset src --dport 53 -j RETURN # sing-box-script-mangle"
+                fi
+                if ipset list sbsinc-ipset >/dev/null 2>&1; then
+                    iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
+                    iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
+                    m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+                fi
+                if ipset list sbsfinc-ipset >/dev/null 2>&1; then
+                    iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
+                    iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
+                    m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK; ) & # sing-box-script-mangle"
+                fi
             fi
             if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && [ -n "$FAKEIP_SUBNET" ] && [ -n "$TPROXY_MARK" ]; then
                 sed -i "/sing-box-script-mangle/d" /jffs/scripts/nat-start
@@ -695,32 +731,20 @@ iptables -t mangle -I PREROUTING -j SBS-MANGLE # sing-box-script-mangle"
                     iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN
                     update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle"
                     if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
-                        iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                        iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                        iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
-                        iptables -t mangle -I SBS-MANGLE -p udp -s $subnet ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
-                        update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -s $subnet ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle"
+                        iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
+                        iptables -t mangle -I SBS-MANGLE -p udp -s $subnet -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
+                        update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle"
                     else
-                        iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                        iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
                         iptables -t mangle -I SBS-MANGLE -s $subnet -j MARK --set-mark $TPROXY_MARK
-                        update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -s $subnet -j MARK --set-mark $TPROXY_MARK # sing-box-script-mangle"
+                        update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -s $subnet -j MARK --set-mark $TPROXY_MARK # sing-box-script-mangle"
                     fi
                 elif echo "$EXC_DEVICE_IPS" | grep -qw "$subnet"; then
                     iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN
                     update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle"
                 elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
                     iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN
-                    iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                    iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
-                    update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+                    update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle"
                 elif [ -n "$FAKEIP_SUBNET" ] && echo "$EXC_DEVICE_FIPS" | grep -qw "$subnet"; then
                     iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN
                     update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -s $subnet -j RETURN # sing-box-script-mangle"
@@ -735,30 +759,18 @@ iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark
             iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j RETURN
             update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j RETURN # sing-box-script-mangle"
             if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
-                iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-                iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-                iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
-                iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
-                update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src ! --dport 53 -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle"
+                iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
+                iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK
+                update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src -j TPROXY --on-port $TPROXY_PORT --tproxy-mark $TPROXY_MARK # sing-box-script-mangle"
             else
-                iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-                iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
                 iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j MARK --set-mark $TPROXY_MARK
-                update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j MARK --set-mark $TPROXY_MARK # sing-box-script-mangle"
+                update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -m set --match-set sbsinc-ipset src -j MARK --set-mark $TPROXY_MARK # sing-box-script-mangle"
             fi
         fi
         if ipset list sbsfinc-ipset >/dev/null 2>&1; then
             iptables -t mangle -I SBS-MANGLE -m set --match-set sbsfinc-ipset src -j RETURN
-            iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-            iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
-            update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -m set --match-set sbsfinc-ipset src -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+            update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -m set --match-set sbsfinc-ipset src -j RETURN # sing-box-script-mangle"
         fi
         if [ -n "$FAKEIP_SUBNET" ]; then
             iptables -t mangle -I SBS-MANGLE -d $FAKEIP_SUBNET -j RETURN
@@ -780,7 +792,67 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
         iptables -t mangle -I SBS-MANGLE -p udp --dport 67 -j RETURN
         iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN
         update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p udp --dport 67 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN; ) & # sing-box-script-mangle"
+iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN"
+
+        if [ -n "$sorted_subnets" ]; then
+            echo "$sorted_subnets" | while read -r subnet; do
+                if echo "$DEVICE_IPS" | grep -qw "$subnet"; then
+                    iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
+                    iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
+                    update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+                elif echo "$EXC_DEVICE_IPS" | grep -qw "$subnet"; then
+                    iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN
+                    update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle"
+                elif [ -n "$FAKEIP_SUBNET" ] && echo "$DEVICE_FIPS" | grep -qw "$subnet"; then
+                    iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
+                    iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK
+                    update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+                elif [ -n "$FAKEIP_SUBNET" ] && echo "$EXC_DEVICE_FIPS" | grep -qw "$subnet"; then
+                    iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN
+                    iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN
+                    update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -s $subnet --dport 53 -j RETURN # sing-box-script-mangle"
+                fi
+            done
+        fi
+        if ipset list sbsexc-ipset >/dev/null 2>&1; then
+            iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsexc-ipset src --dport 53 -j RETURN
+            iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsexc-ipset src --dport 53 -j RETURN
+            update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsexc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsexc-ipset src --dport 53 -j RETURN # sing-box-script-mangle"
+        fi
+        if ipset list sbsinc-ipset >/dev/null 2>&1; then
+            iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j RETURN
+            iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j RETURN
+            iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
+            iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
+            update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
+        fi
+        if ipset list sbsfinc-ipset >/dev/null 2>&1; then
+            iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN
+            iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN
+            iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
+            iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK
+            update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK; ) & # sing-box-script-mangle"
+        fi
     fi
 # То же, но для использования sing-box в качестве чисто DNS сервера с fakeip для конечных устройств или для AGH, попросили такую возможность
     if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && [ -n "$FAKEIP_SUBNET" ] && [ -n "$TPROXY_MARK" ]; then
