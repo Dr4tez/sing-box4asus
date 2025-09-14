@@ -202,7 +202,7 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
                 iptables -t mangle -I SBS-MANGLE -p udp --dport 67 -j RETURN
                 iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN
                 m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p udp --dport 67 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN"
+iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN # sing-box-script-mangle"
 
                 if [ -n "$m_sorted_subnets" ]; then
                     echo "$m_sorted_subnets" | while read -r subnet; do
@@ -261,8 +261,9 @@ iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dp
                     m_update_script /jffs/scripts/nat-start "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK; ) & # sing-box-script-mangle"
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
                 fi
+                m_update_script /jffs/scripts/nat-start ") & # sing-box-script-mangle"
             fi
             if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && [ -n "$FAKEIP_SUBNET" ] && [ -n "$TPROXY_MARK" ]; then
                 sed -i "/sing-box-script-mangle/d" /jffs/scripts/nat-start
@@ -792,7 +793,7 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
         iptables -t mangle -I SBS-MANGLE -p udp --dport 67 -j RETURN
         iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN
         update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p udp --dport 67 -j RETURN # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN"
+iptables -t mangle -I SBS-MANGLE -p udp --dport 68 -j RETURN # sing-box-script-mangle"
 
         if [ -n "$sorted_subnets" ]; then
             echo "$sorted_subnets" | while read -r subnet; do
@@ -851,8 +852,9 @@ iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsinc-ipset src --dp
             update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -p tcp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle
-iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK; ) & # sing-box-script-mangle"
+iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsfinc-ipset src --dport 53 -j MARK --set-mark $SET_MARK # sing-box-script-mangle"
         fi
+        update_script "$NAT_SCRIPT" ") & # sing-box-script-mangle"
     fi
 # То же, но для использования sing-box в качестве чисто DNS сервера с fakeip для конечных устройств или для AGH, попросили такую возможность
     if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && [ -n "$FAKEIP_SUBNET" ] && [ -n "$TPROXY_MARK" ]; then
