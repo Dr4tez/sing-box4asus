@@ -167,11 +167,8 @@ m_cidr_in_cidr() {
 
 sbs_monitor_rrtun() {
     route_in_process=0
-    rule_in_process=0
-    exec 3< <(ip monitor route)
-    exec 4< <(ip monitor rule)
 
-    while read -r _ <&3; do
+  { ip monitor route | while read -r _; do
         if [ "$route_in_process" -eq 0 ]; then
             route_in_process=1
             if ! ps | grep "[s]ing-box.*run" >/dev/null 2>&1; then
@@ -190,14 +187,13 @@ sbs_monitor_rrtun() {
             fi
             route_in_process=0
         fi
-    done &
+    done } &
 
-    while read -r _ <&4; do
-        if [ "$rule_in_process" -eq 0 ]; then
-            rule_in_process=1
+    while true; do
+        ip monitor rule | while read line; do
             if [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; then
-                if ! ip rule show | grep -q "to $REWRITE_DNS lookup $ROUTE_TABLE"; then
-                    ip rule add to $REWRITE_DNS lookup $ROUTE_TABLE priority 5353
+                if ! ip rule show | grep -q "to ${REWRITE_DNS%%:*} lookup $ROUTE_TABLE"; then
+                    ip rule add to ${REWRITE_DNS%%:*} lookup $ROUTE_TABLE priority 5353
                 fi
             fi
             if [ -n "$FAKEIP_SUBNET" ]; then
@@ -226,19 +222,16 @@ sbs_monitor_rrtun() {
                         done
                     fi
                 done
-            fi
-            rule_in_process=0
-        fi
-    done &
+            fi; break
+        done
+    done
 }
 
 sbs_monitor_rrtp() {
     route_in_process=0
     rule_in_process=0
-    exec 3< <(ip monitor route)
-    exec 4< <(ip monitor rule)
 
-    while read -r _ <&3; do
+  { ip monitor route | while read -r _; do
         if [ "$route_in_process" -eq 0 ]; then
             route_in_process=1
             if ! ps | grep "[s]ing-box.*run" >/dev/null 2>&1; then
@@ -341,9 +334,9 @@ iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set $setname src --dport 
             ip route add local 0.0.0.0/0 dev lo table $ROUTE_TABLE 2>/dev/null
             route_in_process=0
         fi
-    done &
+    done } &
 
-    while read -r _ <&4; do
+    ip monitor rule | while read -r _; do
         if [ "$rule_in_process" -eq 0 ]; then
             rule_in_process=1
             if ! ip rule show | grep -q "from all fwmark ${TPROXY_MARK%%/*} lookup $ROUTE_TABLE"; then
@@ -792,7 +785,7 @@ iptables -t nat -I SBS-NAT -p udp -m set --match-set $setname src --dport 53 -j 
         update_script "$NAT_SCRIPT" ") & # sing-box-script"
     fi
 # Добавление правил mangle и обновление скрипта nat-start
-    if [ -n "$TPROXY_PORT" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$TPROXY_MARK" ]; then
+    if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && [ -n "$TPROXY_MARK" ]; then
         log_msg "$MESSAGE192"
         iptables -t mangle -D PREROUTING -j SBS-MANGLE 2>/dev/null
         iptables -t mangle -F SBS-MANGLE 2>/dev/null
@@ -910,7 +903,7 @@ iptables -t mangle -I SBS-MANGLE -p udp -m set --match-set sbsexc-ipset src --dp
                 ip route show table main | grep -v '^default' | while read ROUTE; do ip route add $ROUTE table $ROUTE_TABLE; done
             fi
             if { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$REWRITE_DNS" ]; then
-                ip rule add to $REWRITE_DNS lookup $ROUTE_TABLE priority 5353
+                ip rule add to ${REWRITE_DNS%%:*} lookup $ROUTE_TABLE priority 5353
             fi
             if [ -n "$FAKEIP_SUBNET" ]; then
                 ip rule add to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE priority 5353
@@ -994,7 +987,7 @@ stop_sing_box() {
             ip rule del from "$IP" lookup main >/dev/null 2>&1
         done
         ip rule del to "$FAKEIP_SUBNET" lookup $ROUTE_TABLE >/dev/null 2>&1
-        ip rule del to $REWRITE_DNS lookup $ROUTE_TABLE >/dev/null 2>&1
+        ip rule del to ${REWRITE_DNS%%:*} lookup $ROUTE_TABLE >/dev/null 2>&1
         ip rule del fwmark $TPROXY_MARK lookup $ROUTE_TABLE >/dev/null 2>&1
         ip route flush table $ROUTE_TABLE
         if [ -n "$TUN_INTERFACE" ]; then
