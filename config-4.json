@@ -53,13 +53,6 @@
       "type": "tproxy",
       "listen": "0.0.0.0",
       "listen_port": 6543
-    },
-    {
-      "type": "direct",
-      "tag": "dns-in",
-      "listen": "0.0.0.0",
-      "listen_port": 55553,
-      "override_port": 5553
     }
   ],
   "outbounds": [
