@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.3
+# Version 2.3
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -45,7 +45,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.3
+# Создан в SBS 2.3
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update' или 'sbs server'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -90,7 +90,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.3
+# Создан в SBS 2.3
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -123,7 +123,9 @@ sbs_monitor_rr() {
             if ! ps | grep "[s]ing-box.*run" >/dev/null 2>&1; then
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
                 sleep 5
-                echo 2 > /proc/sys/net/ipv4/conf/$TUN_INTERFACE/rp_filter
+                if [ -n "$TUN_INTERFACE" ]; then
+                    echo 2 > /proc/sys/net/ipv4/conf/$TUN_INTERFACE/rp_filter
+                fi
             fi
             if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$FW_MARK" ]; then
                 sed -i "/sing-box-script-mangle/d" /jffs/scripts/nat-start
@@ -297,9 +299,8 @@ if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
         while true; do
             if ! ps | grep "[s]ing-box.*run" >/dev/null 2>&1; then
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
-                sleep 5
-                echo 2 > /proc/sys/net/ipv4/conf/$TUN_INTERFACE/rp_filter
             fi
+            sleep 5
         done
     ) &
 fi
@@ -636,8 +637,10 @@ start_sing_box() {
     log_msg "$MESSAGE20"
     $SB_PATH run -c $SB_CONFIG &
     sleep 5
-    echo 2 > /proc/sys/net/ipv4/conf/$TUN_INTERFACE/rp_filter
     is_running || { log_msg "$MESSAGE201"; exit 1; }
+    if [ -n "$TUN_INTERFACE" ]; then
+        echo 2 > /proc/sys/net/ipv4/conf/$TUN_INTERFACE/rp_filter
+    fi
 
 # Проверка наличия tun интерфейса
     if [ -n "$TUN_INTERFACE" ]; then
