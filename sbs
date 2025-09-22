@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.1
+# Version 2.3.2
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -45,7 +45,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.1
+# Создан в SBS 2.3.2
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update' или 'sbs server'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -90,7 +90,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.1
+# Создан в SBS 2.3.2
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -1642,21 +1642,23 @@ updmonandconf_sing_box() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
-    # Выполняем слияние новой версии sbs-conf со старой, не теряя значений переменных из старой.
-    create_sbs_conf $TEMP_SBS_CONF
+    create_sbs_conf "$TEMP_SBS_CONF"
+    comments=$(grep '^#' "$TEMP_SBS_CONF")
+    vars_in_tmp=$(grep '^[A-Za-z0-9_]\+=' "$TEMP_SBS_CONF")
     existing_vars=$(grep '^[A-Za-z0-9_]\+=' "$SBS_CONF")
-    sed -i '/^#/d' "$SBS_CONF"
-    comments=$(grep '^#' $TEMP_SBS_CONF)
-    vars_in_tmp=$(grep '^[A-Za-z0-9_]\+=' $TEMP_SBS_CONF)
-    echo "$comments" > "$SBS_CONF"
-    echo "" >> "$SBS_CONF"
-    echo "$existing_vars" >> "$SBS_CONF"
-    for var in $vars_in_tmp; do
-        var_name=$(echo "$var" | cut -d= -f1)
-        if ! grep -q "^$var_name=" "$SBS_CONF"; then
-            echo "$var" >> "$SBS_CONF"
-        fi
-    done
+    {
+        echo "$comments"
+        echo ""
+        for var in $vars_in_tmp; do
+            name=$(echo "$var" | cut -d= -f1)
+            old_value=$(echo "$existing_vars" | grep "^$name=")
+            if [ -n "$old_value" ]; then
+                echo "$old_value"
+            else
+                echo "$var"
+            fi
+        done
+    } > "$SBS_CONF"
     rm -f $TEMP_SBS_CONF
 
     create_sbs_monitor "$SBS_MON"
