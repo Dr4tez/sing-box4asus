@@ -255,3 +255,4 @@ MESSAGE235="3. Settings and selection of the sing-box core repository and versio
    %s"
 MESSAGE236="The CPU architecture of this router is not supported. Installation cancelled."
 MESSAGE237="System core version is lower than 4.1. Installation cancelled."
+MESSAGE238="TPROXY interface detected."
