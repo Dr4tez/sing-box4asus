@@ -646,7 +646,11 @@ start_sing_box() {
             log_msg "$MESSAGE24"
         fi
     elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
-        log_msg "$MESSAGE238"
+        if lsmod | grep -q xt_TPROXY; then
+            log_msg "$MESSAGE238"
+        else
+            log_msg "$MESSAGE239"
+        fi
     fi
 # Добавление правил nat и обновление скрипта nat-start
     if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$DNS_PORT" ]; then
