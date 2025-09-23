@@ -638,14 +638,15 @@ start_sing_box() {
     if [ -n "$TUN_INTERFACE" ]; then
         echo 2 > /proc/sys/net/ipv4/conf/$TUN_INTERFACE/rp_filter
     fi
-
-# Проверка наличия tun интерфейса
+# Проверка наличия tun или tproxy интерфейса
     if [ -n "$TUN_INTERFACE" ]; then
         if ip link show "$TUN_INTERFACE" >/dev/null 2>&1; then
             log_msg "$(printf "$MESSAGE23\n" "$TUN_INTERFACE")"
         else
             log_msg "$MESSAGE24"
         fi
+    elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
+        log_msg "$MESSAGE238"
     fi
 # Добавление правил nat и обновление скрипта nat-start
     if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$DNS_PORT" ]; then
