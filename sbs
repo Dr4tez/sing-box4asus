@@ -30,6 +30,7 @@ NAT_SCRIPT="/jffs/scripts/nat-start"
 SS_SCRIPT="/jffs/scripts/services-start"
 SS_LINES="(sleep 45 && $SCRIPT_PATH start) &"
 LN_PATH="/opt/bin/sbs"
+DNAT_DNS="1.1.1.1:53535"
 
 # Функции
 log_msg() {
@@ -654,15 +655,15 @@ start_sing_box() {
         iptables -t nat -F SBS-NAT 2>/dev/null
         iptables -t nat -N SBS-NAT 2>/dev/null
         iptables -t nat -I PREROUTING -j SBS-NAT
-        iptables -t nat -I SBS-NAT -p tcp -m mark --mark $FW_MARK --dport 53 -j DNAT --to-destination 1.1.1.1:53535
-        iptables -t nat -I SBS-NAT -p udp -m mark --mark $FW_MARK --dport 53 -j DNAT --to-destination 1.1.1.1:53535
+        iptables -t nat -I SBS-NAT -p tcp -m mark --mark $FW_MARK --dport 53 -j DNAT --to-destination $DNAT_DNS
+        iptables -t nat -I SBS-NAT -p udp -m mark --mark $FW_MARK --dport 53 -j DNAT --to-destination $DNAT_DNS
         update_script "$NAT_SCRIPT" "( sleep 15 # sing-box-script-nat
 iptables -t nat -D PREROUTING -j SBS-NAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -F SBS-NAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -N SBS-NAT 2>/dev/null # sing-box-script-nat
 iptables -t nat -I PREROUTING -j SBS-NAT # sing-box-script-nat
-iptables -t nat -I SBS-NAT -p tcp -m mark --mark $FW_MARK --dport 53 -j DNAT --to-destination 1.1.1.1:53535 # sing-box-script-nat
-iptables -t nat -I SBS-NAT -p udp -m mark --mark $FW_MARK --dport 53 -j DNAT --to-destination 1.1.1.1:53535; ) & # sing-box-script-nat"
+iptables -t nat -I SBS-NAT -p tcp -m mark --mark $FW_MARK --dport 53 -j DNAT --to-destination $DNAT_DNS # sing-box-script-nat
+iptables -t nat -I SBS-NAT -p udp -m mark --mark $FW_MARK --dport 53 -j DNAT --to-destination $DNAT_DNS; ) & # sing-box-script-nat"
     fi
 # Добавление правил mangle и обновление скрипта nat-start
     if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$FW_MARK" ]; then
