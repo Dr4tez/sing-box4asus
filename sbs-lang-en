@@ -1,4 +1,4 @@
-# For SBS version 2.2.3
+# For SBS version 2.3.0
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -150,7 +150,7 @@ MESSAGE143="The list of ports for inbound proxy servers contains: %s"
 MESSAGE144="The list of ports for inbound proxy servers has been cleared."
 MESSAGE145="All ports in the list have been replaced with the following: %s"
 MESSAGE146="No valid combinations found in input. Port list unchanged."
-MESSAGE147="tproxy-mark for sing-box changed to %s"
+MESSAGE147="fw-mark for sing-box changed to %s"
 MESSAGE148="sing-box is running, when entering the menu for configuring ports for inbound proxy servers it will be stopped.
 Enter the menu?"
 MESSAGE149="Menu for configuring ports for inbound proxy servers."
@@ -205,12 +205,12 @@ MESSAGE192="Adding MANGLE rules."
 MESSAGE193="Removing MANGLE rules."
 MESSAGE194="These settings are for those who need them.
 If you don't know what they are for and what they should be, then don't touch them."
-MESSAGE195="2. Change tproxy-mark for sing-box."
+MESSAGE195="2. Change fw-mark for sing-box."
 MESSAGE196="0. Return to the main script settings menu."
-MESSAGE197="Current tproxy-mark for sing-box: %s
+MESSAGE197="Current fw-mark for sing-box: %s
 Change it?"
-MESSAGE198="Enter a new tproxy-mark: "
-MESSAGE199="Refusal to change tproxy-mark."
+MESSAGE198="Enter a new fw-mark: "
+MESSAGE199="Refusal to change fw-mark."
 MESSAGE200="Parsing config.json configuration file..."
 MESSAGE201="Launch failed."
 MESSAGE202="1. Select repository to download sing-box core.
@@ -255,3 +255,5 @@ MESSAGE235="3. Settings and selection of the sing-box core repository and versio
    %s"
 MESSAGE236="The CPU architecture of this router is not supported. Installation cancelled."
 MESSAGE237="System core version is lower than 4.1. Installation cancelled."
+MESSAGE238="TPROXY interface detected."
+MESSAGE239="TPROXY interface not found."
