@@ -223,7 +223,7 @@ MESSAGE207="Original repository selected: SagerNet/sing-box"
 MESSAGE208="Enter the desired depth of release search. For example '90'"
 MESSAGE209="Specified search depth: %s latest releases."
 MESSAGE210="Specify repositories in the format 'github_profile_name/repository_name'.
-For example my fork of sing-box 'shtorm-7/sing-box-extended'"
+For example 'shtorm-7/sing-box-extended'"
 MESSAGE211="Set a custom repository"
 MESSAGE212="Enter a custom repository"
 MESSAGE213="Custom repository selected"
