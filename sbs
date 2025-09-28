@@ -1243,7 +1243,7 @@ configure_table() {
     echo "$MESSAGE66"
 }
 
-configure_tpmark() {
+configure_fwmark() {
     source "$SBS_CONF"
 
     echo ""
@@ -1252,9 +1252,9 @@ configure_tpmark() {
         read -p "$MESSAGE18" choice
         case "$choice" in
             0) echo "$MESSAGE199"; break ;;
-            1) read -p "$MESSAGE198" new_tpmark
-               FW_MARK="$new_tpmark"
-               sed -i "s|^FW_MARK=\".*\"$|FW_MARK=\"$new_tpmark\"|" "$SBS_CONF"
+            1) read -p "$MESSAGE198" new_fwmark
+               FW_MARK="$new_fwmark"
+               sed -i "s|^FW_MARK=\".*\"$|FW_MARK=\"$new_fwmark\"|" "$SBS_CONF"
                log_msg "$(printf "$MESSAGE147\n" "$FW_MARK")"; break ;;
             *) echo "$MESSAGE6" ;;
         esac
@@ -1355,7 +1355,7 @@ setup_pro() {
             read -p "$MESSAGE99 [0-2]: " if_choice
             case "$if_choice" in
                 1) configure_table; source "$SBS_CONF" ;;
-                2) configure_tpmark; source "$SBS_CONF" ;;
+                2) configure_fwmark; source "$SBS_CONF" ;;
                 0) return 1 ;;
                 *) echo "$MESSAGE6" ;;
             esac
