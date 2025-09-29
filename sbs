@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3
+# Version 2.3.1
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -46,7 +46,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3
+# Создан в SBS 2.3.1
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update' или 'sbs server'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -89,7 +89,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3
+# Создан в SBS 2.3.1
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -648,7 +648,7 @@ start_sing_box() {
         fi
     fi
 # Добавление правил nat и обновление скрипта nat-start
-    if [ -n "$TUN_INTERFACE" ] && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
+    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
         sed -i "/sing-box-script/d" "$NAT_SCRIPT"
         log_msg "$MESSAGE25"
         iptables -t nat -D PREROUTING -j SBS-NAT 2>/dev/null
