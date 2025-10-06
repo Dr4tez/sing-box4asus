@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.2
+# Version 2.3.3
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.2
+# Создан в SBS 2.3.3
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -90,7 +90,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.2
+# Создан в SBS 2.3.3
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -1268,6 +1268,13 @@ setup_sing_box() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
+
+    echo "$MESSAGE200"
+    update_tun_interface
+    extract_listen_port TPROXY_PORT tproxy
+    fakeip_check
+    source "$SBS_CONF"
+
     if [ -z "$TUN_INTERFACE" ] && [ -z "$TPROXY_PORT" ]; then
         echo ""
         echo "$MESSAGE88"
@@ -1285,13 +1292,6 @@ setup_sing_box() {
             esac
         done
     fi
-
-    echo "$MESSAGE200"
-    update_tun_interface
-    extract_listen_port TPROXY_PORT tproxy
-    fakeip_check
-    source "$SBS_CONF"
-
     if [ -z "$FAKEIP_SUBNET" ]; then
         while true; do
             echo "$MESSAGE91"
