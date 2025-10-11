@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.3
+# Version 2.3.4
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.3
+# Создан в SBS 2.3.4
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -90,7 +90,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.3
+# Создан в SBS 2.3.4
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -901,17 +901,17 @@ stop_sing_box() {
     fi
 
     log_msg "$MESSAGE32"
-    sed -i "/sing-box-script/d" "$SS_SCRIPT"
+    sed -i "/sing-box-script/d" "$SS_SCRIPT" 2>/dev/null
 # Очистка системных скриптов
-    sed -i "/sing-box-script/d" "$FW_SCRIPT"
-    sed -i "/sing-box-script/d" "$NAT_SCRIPT"
+    sed -i "/sing-box-script/d" "$FW_SCRIPT" 2>/dev/null
+    sed -i "/sing-box-script/d" "$NAT_SCRIPT" 2>/dev/null
 # Удаление правил iptables для открытых WAN портов
     if [ -n "$WAN_PORTS" ]; then
         log_msg "$(printf "$MESSAGE33\n" "$WAN_PORTS")"
         for entry in $WAN_PORTS; do
             wan_port=$(echo "$entry" | cut -d ':' -f 2)
-            iptables -D INPUT -p udp --dport "$wan_port" -j ACCEPT
-            iptables -D INPUT -p tcp --dport "$wan_port" -j ACCEPT
+            iptables -D INPUT -p udp --dport "$wan_port" -j ACCEPT 2>/dev/null
+            iptables -D INPUT -p tcp --dport "$wan_port" -j ACCEPT 2>/dev/null
         done
     fi
     if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && [ -n "$FW_MARK" ]; then
