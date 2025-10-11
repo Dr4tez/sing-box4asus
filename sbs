@@ -943,8 +943,8 @@ stop_sing_box() {
         log_msg "$(printf "$MESSAGE33\n" "$WAN_PORTS")"
         for entry in $WAN_PORTS; do
             wan_port=$(echo "$entry" | cut -d ':' -f 2)
-            iptables -D INPUT -p udp --dport "$wan_port" -j ACCEPT
-            iptables -D INPUT -p tcp --dport "$wan_port" -j ACCEPT
+            iptables -D INPUT -p udp --dport "$wan_port" -j ACCEPT 2>/dev/null
+            iptables -D INPUT -p tcp --dport "$wan_port" -j ACCEPT 2>/dev/null
         done
     fi
     if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && [ -n "$FW_MARK" ]; then
