@@ -302,7 +302,7 @@ trap "" SIGHUP
 if [ -n "$H_MEMLIM" ]; then
     (
         while true; do
-            hard_memlim=$(awk "{printf \"%.1f\n\", (\$2-\$3)*4096/1024/1024}" /proc/$(ps w | grep "[s]ing-box run" | awk "{print \$1}")/statm)
+            hard_memlim=$(awk "{printf \"%.0f\n\", (\$2-\$3)*4096/1024/1024}" /proc/$(ps w | grep "[s]ing-box run" | awk "{print \$1}")/statm)
             if [ "$(printf "%.0f" "$hard_memlim")" -ge $H_MEMLIM ]; then
                 kill $(ps | grep "[s]ing-box run" | awk "{print \$1}") 2>/dev/null
             fi
