@@ -64,6 +64,8 @@ create_sbs_conf() {
 # Строка CORE_VERS - тут указывается какое ядро sing-box будет установлено. Значения "release", "pre_release" или "given" - соответствуют новейшему стабильному релизу, новейшему пре-релизу и заданной версии. Значение задаётся при выборе одного из первых трёх пунктов в подменю 3-2 меню 'sbs update'.
 # Строка GIVEN_VERS - тут указывается какая конкретно версия ядра sing-box может быть установлена, если значение строки CORE_VERS будет "given". Значение задаётся в пункте 3-2-4 меню 'sbs update'. Например "1.11.14" или "1.12.0-beta.32".
 # Строка NUM_RELEASES - тут указывается глубина поиска, т.е. количество последних релизов, среди которого будут искаться заданная версия ядра, новейший стабильный релиз или новейший пре-релиз ядра. Значение задаётся в пункте 3-2-5 меню 'sbs update'. Например "90".
+# Строка S_MEMLIM - тут указывается значение мягкого лимита в MiB, без указания единцы измерения, например "64". Минимально допустимое значение- 64. При отсутствии значения- лимит отключен.
+# Строка H_MEMLIM - тут указывается значение жёсткого лимита в MiB, без указания единцы измерения, например "64". Минимально допустимое значение- 64. При отсутствии значения- лимит отключен.
 # Строки TUN_INTERFACE, TPROXY_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
 
 DEVICE_IPS=""
@@ -83,6 +85,8 @@ NUM_RELEASES=""
 TUN_INTERFACE=""
 TPROXY_PORT=""
 FAKEIP_SUBNET=""
+S_MEMLIM=""
+H_MEMLIM=""
 EOF
     chmod 664 "$1"
 }
@@ -121,8 +125,10 @@ sbs_monitor_rr() {
   { ip monitor route | while read _; do
         if [ "$route_in_process" -eq 0 ]; then
             route_in_process=1
-            if ! ps | grep "[s]ing-box.*run" >/dev/null 2>&1; then
-                export GOMEMLIMIT=64MiB
+            if ! ps | grep "[s]ing-box run" >/dev/null 2>&1; then
+                if [ -n "$S_MEMLIM" ]; then
+                    export GOMEMLIMIT=${S_MEMLIM}MiB
+                fi
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
             fi
             if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$FW_MARK" ]; then
@@ -293,11 +299,25 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
 
 trap "" SIGHUP
 
+if [ -n "$H_MEMLIM" ]; then
+    (
+        while true; do
+            hard_memlim=$(awk "{printf \"%.1f\n\", (\$2-\$3)*4096/1024/1024}" /proc/$(ps w | grep "[s]ing-box run" | awk "{print \$1}")/statm)
+            if [ "$(printf "%.0f" "$hard_memlim")" -ge $H_MEMLIM ]; then
+                kill $(ps | grep "[s]ing-box run" | awk '{print $1}') 2>/dev/null
+            fi
+            sleep 5
+        done
+    ) &
+fi
+
 if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
     (
         while true; do
-            if ! ps | grep "[s]ing-box.*run" >/dev/null 2>&1; then
-                export GOMEMLIMIT=64MiB
+            if ! ps | grep "[s]ing-box run" >/dev/null 2>&1; then
+                if [ -n "$S_MEMLIM" ]; then
+                    export GOMEMLIMIT=${S_MEMLIM}MiB
+                fi
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
             fi
             sleep 5
@@ -635,7 +655,9 @@ start_sing_box() {
     fi
 
     log_msg "$MESSAGE20"
-    export GOMEMLIMIT=64MiB
+    if [ -n "$S_MEMLIM" ]; then
+        export GOMEMLIMIT=${S_MEMLIM}MiB
+    fi
     $SB_PATH run -c $SB_CONFIG &
     sleep 5
     is_running || { log_msg "$MESSAGE201"; exit 1; }
@@ -956,9 +978,10 @@ stop_sing_box() {
         iptables -t nat -F SBS-NAT 2>/dev/null
         iptables -t nat -X SBS-NAT 2>/dev/null
     fi
-
     kill $(ps | grep "[s]ing-box" | awk '{print $1}') 2>/dev/null
-
+    if [ -n "$S_MEMLIM" ]; then
+        unset GOMEMLIMIT
+    fi
     log_msg "$MESSAGE37"
 }
 
