@@ -934,10 +934,10 @@ stop_sing_box() {
     fi
 
     log_msg "$MESSAGE32"
-    sed -i "/sing-box-script/d" "$SS_SCRIPT"
+    sed -i "/sing-box-script/d" "$SS_SCRIPT" 2>/dev/null
 # Очистка системных скриптов
-    sed -i "/sing-box-script/d" "$FW_SCRIPT"
-    sed -i "/sing-box-script/d" "$NAT_SCRIPT"
+    sed -i "/sing-box-script/d" "$FW_SCRIPT" 2>/dev/null
+    sed -i "/sing-box-script/d" "$NAT_SCRIPT" 2>/dev/null
 # Удаление правил iptables для открытых WAN портов
     if [ -n "$WAN_PORTS" ]; then
         log_msg "$(printf "$MESSAGE33\n" "$WAN_PORTS")"
