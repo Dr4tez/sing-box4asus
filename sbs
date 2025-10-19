@@ -66,6 +66,7 @@ create_sbs_conf() {
 # Строка NUM_RELEASES - тут указывается глубина поиска, т.е. количество последних релизов, среди которого будут искаться заданная версия ядра, новейший стабильный релиз или новейший пре-релиз ядра. Значение задаётся в пункте 3-2-5 меню 'sbs update'. Например "90".
 # Строка S_MEMLIM - тут указывается значение мягкого лимита в MiB, без указания единцы измерения, например "64". Минимально допустимое значение- 64. При отсутствии значения- лимит отключен.
 # Строка H_MEMLIM - тут указывается значение жёсткого лимита в MiB, без указания единцы измерения, например "64". Минимально допустимое значение- 64. При отсутствии значения- лимит отключен.
+# Строка K_GOGC - тут указывается коэффициент GOGC. Значение по умолчанию "100".
 # Строки TUN_INTERFACE, TPROXY_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
 
 DEVICE_IPS=""
@@ -87,6 +88,7 @@ TPROXY_PORT=""
 FAKEIP_SUBNET=""
 S_MEMLIM=""
 H_MEMLIM=""
+K_GOGC="100"
 EOF
     chmod 664 "$1"
 }
@@ -128,6 +130,9 @@ sbs_monitor_rr() {
             if ! ps | grep "[s]ing-box run" >/dev/null 2>&1; then
                 if [ -n "$S_MEMLIM" ]; then
                     export GOMEMLIMIT=${S_MEMLIM}MiB
+                fi
+                if [ "$K_GOGC" != 100 ]; then
+                    export GOGC=$K_GOGC
                 fi
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
             fi
@@ -317,6 +322,9 @@ if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
             if ! ps | grep "[s]ing-box run" >/dev/null 2>&1; then
                 if [ -n "$S_MEMLIM" ]; then
                     export GOMEMLIMIT=${S_MEMLIM}MiB
+                fi
+                if [ "$K_GOGC" != 100 ]; then
+                    export GOGC=$K_GOGC
                 fi
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
             fi
@@ -657,6 +665,9 @@ start_sing_box() {
     log_msg "$MESSAGE20"
     if [ -n "$S_MEMLIM" ]; then
         export GOMEMLIMIT=${S_MEMLIM}MiB
+    fi
+    if [ "$K_GOGC" != 100 ]; then
+        export GOGC=$K_GOGC
     fi
     $SB_PATH run -c $SB_CONFIG &
     sleep 5
@@ -2019,6 +2030,162 @@ serv_sing_box() {
     sing_box_start
 }
 
+memlim_sing_box() {
+    source "$SBS_CONF"
+    [ "$LANG" = "ru" ] && source "$LANG_RU"
+    [ "$LANG" = "en" ] && source "$LANG_EN"
+    while true; do
+        echo ""
+        echo "$MESSAGE241"
+        echo ""
+        echo "   $MESSAGE250:"
+        [ -n "$H_MEMLIM" ] && echo "   $MESSAGE243: $H_MEMLIM MiB" || echo "   $MESSAGE243 $MESSAGE245"
+        [ -n "$S_MEMLIM" ] && echo "   $MESSAGE244: $S_MEMLIM MiB" || echo "   $MESSAGE244 $MESSAGE245"
+        echo "   GOGC: $K_GOGC"
+        echo ""
+        is_running && echo "$MESSAGE103"
+        echo "1. $MESSAGE242"
+        echo "2. $MESSAGE94"
+        echo "0. $MESSAGE95"
+        read -p "$MESSAGE99 [0-2]: " lim_choice
+        case "$lim_choice" in
+            1) is_running && stop_sing_box; set_easy_memlim; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box; if ! expert_memlim; then continue; fi ;;
+            0) break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+    is_running || sing_box_start
+}
+
+set_easy_memlim() {
+    echo ""
+    echo "$MESSAGE246"
+    while true; do
+        echo ""
+        [ -n "$H_MEMLIM" ] && echo "$MESSAGE247: $H_MEMLIM MiB" || echo "$MESSAGE247 $MESSAGE253"
+        read -p "$MESSAGE248" new_h_memlim
+        [ -z "$new_h_memlim" ] && { echo "$MESSAGE264"; return; }
+        if [ "$new_h_memlim" = "0" ]; then
+            sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"\"|" "$SBS_CONF"
+            sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"\"|" "$SBS_CONF"
+            sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"100\"|" "$SBS_CONF"
+            echo "$MESSAGE265"
+            return
+        fi
+        case "$new_h_memlim" in
+            *[!0-9]*|0[0-9]*)
+                echo "$MESSAGE251"
+                continue ;;
+        esac
+        if [ "$new_h_memlim" -lt 50 ] || [ "$new_h_memlim" -gt 500 ]; then
+            echo "$MESSAGE252"
+            continue
+        fi
+        new_s_memlim=$(awk "BEGIN {print int($new_h_memlim/0.9)}")
+        sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
+        sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
+        sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"100\"|" "$SBS_CONF"
+        echo "$MESSAGE249: $new_h_memlim MiB"
+        return
+    done
+}
+
+expert_memlim() {
+    while true; do
+        echo ""
+        echo "$MESSAGE254"
+        echo ""
+        echo "1. $MESSAGE255"
+        [ -n "$H_MEMLIM" ] && echo "   $MESSAGE247: $H_MEMLIM MiB" || echo "   $MESSAGE247 $MESSAGE253"
+        echo "2. $MESSAGE256"
+        [ -n "$S_MEMLIM" ] && echo "   $MESSAGE247: $S_MEMLIM MiB" || echo "   $MESSAGE247 $MESSAGE253"
+        echo "3. $MESSAGE257"
+        echo "   $MESSAGE247: $K_GOGC"
+        echo "0. $MESSAGE258"
+        read -p "$MESSAGE99 [0-3]: " if_choice
+        case "$if_choice" in
+            1) set_h_memlim; source "$SBS_CONF" ;;
+            2) set_s_memlim; source "$SBS_CONF" ;;
+            3) set_gogc; source "$SBS_CONF" ;;
+            0) return 1 ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+set_h_memlim() {
+    echo ""
+    echo "$MESSAGE259"
+    while true; do
+        echo ""
+        [ -n "$H_MEMLIM" ] && echo "$MESSAGE247: $H_MEMLIM MiB" || echo "$MESSAGE247 $MESSAGE253"
+        read -p "$MESSAGE260" new_h_memlim
+        [ -z "$new_h_memlim" ] && { echo "$MESSAGE264"; return; }
+        if [ "$new_h_memlim" = "0" ]; then
+            sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE265"
+            return
+        fi
+        case "$new_h_memlim" in
+            *[!0-9]*|0[0-9]*)
+                echo "$MESSAGE251"
+                continue ;;
+        esac
+        sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
+        echo "$MESSAGE249: $new_h_memlim MiB"
+        return
+    done
+}
+
+set_s_memlim() {
+    echo ""
+    echo "$MESSAGE261"
+    while true; do
+        echo ""
+        [ -n "$S_MEMLIM" ] && echo "$MESSAGE247: $S_MEMLIM MiB" || echo "$MESSAGE247 $MESSAGE253"
+        read -p "$MESSAGE260" new_s_memlim
+        [ -z "$new_s_memlim" ] && { echo "$MESSAGE264"; return; }
+        if [ "$new_s_memlim" = "0" ]; then
+            sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE265"
+            return
+        fi
+        case "$new_s_memlim" in
+            *[!0-9]*|0[0-9]*)
+                echo "$MESSAGE251"
+                continue ;;
+        esac
+        sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
+        echo "$MESSAGE249: $new_s_memlim MiB"
+        return
+    done
+}
+
+set_gogc() {
+    echo ""
+    echo "$MESSAGE262"
+    while true; do
+        echo ""
+        [ -n "$K_GOGC" ] && echo "$MESSAGE247: $K_GOGC" || echo "$MESSAGE247 $MESSAGE253"
+        read -p "$MESSAGE263" new_k_gogc
+        [ -z "$new_k_gogc" ] && { echo "$MESSAGE264"; return; }
+        if [ "$new_k_gogc" = "0" ]; then
+            sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"100\"|" "$SBS_CONF"
+            echo "$MESSAGE249: 100"
+            return
+        fi
+        case "$new_k_gogc" in
+            *[!0-9]*|0[0-9]*)
+                echo "$MESSAGE251"
+                continue ;;
+        esac
+        sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"$new_k_gogc\"|" "$SBS_CONF"
+        echo "$MESSAGE249: $new_k_gogc"
+        return
+    done
+}
+
 install_sing_box() {
     uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; exit 1; }
     { [ "$(uname -r | cut -d. -f1)" -gt 4 ] || [ "$(uname -r | cut -d. -f1)" -eq 4 -a "$(uname -r | cut -d. -f2)" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; exit 1; }
@@ -2165,6 +2332,7 @@ show_menu() {
     echo "$MESSAGE184"
     echo "$MESSAGE185"
     echo "$MESSAGE157"
+    echo "$MESSAGE240"
     echo "$MESSAGE186"
     echo "0) $MESSAGE95"
 }
@@ -2180,6 +2348,7 @@ case "$1" in
     status) status_sing_box ;;
     server) server_sing_box ;;
     lang) change_language ;;
+    limit) memlim_sing_box ;;
     remove) remove_sing_box ;;
     updmonandconf) updmonandconf_sing_box ;;
     *)
@@ -2196,7 +2365,8 @@ case "$1" in
             7) status_sing_box; break ;;
             8) server_sing_box; break ;;
             9) change_language; break ;;
-            10) remove_sing_box; break ;;
+            10) memlim_sing_box; break ;;
+            11) remove_sing_box; break ;;
             0) exit 0 ;;
             *) echo "$MESSAGE6" ;;
         esac
