@@ -193,8 +193,8 @@ MESSAGE182="5) setup (Open the script settings menu)"
 MESSAGE183="6) update (Open the script and sing-box core update menu)"
 MESSAGE184="7) status (Find out the status of sing-box, the versions of the script and sing-box core, and the router's CPU architecture)"
 MESSAGE185="8) server (Specify ports of inbound proxy servers to open them from WAN to the router)"
-MESSAGE186="10) remove (!!!Remove sing-box completely!!!)"
-MESSAGE187="Enter your choice [0-10]: "
+MESSAGE186="11) remove (!!!Remove sing-box completely!!!)"
+MESSAGE187="Enter your choice [0-11]: "
 MESSAGE188="The menu and message language has been changed to English."
 MESSAGE189="The script opened the following ports from WAN: %s"
 MESSAGE190="Warning: duplicates of the following IP addresses were found in the script settings:
@@ -257,3 +257,39 @@ MESSAGE236="The CPU architecture of this router is not supported. Installation c
 MESSAGE237="System core version is lower than 4.1. Installation cancelled."
 MESSAGE238="TPROXY interface detected."
 MESSAGE239="TPROXY interface not found."
+MESSAGE240="10) limit (Set memory limits)"
+MESSAGE241="Memory limits settings menu."
+MESSAGE242="Simple setup."
+MESSAGE243="Hard limit"
+MESSAGE244="Soft limit (GOMEMLIMIT)"
+MESSAGE245="not set."
+MESSAGE246="Simple setup of memory limits."
+MESSAGE247="Current value"
+MESSAGE248="Enter a value (from 50 to 500) in MiB,
+to remove the limit- enter 0,
+to keep the current value- enter nothing
+: "
+MESSAGE249="New value"
+MESSAGE250="Current values"
+MESSAGE251="Enter only digits. Numbers consisting of two or more digits must not begin with 0."
+MESSAGE252="The number must be between 50 and 500."
+MESSAGE253="not set."
+MESSAGE254="These are expert settings.
+If you don't know what they do and what their values ​​might be, don't touch them."
+MESSAGE255="Set the hard limit in MiB."
+MESSAGE256="Set the soft limit (GOMEMLIMIT) in MiB."
+MESSAGE257="Set the GOGC value."
+MESSAGE258="Return to the main memory limit settings menu."
+MESSAGE259="Set the hard memory limit."
+MESSAGE260="Enter the value in MiB,
+to remove the limit- enter 0,
+to keep the current value- enter nothing
+: "
+MESSAGE261="Set the soft memory limit (GOMEMLIMIT)."
+MESSAGE262="Set the GOGC value."
+MESSAGE263="Enter the coefficient value, for example, 80,
+to reset to the default value (100)- enter 0,
+to keep the current value- enter nothing
+: "
+MESSAGE264="Value unchanged."
+MESSAGE265="Value not set."
