@@ -1,4 +1,4 @@
-# For SBS version 2.3.5
+# For SBS version 2.3.6
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -95,7 +95,7 @@ MESSAGE90="Exit."
 MESSAGE91="Script configuration menu."
 MESSAGE92="For the first configuration, executing menu point 1 is mandatory."
 MESSAGE93="1. Configure device IP addresses for routing through sing-box."
-MESSAGE94="Advanced, but not required, settings."
+MESSAGE94="Optional expert settings."
 MESSAGE95="Exit the menu."
 MESSAGE96="For the first configuration, executing menu points 1 and/or 2 is mandatory."
 MESSAGE97="2. Configure of device IP addresses to route them through fakeip."
