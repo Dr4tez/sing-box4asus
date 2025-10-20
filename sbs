@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.8
+# Version 2.3.9
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.8
+# Создан в SBS 2.3.9
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -96,7 +96,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.8
+# Создан в SBS 2.3.9
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -128,12 +128,8 @@ sbs_monitor_rr() {
         if [ "$route_in_process" -eq 0 ]; then
             route_in_process=1
             if ! ps | grep "[s]ing-box run" >/dev/null 2>&1; then
-                if [ -n "$S_MEMLIM" ]; then
-                    export GOMEMLIMIT=${S_MEMLIM}MiB
-                fi
-                if [ -n "$K_GOGC" ]; then
-                    export GOGC=$K_GOGC
-                fi
+                [ -n "$S_MEMLIM" ] && export GOMEMLIMIT=${S_MEMLIM}MiB
+                [ -n "$K_GOGC" ] && export GOGC=$K_GOGC
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
             fi
             if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$FW_MARK" ]; then
@@ -320,12 +316,8 @@ if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
     (
         while true; do
             if ! ps | grep "[s]ing-box run" >/dev/null 2>&1; then
-                if [ -n "$S_MEMLIM" ]; then
-                    export GOMEMLIMIT=${S_MEMLIM}MiB
-                fi
-                if [ -n "$K_GOGC" ]; then
-                    export GOGC=$K_GOGC
-                fi
+                [ -n "$S_MEMLIM" ] && export GOMEMLIMIT=${S_MEMLIM}MiB
+                [ -n "$K_GOGC" ] && export GOGC=$K_GOGC
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
             fi
             sleep 5
@@ -663,12 +655,9 @@ start_sing_box() {
     fi
 
     log_msg "$MESSAGE20"
-    if [ -n "$S_MEMLIM" ]; then
-        export GOMEMLIMIT=${S_MEMLIM}MiB
-    fi
-    if [ -n "$K_GOGC" ]; then
-        export GOGC=$K_GOGC
-    fi
+    [ -n "$S_MEMLIM" ] && export GOMEMLIMIT=${S_MEMLIM}MiB
+    [ -n "$K_GOGC" ] && export GOGC=$K_GOGC
+    { [ -n "$H_MEMLIM" ] || [ -n "$S_MEMLIM" ] || [ -n "$K_GOGC" ]; } && log_msg "$MESSAGE266"
     $SB_PATH run -c $SB_CONFIG &
     sleep 5
     is_running || { log_msg "$MESSAGE201"; exit 1; }
@@ -990,12 +979,9 @@ stop_sing_box() {
         iptables -t nat -X SBS-NAT 2>/dev/null
     fi
     kill $(ps | grep "[s]ing-box" | awk '{print $1}') 2>/dev/null
-    if [ -n "$S_MEMLIM" ]; then
-        unset GOMEMLIMIT
-    fi
-    if [ -n "$K_GOGC" ]; then
-        unset GOGC
-    fi
+    [ -n "$S_MEMLIM" ] && unset GOMEMLIMIT
+    [ -n "$K_GOGC" ] && unset GOGC
+    { [ -n "$H_MEMLIM" ] || [ -n "$S_MEMLIM" ] || [ -n "$K_GOGC" ]; } && log_msg "$MESSAGE267"
     log_msg "$MESSAGE37"
 }
 
@@ -1330,6 +1316,7 @@ setup_sing_box() {
     fi
     if [ -z "$FAKEIP_SUBNET" ]; then
         while true; do
+            echo ""
             echo "$MESSAGE91"
             echo ""
             [ -z "$DEVICE_IPS" ] && echo "$MESSAGE92"
