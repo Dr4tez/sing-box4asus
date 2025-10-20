@@ -1,4 +1,4 @@
-# For SBS version 2.3.7
+# For SBS version 2.3.8
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -89,10 +89,9 @@ MESSAGE85="Refused to change the routing table number."
 MESSAGE86="Enter the new routing table number: "
 MESSAGE87="The routing table number for sing-box has been changed to %s"
 MESSAGE88="Your sing-box configuration file does not contain tun or tproxy interface. Nothing to configure. Exiting."
-MESSAGE89="sing-box is running, when you enter the script settings menu it will be stopped.
-Enter the menu?"
+MESSAGE89="sing-box is running, if you select items 1-3 it will be stopped."
 MESSAGE90="Exit."
-MESSAGE91="Script configuration menu."
+MESSAGE91="Menu for setting up devices routing via sing-box."
 MESSAGE92="For the first configuration, executing menu point 1 is mandatory."
 MESSAGE93="1. Configure device IP addresses for routing through sing-box."
 MESSAGE94="Optional expert settings."
@@ -189,7 +188,7 @@ MESSAGE178="1) start (Start sing-box)"
 MESSAGE179="2) stop (Stop sing-box)"
 MESSAGE180="3) restart (Restart sing-box)"
 MESSAGE181="4) config (Open the menu for setting up the sing-box configuration file - config.json)"
-MESSAGE182="5) setup (Open the script settings menu)"
+MESSAGE182="5) setup (Open the menu for setting up devices routing via sing-box.)"
 MESSAGE183="6) update (Open the script and sing-box core update menu)"
 MESSAGE184="7) status (Find out the status of sing-box, the versions of the script and sing-box core, and the router's CPU architecture)"
 MESSAGE185="8) server (Specify ports of inbound proxy servers to open them from WAN to the router)"
@@ -197,16 +196,16 @@ MESSAGE186="11) remove (!!!Remove sing-box completely!!!)"
 MESSAGE187="Enter your choice [0-11]: "
 MESSAGE188="The menu and message language has been changed to English."
 MESSAGE189="The script opened the following ports from WAN: %s"
-MESSAGE190="Warning: duplicates of the following IP addresses were found in the script settings:
+MESSAGE190="Warning: duplicates of the following IP addresses were found in the devices routing setting via sing-box:
 %s
-Enter the script settings menu with the 'sbs setup' command and remove duplicates in the IP address settings."
+Use the 'sbs setup' command to enter the menu for setting up devices routing via sing-box and remove duplicates in the IP addresses settings."
 MESSAGE191="Loading TPROXY module..."
 MESSAGE192="Adding MANGLE rules."
 MESSAGE193="Removing MANGLE rules."
 MESSAGE194="These settings are for those who need them.
 If you don't know what they are for and what they should be, then don't touch them."
 MESSAGE195="2. Change fw-mark for sing-box."
-MESSAGE196="0. Return to the main script settings menu."
+MESSAGE196="0. Return to the main menu for setting up devices routing via sing-box."
 MESSAGE197="Current fw-mark for sing-box: %s
 Change it?"
 MESSAGE198="Enter a new fw-mark: "
