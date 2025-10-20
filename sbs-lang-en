@@ -1,4 +1,4 @@
-# For SBS version 2.3.8
+# For SBS version 2.3.9
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -292,3 +292,5 @@ to keep the current value- enter nothing
 : "
 MESSAGE264="Value unchanged."
 MESSAGE265="Value not set."
+MESSAGE266="The specified memory limits settings for sing-box have been activated."
+MESSAGE267="The specified memory limits settings for sing-box are deactivated."
