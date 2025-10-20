@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.7
+# Version 2.3.8
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.7
+# Создан в SBS 2.3.8
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -96,7 +96,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.7
+# Создан в SBS 2.3.8
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -1328,30 +1328,19 @@ setup_sing_box() {
         echo "$MESSAGE88"
         exit 0
     fi
-    if is_running; then
-        echo ""
-        echo "$MESSAGE89"
-        while true; do
-            read -p "$MESSAGE18" choice
-            case "$choice" in
-                0) echo "$MESSAGE90"; exit 0 ;;
-                1) stop_sing_box; break ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
-    fi
     if [ -z "$FAKEIP_SUBNET" ]; then
         while true; do
             echo "$MESSAGE91"
             echo ""
-            echo "$MESSAGE92"
+            [ -z "$DEVICE_IPS" ] && echo "$MESSAGE92"
+            is_running && echo "$MESSAGE103"
             echo "$MESSAGE93"
             echo "2. $MESSAGE94"
             echo "0. $MESSAGE95"
             read -p "$MESSAGE99 [0-2]: " if_choice
             case "$if_choice" in
-                1) configure_interface; source "$SBS_CONF" ;;
-                2) if ! setup_pro; then continue; fi ;;
+                1) is_running && stop_sing_box; configure_interface; source "$SBS_CONF" ;;
+                2) is_running && stop_sing_box; if ! setup_pro; then continue; fi ;;
                 0) break ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -1361,22 +1350,23 @@ setup_sing_box() {
             echo ""
             echo "$MESSAGE91"
             echo ""
-            echo "$MESSAGE96"
+            [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && echo "$MESSAGE96"
+            is_running && echo "$MESSAGE89"
             echo "$MESSAGE93"
             echo "$MESSAGE97"
             echo "3. $MESSAGE94"
             echo "0. $MESSAGE95"
             read -p "$MESSAGE99 [0-3]: " if_choice
             case "$if_choice" in
-                1) configure_interface; source "$SBS_CONF" ;;
-                2) configure_finterface; source "$SBS_CONF" ;;
-                3) if ! setup_pro; then continue; fi ;;
+                1) is_running && stop_sing_box; configure_interface; source "$SBS_CONF" ;;
+                2) is_running && stop_sing_box; configure_finterface; source "$SBS_CONF" ;;
+                3) is_running && stop_sing_box; if ! setup_pro; then continue; fi ;;
                 0) break ;;
                 *) echo "$MESSAGE6" ;;
             esac
         done
     fi
-    sing_box_start
+    is_running || sing_box_start
 }
 
 setup_pro() {
