@@ -1,4 +1,4 @@
-# For SBS version 2.3.6
+# For SBS version 2.3.7
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -287,8 +287,8 @@ to keep the current value- enter nothing
 : "
 MESSAGE261="Set the soft memory limit (GOMEMLIMIT)."
 MESSAGE262="Set the GOGC value."
-MESSAGE263="Enter the coefficient value, for example, 80,
-to reset to the default value (100)- enter 0,
+MESSAGE263="Enter a value, for example - 80,
+to delete a value- enter 0,
 to keep the current value- enter nothing
 : "
 MESSAGE264="Value unchanged."
