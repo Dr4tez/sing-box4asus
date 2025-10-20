@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.6
+# Version 2.3.7
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.6
+# Создан в SBS 2.3.7
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -66,7 +66,7 @@ create_sbs_conf() {
 # Строка NUM_RELEASES - тут указывается глубина поиска, т.е. количество последних релизов, среди которого будут искаться заданная версия ядра, новейший стабильный релиз или новейший пре-релиз ядра. Значение задаётся в пункте 3-2-5 меню 'sbs update'. Например "90".
 # Строка S_MEMLIM - тут указывается значение мягкого лимита в MiB, без указания единцы измерения, например "64". Минимально допустимое значение- 64. При отсутствии значения- лимит отключен.
 # Строка H_MEMLIM - тут указывается значение жёсткого лимита в MiB, без указания единцы измерения, например "64". Минимально допустимое значение- 64. При отсутствии значения- лимит отключен.
-# Строка K_GOGC - тут указывается коэффициент GOGC. Значение по умолчанию "100".
+# Строка K_GOGC - тут указывается значение GOGC.
 # Строки TUN_INTERFACE, TPROXY_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
 
 DEVICE_IPS=""
@@ -88,7 +88,7 @@ TPROXY_PORT=""
 FAKEIP_SUBNET=""
 S_MEMLIM=""
 H_MEMLIM=""
-K_GOGC="100"
+K_GOGC=""
 EOF
     chmod 664 "$1"
 }
@@ -96,7 +96,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.6
+# Создан в SBS 2.3.7
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -131,7 +131,7 @@ sbs_monitor_rr() {
                 if [ -n "$S_MEMLIM" ]; then
                     export GOMEMLIMIT=${S_MEMLIM}MiB
                 fi
-                if [ "$K_GOGC" != 100 ]; then
+                if [ -n "$K_GOGC" ]; then
                     export GOGC=$K_GOGC
                 fi
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
@@ -323,7 +323,7 @@ if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
                 if [ -n "$S_MEMLIM" ]; then
                     export GOMEMLIMIT=${S_MEMLIM}MiB
                 fi
-                if [ "$K_GOGC" != 100 ]; then
+                if [ -n "$K_GOGC" ]; then
                     export GOGC=$K_GOGC
                 fi
                 "/opt/root/sing-box/sing-box" run -c "/jffs/addons/sing-box-script/config.json" &
@@ -666,7 +666,7 @@ start_sing_box() {
     if [ -n "$S_MEMLIM" ]; then
         export GOMEMLIMIT=${S_MEMLIM}MiB
     fi
-    if [ "$K_GOGC" != 100 ]; then
+    if [ -n "$K_GOGC" ]; then
         export GOGC=$K_GOGC
     fi
     $SB_PATH run -c $SB_CONFIG &
@@ -992,6 +992,9 @@ stop_sing_box() {
     kill $(ps | grep "[s]ing-box" | awk '{print $1}') 2>/dev/null
     if [ -n "$S_MEMLIM" ]; then
         unset GOMEMLIMIT
+    fi
+    if [ -n "$K_GOGC" ]; then
+        unset GOGC
     fi
     log_msg "$MESSAGE37"
 }
@@ -2041,7 +2044,7 @@ memlim_sing_box() {
         echo "   $MESSAGE250:"
         [ -n "$H_MEMLIM" ] && echo "   $MESSAGE243: $H_MEMLIM MiB" || echo "   $MESSAGE243 $MESSAGE245"
         [ -n "$S_MEMLIM" ] && echo "   $MESSAGE244: $S_MEMLIM MiB" || echo "   $MESSAGE244 $MESSAGE245"
-        echo "   GOGC: $K_GOGC"
+        [ -n "$K_GOGC" ] && echo "   GOGC: $K_GOGC" || echo "   GOGC $MESSAGE245"
         echo ""
         is_running && echo "$MESSAGE103"
         echo "1. $MESSAGE242"
@@ -2069,7 +2072,7 @@ set_easy_memlim() {
         if [ "$new_h_memlim" = "0" ]; then
             sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"\"|" "$SBS_CONF"
             sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"\"|" "$SBS_CONF"
-            sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"100\"|" "$SBS_CONF"
+            sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
             echo "$MESSAGE265"
             return
         fi
@@ -2085,7 +2088,7 @@ set_easy_memlim() {
         new_s_memlim=$(awk "BEGIN {print int($new_h_memlim/0.9)}")
         sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
         sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
-        sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"100\"|" "$SBS_CONF"
+        sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
         echo "$MESSAGE249: $new_h_memlim MiB"
         return
     done
@@ -2101,7 +2104,7 @@ expert_memlim() {
         echo "2. $MESSAGE256"
         [ -n "$S_MEMLIM" ] && echo "   $MESSAGE247: $S_MEMLIM MiB" || echo "   $MESSAGE247 $MESSAGE253"
         echo "3. $MESSAGE257"
-        echo "   $MESSAGE247: $K_GOGC"
+        [ -n "$K_GOGC" ] && echo "   $MESSAGE247: $K_GOGC" || echo "   $MESSAGE247 $MESSAGE253"
         echo "0. $MESSAGE258"
         read -p "$MESSAGE99 [0-3]: " if_choice
         case "$if_choice" in
@@ -2171,8 +2174,8 @@ set_gogc() {
         read -p "$MESSAGE263" new_k_gogc
         [ -z "$new_k_gogc" ] && { echo "$MESSAGE264"; return; }
         if [ "$new_k_gogc" = "0" ]; then
-            sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"100\"|" "$SBS_CONF"
-            echo "$MESSAGE249: 100"
+            sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE265"
             return
         fi
         case "$new_k_gogc" in
