@@ -1,4 +1,4 @@
-# For SBS version 2.3.9
+# For SBS version 2.3.10
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -150,9 +150,8 @@ MESSAGE144="The list of ports for inbound proxy servers has been cleared."
 MESSAGE145="All ports in the list have been replaced with the following: %s"
 MESSAGE146="No valid combinations found in input. Port list unchanged."
 MESSAGE147="fw-mark for sing-box changed to %s"
-MESSAGE148="sing-box is running, when entering the menu for configuring ports for inbound proxy servers it will be stopped.
-Enter the menu?"
-MESSAGE149="Menu for configuring ports for inbound proxy servers."
+MESSAGE148="Deactivating memory limits settings."
+MESSAGE149="Menu for opening ports for inbound proxy servers."
 MESSAGE150="Ports added through this menu will be opened from WAN to the router while sing-box is running."
 MESSAGE151="Do not open ports from WAN to your router unless absolutely necessary. Doing so risks the security of your home network."
 MESSAGE152="Allowed types of inbound proxy servers: vless, vmess, shadowsocks, trojan, naive, hysteria, hysteria2, shadowtls and tuic."
@@ -292,5 +291,4 @@ to keep the current value- enter nothing
 : "
 MESSAGE264="Value unchanged."
 MESSAGE265="Value not set."
-MESSAGE266="The specified memory limits settings for sing-box have been activated."
-MESSAGE267="The specified memory limits settings for sing-box are deactivated."
+MESSAGE266="Activating memory limits settings."
