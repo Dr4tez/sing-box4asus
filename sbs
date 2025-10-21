@@ -921,10 +921,7 @@ stop_sing_box() {
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
     echo ""
-    log_msg "$MESSAGE31"
-
     kill $(ps | grep "[s]bs-monitor" | awk '{print $1}') 2>/dev/null
-
     if [ -n "$TUN_INTERFACE" ]; then
         FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
         FORWARD -o $TUN_INTERFACE -j ACCEPT
@@ -976,6 +973,7 @@ stop_sing_box() {
         iptables -t nat -F SBS-NAT 2>/dev/null
         iptables -t nat -X SBS-NAT 2>/dev/null
     fi
+    log_msg "$MESSAGE31"
     kill $(ps | grep "[s]ing-box" | awk '{print $1}') 2>/dev/null
     log_msg "$MESSAGE37"
     { [ -n "$H_MEMLIM" ] || [ -n "$S_MEMLIM" ] || [ -n "$K_GOGC" ]; } && log_msg "$MESSAGE148"
