@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.12
+# Version 2.3.14
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.12
+# Создан в SBS 2.3.14
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -96,7 +96,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.12
+# Создан в SBS 2.3.14
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -690,14 +690,29 @@ valid_combs() {
     proxy_type=$(printf "%s" "$comb" | cut -d: -f1)
     c_port=$(printf "%s" "$comb" | cut -d: -f2)
     in_inbounds=0
+    in_endpoints=0
     search_port=0
     while read -r c_line; do
         if echo "$c_line" | grep -q '^[[:space:]]*"inbounds"[[:space:]]*:'; then
             in_inbounds=1
-        fi
-        if [ "$in_inbounds" -eq 1 ] && echo "$c_line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$proxy_type\""; then
-            search_port=1
+            in_endpoints=0
             continue
+        fi
+        if echo "$c_line" | grep -q '^[[:space:]]*"endpoints"[[:space:]]*:'; then
+            in_endpoints=1
+            in_inbounds=0
+            continue
+        fi
+        if [ "$proxy_type" != "wireguard" ]; then
+            if [ "$in_inbounds" -eq 1 ] && echo "$c_line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$proxy_type\""; then
+                search_port=1
+                continue
+            fi
+        else
+            if [ "$in_endpoints" -eq 1 ] && echo "$c_line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"wireguard\""; then
+                search_port=1
+                continue
+            fi
         fi
         if [ "$search_port" = 1 ] && echo "$c_line" | grep -q "^[[:space:]]*\"listen_port\"[[:space:]]*:[[:space:]]*$c_port\\b"; then
             return 0
@@ -711,7 +726,7 @@ valid_combs() {
 
 is_valid_combs() {
     comb=$1
-    ALLOWED_TYPES="vless vmess shadowsocks trojan naive hysteria shadowtls tuic hysteria2"
+    ALLOWED_TYPES="vless vmess shadowsocks trojan naive hysteria shadowtls tuic hysteria2 anytls wireguard"
     proxy_type=$(printf "%s" "$comb" | cut -d: -f1)
     c_port=$(printf "%s" "$comb" | cut -d: -f2)
     [ -z "$proxy_type" ] && return 1
