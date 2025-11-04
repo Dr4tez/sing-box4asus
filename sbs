@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.11
+# Version 2.3.12
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -23,8 +23,8 @@ SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
 TEMP_UPDATE="$SB_DOWNLOAD_DIR/temp-update"
 TEMP_SCRIPT_PATH="$SB_DOWNLOAD_DIR/sbs"
 TEMP_SBS_CONF="$SB_DOWNLOAD_DIR/sbs-conf"
-TEMP_LANG_RU="$SB_DOWNLOAD_DIR/sbs-lang-ru"
-TEMP_LANG_EN="$SB_DOWNLOAD_DIR/sbs-lang-en"
+TEMP_LANG_RU="/jffs/scripts/sbs-lang-ru"
+TEMP_LANG_EN="/jffs/scripts/sbs-lang-en"
 FW_SCRIPT="/jffs/scripts/firewall-start"
 NAT_SCRIPT="/jffs/scripts/nat-start"
 SS_SCRIPT="/jffs/scripts/services-start"
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.11
+# Создан в SBS 2.3.12
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -78,7 +78,7 @@ FW_MARK="0x4d3c2b1a"
 WAN_PORTS=""
 LANG=""
 SB_REPO="original"
-CUSTOM_REPO_A="shtorm-7/sing-box-extended"
+CUSTOM_REPO_A=""
 CUSTOM_REPO_B=""
 CORE_VERS="release"
 GIVEN_VERS=""
@@ -96,7 +96,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.11
+# Создан в SBS 2.3.12
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -104,6 +104,11 @@ if [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }
     m_sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS}" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2n)
 fi
 BR0_ADDRESS=$(ip -4 addr show dev br0 | awk "/inet /{print \$2}" | cut -d/ -f1)
+
+m_log_msg() {
+    echo "$1"
+    logger -t "sbs-monitor" "$1"
+}
 
 m_update_script() {
     [ -f "$1" ] || { echo "#!/bin/sh" > "$1"; chmod 755 "$1"; }
@@ -306,6 +311,8 @@ if [ -n "$H_MEMLIM" ]; then
             hard_memlim=$(awk "{printf \"%.0f\n\", (\$2-\$3)*4096/1024/1024}" /proc/$(ps w | grep "[s]ing-box run" | awk "{print \$1}")/statm)
             if [ "$(printf "%.0f" "$hard_memlim")" -ge $H_MEMLIM ]; then
                 kill $(ps | grep "[s]ing-box run" | awk "{print \$1}") 2>/dev/null
+                [ "$LANG" = "ru" ] && m_log_msg "Процесс sing-box перезапущен из-за достижения жёсткого лимита памяти."
+                [ "$LANG" = "en" ] && m_log_msg "The sing-box process was restarted because it reached its hard memory limit."
             fi
             sleep 5
         done
@@ -340,8 +347,8 @@ check_file_existence_and_download() {
         printf "$MESSAGE2\n" "$file_name"
         while true; do
             read -p "$MESSAGE3" choice
+            [ -z "$choice" ] && echo "$MESSAGE13" && return 0
             case $choice in
-                0) printf "$MESSAGE4\n" "$file_name"; return 0 ;;
                 1) printf "$MESSAGE5\n" "$file_name"; wget -q -O "$file_path" "$file_url"; return 0 ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -363,9 +370,11 @@ create_or_use_existing() {
     if [ -d "$dir_path" ]; then
         printf "$MESSAGE8\n" "$dir_path"
         while true; do
-            read -p "$MESSAGE9" choice
+            read -p ": " choice
+            if [ -z "$choice" ]; then
+                del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0
+            fi
             case $choice in
-                0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0 ;;
                 1) printf "$MESSAGE11\n" "$dir_path"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -383,8 +392,8 @@ handle_existing_file() {
         printf "$MESSAGE2\n" "$file_path"
         while true; do
             read -p "$MESSAGE12" choice
+            [ -z "$choice" ] && echo "$MESSAGE13" && break
             case $choice in
-                0) echo "$MESSAGE13"; break ;;
                 1) printf "$MESSAGE14\n" "$file_path"; "$create_function" "$file_path"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -402,8 +411,8 @@ check_copy_file() {
         printf "$MESSAGE2\n" "$dst_file"
         while true; do
             read -p "$MESSAGE12" choice
+            [ -z "$choice" ] && echo "$MESSAGE13" && break
             case $choice in
-                0) echo "$MESSAGE13"; break ;;
                 1) [ -f "$src_file" ] && printf "$MESSAGE14\n" "$dst_file" && cp "$src_file" "$dst_file"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -421,16 +430,16 @@ change_language() {
         if [ "$LANG" = "ru" ]; then
             echo "Перейти на английский?"
             read -p "$MESSAGE18" choice
+            [ -z "$choice" ] && echo "$MESSAGE52" && break
             case "$choice" in
-                0) echo "$MESSAGE66"; break ;;
                 1) [ -f "$LANG_EN" ] || { wget -q -O $LANG_EN $LANG_EN_URL && chmod 664 $LANG_EN; }; source "$LANG_EN"; sed -i 's/^LANG=".*"/LANG="en"/' "$SBS_CONF"; echo "$MESSAGE188"; exit 0 ;;
                 *) echo "$MESSAGE6" ;;
             esac
         elif [ "$LANG" = "en" ]; then
             echo "Switch to Russian?"
             read -p "$MESSAGE18" choice
+            [ -z "$choice" ] && echo "$MESSAGE52" && break
             case "$choice" in
-                0) echo "$MESSAGE66"; break ;;
                 1) [ -f "$LANG_RU" ] || { wget -q -O $LANG_RU $LANG_RU_URL && chmod 664 $LANG_RU; }; source "$LANG_RU"; sed -i 's/^LANG=".*"/LANG="ru"/' "$SBS_CONF"; echo "$MESSAGE188"; exit 0 ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -490,8 +499,8 @@ sing_box_start() {
     echo "$MESSAGE17"
     while true; do
         read -p "$MESSAGE18" choice
+        [ -z "$choice" ] && break
         case "$choice" in
-            0) echo "$MESSAGE19"; break ;;
             1) start_sing_box; break ;;
             *) echo "$MESSAGE6" ;;
         esac
@@ -623,11 +632,115 @@ get_main_ips() {
     done
 }
 
+ip_to_int() {
+    IFS=. read -r o1 o2 o3 o4 <<EOF
+$1
+EOF
+    echo $(( (o1 << 24) + (o2 << 16) + (o3 << 8) + o4 ))
+}
+
+mask_bits_to_int() {
+    bits="$1"
+    echo $(( 0xFFFFFFFF << (32 - bits) & 0xFFFFFFFF ))
+}
+
+parse_cidr() {
+    case "$1" in
+        */*) IFS=/ read -r ip bits <<EOF
+$1
+EOF
+            ;;
+        *) ip="$1"
+           bits=32
+           ;;
+    esac
+    ip_int=$(ip_to_int "$ip")
+    mask=$(mask_bits_to_int "$bits")
+    net=$(( ip_int & mask ))
+    echo "$ip_int $bits $mask $net"
+}
+
+cidr_in_cidr() {
+    cidr_a="$1"
+    cidr_b="$2"
+
+    set -- $(parse_cidr "$cidr_a")
+    a_ip="$1"
+    a_bits="$2"
+    a_mask="$3"
+    a_net="$4"
+
+    set -- $(parse_cidr "$cidr_b")
+    b_ip="$1"
+    b_bits="$2"
+    b_mask="$3"
+    b_net="$4"
+
+    [ "$a_bits" -lt "$b_bits" ] && return 1
+
+    if [ "$(( a_net & b_mask ))" -eq "$b_net" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+valid_combs() {
+    comb=$1
+    proxy_type=$(printf "%s" "$comb" | cut -d: -f1)
+    c_port=$(printf "%s" "$comb" | cut -d: -f2)
+    in_inbounds=0
+    search_port=0
+    while read -r c_line; do
+        if echo "$c_line" | grep -q '^[[:space:]]*"inbounds"[[:space:]]*:'; then
+            in_inbounds=1
+        fi
+        if [ "$in_inbounds" -eq 1 ] && echo "$c_line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$proxy_type\""; then
+            search_port=1
+            continue
+        fi
+        if [ "$search_port" = 1 ] && echo "$c_line" | grep -q "^[[:space:]]*\"listen_port\"[[:space:]]*:[[:space:]]*$c_port\\b"; then
+            return 0
+        fi
+        if echo "$c_line" | grep -q '^[[:space:]]*"type"[[:space:]]*:[[:space:]]*'; then
+            search_port=0
+        fi
+    done < "$SB_CONFIG"
+    return 1
+}
+
+is_valid_combs() {
+    comb=$1
+    ALLOWED_TYPES="vless vmess shadowsocks trojan naive hysteria shadowtls tuic hysteria2"
+    proxy_type=$(printf "%s" "$comb" | cut -d: -f1)
+    c_port=$(printf "%s" "$comb" | cut -d: -f2)
+    [ -z "$proxy_type" ] && return 1
+    [ -z "$c_port" ] && return 1
+    if ! printf "%s\n" $ALLOWED_TYPES | grep -qx "$proxy_type"; then return 1; fi
+    if ! printf "%s" "$c_port" | grep -Eq '^[0-9]+$'; then return 1; fi
+    if [ "$c_port" -lt 1 ] 2>/dev/null || [ "$c_port" -gt 65535 ] 2>/dev/null; then return 1; fi
+    return 0
+}
+
+check_wan_ports() {
+    updated_ports=""
+    for combination in $(echo "$WAN_PORTS" | tr ' ' '\n'); do
+        if ! is_valid_combs "$combination"; then
+            continue
+        fi
+        if valid_combs "$combination"; then
+            updated_ports="${updated_ports:+$updated_ports }$combination"
+        fi
+    done
+    updated_ports=$(echo "$updated_ports" | tr -s ' ' | sed 's/^ //')
+    sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$updated_ports\"|" "$SBS_CONF"
+}
+
 start_sing_box() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
-    echo ""
+    echo
     is_running && { log_msg "$MESSAGE21"; exit 1; }
 
     all_entries=$(printf "%s\n" $DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS})
@@ -653,7 +766,7 @@ start_sing_box() {
     elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
         lsmod | grep -q "^xt_TPROXY " || { log_msg "$MESSAGE191"; modprobe xt_TPROXY; sleep 3; }
     fi
-    { [ -n "$H_MEMLIM" ] || [ -n "$S_MEMLIM" ] || [ -n "$K_GOGC" ]; } && log_msg "$MESSAGE266"
+    { [ -n "$H_MEMLIM" ] || [ -n "$S_MEMLIM" ] || [ -n "$K_GOGC" ]; } && log_msg "$MESSAGE244"
     [ -n "$S_MEMLIM" ] && export GOMEMLIMIT=${S_MEMLIM}MiB
     [ -n "$K_GOGC" ] && export GOGC=$K_GOGC
     log_msg "$MESSAGE20"
@@ -914,13 +1027,14 @@ iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
     $SBS_MON &
     log_msg "$MESSAGE29"
     update_script "$SS_SCRIPT" "$SS_LINES # sing-box-script"
+    echo
 }
 
 stop_sing_box() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
-    echo ""
+    echo
     kill $(ps | grep "[s]bs-monitor" | awk '{print $1}') 2>/dev/null
     if [ -n "$TUN_INTERFACE" ]; then
         FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
@@ -979,319 +1093,249 @@ stop_sing_box() {
     { [ -n "$H_MEMLIM" ] || [ -n "$S_MEMLIM" ] || [ -n "$K_GOGC" ]; } && log_msg "$MESSAGE148"
     [ -n "$S_MEMLIM" ] && unset GOMEMLIMIT
     [ -n "$K_GOGC" ] && unset GOGC
+    echo
 }
 
 configure_interface() {
     source "$SBS_CONF"
+    cidrs=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep / | xargs)
+    echo
+    [ -n "$DEVICE_IPS" ] && [ -n "$cidrs" ] && echo "$MESSAGE43
+ $DEVICE_IPS
 
-    if [ -z "$DEVICE_IPS" ]; then
-        echo ""
-        echo "$MESSAGE38"
-        while true; do
-            read -p "$MESSAGE18" initial_choice
-            case "$initial_choice" in
-                0) echo "$MESSAGE39"; break ;;
-                1) read -p "$MESSAGE40" new_ips
-                   if [ -z "$new_ips" ]; then
-                       echo "$MESSAGE41"
-                   else
-                       DEVICE_IPS="$new_ips"
-                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$new_ips\"|" "$SBS_CONF"
-                       echo "$MESSAGE42"
-                   fi; break ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
+$MESSAGE84"
+    [ -n "$DEVICE_IPS" ] && [ -z "$cidrs" ] && echo "$MESSAGE43
+ $DEVICE_IPS
+
+$MESSAGE38"
+    [ -z "$DEVICE_IPS" ] && echo "$MESSAGE39"
+    read -p ": " input
+    if [ -z "$(echo "$input" | tr -d '[[:space:]]')" ]; then
+        echo "$MESSAGE52"
+    elif [ "$input" = "0" ]; then
+        sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"\"|" "$SBS_CONF"
+        sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
+        echo "$MESSAGE53" && return
+    elif echo "$input" | grep -q "^0[[:space:]][^[:space:]]"; then
+        DEVICE_IPS=$(echo "$input" | sed 's/^0[[:space:]]*//')
+        sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
+        echo "$MESSAGE54:
+ $DEVICE_IPS"
     else
-        echo ""
-        printf "$MESSAGE43\n" "$DEVICE_IPS"
-        while true; do
-            echo ""
-            echo "$MESSAGE44"
-            echo "$MESSAGE45"
-            echo "$MESSAGE46"
-            read -p "$MESSAGE47" action_choice
-            case "$action_choice" in
-                1) read -p "$MESSAGE48" ips_input
-                   if [ -z "$ips_input" ]; then
-                       echo "$MESSAGE49"
-                   else
-                       for ip in $ips_input; do
-                           if echo "$DEVICE_IPS" | grep -q "$ip"; then
-                               DEVICE_IPS=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
-                               printf "$MESSAGE50\n" "$ip"
-                           else
-                               DEVICE_IPS="${DEVICE_IPS:+$DEVICE_IPS }$ip"
-                               printf "$MESSAGE51\n" "$ip"
-                           fi
-                       done
-                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
-                   fi; break ;;
-                2) read -p "$MESSAGE52" new_ips
-                   if [ -z "$new_ips" ]; then
-                       DEVICE_IPS=""
-                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"\"|" "$SBS_CONF"
-                       echo "$MESSAGE53"
-                   else
-                       DEVICE_IPS="$new_ips"
-                       sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$new_ips\"|" "$SBS_CONF"
-                       echo "$MESSAGE54"
-                   fi; break ;;
-                0) echo "$MESSAGE55"; break ;;
-                *) echo "$MESSAGE6" ;;
-            esac
+        m_device_ips=""
+        p_device_ips=""
+        for ip in $input; do
+            if echo "$DEVICE_IPS" | grep -qw "$ip"; then
+                DEVICE_IPS=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep -Fvx "$ip" | tr '\n' ' ' | xargs)
+                m_device_ips="$m_device_ips $ip"
+            else
+                DEVICE_IPS="${DEVICE_IPS:+$DEVICE_IPS }$ip"
+                p_device_ips="$p_device_ips $ip"
+            fi
         done
+        sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
+        [ -n "$m_device_ips" ] && { m_device_ips=$(echo "$m_device_ips" | xargs); echo "$MESSAGE50
+ $m_device_ips"; }
+        [ -n "$p_device_ips" ] && { p_device_ips=$(echo "$p_device_ips" | xargs); echo "$MESSAGE51
+ $p_device_ips"; }
     fi
 
-    cidrs=""
-    for ip in $DEVICE_IPS; do
-        if echo "$ip" | grep -q '/'; then
-            cidrs="$cidrs $ip"
-        fi
-    done
+    cidrs=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep / | xargs)
+
     if [ -n "$cidrs" ]; then
-        if [ -z "$EXC_DEVICE_IPS" ]; then
-            echo ""
-            printf "$MESSAGE56\n" "$cidrs"
-            echo "$MESSAGE57"
-            while true; do
-                read -p "$MESSAGE18" initial_exc_choice
-                case "$initial_exc_choice" in
-                    0) echo "$MESSAGE39"; break ;;
-                    1) read -p "$MESSAGE40" exc_new_ips
-                       if [ -z "$exc_new_ips" ]; then
-                           echo "$MESSAGE58"
-                       else
-                           EXC_DEVICE_IPS="$exc_new_ips"
-                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$exc_new_ips\"|" "$SBS_CONF"
-                           echo "$MESSAGE59"
-                       fi; break ;;
-                    *) echo "$MESSAGE6" ;;
-                esac
+        EXC_DEVICE_IPS=$(for exc in $EXC_DEVICE_IPS; do
+            for subnet in $cidrs; do
+                cidr_in_cidr "$exc" "$subnet" && echo "$exc" && break
             done
+        done | xargs)
+        sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
+        echo
+        echo "$MESSAGE56
+ $cidrs"
+        [ -n "$EXC_DEVICE_IPS" ] && echo "$MESSAGE60
+ $EXC_DEVICE_IPS
+
+$MESSAGE57"
+        [ -z "$EXC_DEVICE_IPS" ] && echo "$MESSAGE58"
+        read -p ": " exc_input
+        orig_exc_input="$exc_input"
+        ips_part=$(echo "$exc_input" | sed 's/^0[[:space:]]*//')
+        if [ -n "$ips_part" ]; then
+            exc_input=$(for exci in $ips_part; do
+                for subnet in $cidrs; do
+                    cidr_in_cidr "$exci" "$subnet" && echo "$exci" && break
+                done
+            done | xargs)
+            prefix=$(echo "$orig_exc_input" | sed -n 's/^\(0[[:space:]]*\).*/\1/p')
+            exc_input="$prefix$exc_input"
         else
-            echo ""
-            printf "$MESSAGE56\n" "$cidrs"
-            printf "$MESSAGE60\n" "$EXC_DEVICE_IPS"
-            while true; do
-            echo ""
-            echo "$MESSAGE44"
-            echo "$MESSAGE45"
-            echo "$MESSAGE46"
-            read -p "$MESSAGE47" action_exc_choice
-                case "$action_exc_choice" in
-                    1) read -p "$MESSAGE48" exc_ips_input
-                       if [ -z "$exc_ips_input" ]; then
-                           echo "$MESSAGE61"
-                       else
-                           for ip in $exc_ips_input; do
-                               if echo "$EXC_DEVICE_IPS" | grep -q "$ip"; then
-                                   EXC_DEVICE_IPS=$(echo "$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
-                                   printf "$MESSAGE62\n" "$ip"
-                               else
-                                   EXC_DEVICE_IPS="${EXC_DEVICE_IPS:+$EXC_DEVICE_IPS }$ip"
-                                   printf "$MESSAGE63\n" "$ip"
-                               fi
-                           done
-                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
-                       fi; break ;;
-                    2) read -p "$MESSAGE52" exc_new_ips
-                       if [ -z "$exc_new_ips" ]; then
-                           EXC_DEVICE_IPS=""
-                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
-                           echo "$MESSAGE64"
-                       else
-                           EXC_DEVICE_IPS="$exc_new_ips"
-                           sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$exc_new_ips\"|" "$SBS_CONF"
-                           echo "$MESSAGE65"
-                       fi; break ;;
-                    0) echo "$MESSAGE55"; break ;;
-                    *) echo "$MESSAGE6" ;;
-                esac
+            exc_input="$orig_exc_input"
+        fi
+        if [ -z "$(echo "$exc_input" | tr -d '[[:space:]]')" ]; then
+            echo "$MESSAGE52"
+        elif [ "$exc_input" = "0" ]; then
+            sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE64"
+        elif echo "$exc_input" | grep -q "^0[[:space:]][^[:space:]]"; then
+            EXC_DEVICE_IPS=$(echo "$exc_input" | sed 's/^0[[:space:]]*//')
+            sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
+            echo "$MESSAGE65:
+ $EXC_DEVICE_IPS"
+        else
+            m_exc_device_ips=""
+            p_exc_device_ips=""
+            for ip in $exc_input; do
+                if echo "$EXC_DEVICE_IPS" | grep -qw "$ip"; then
+                    EXC_DEVICE_IPS=$(echo "$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -Fvx "$ip" | tr '\n' ' ' | xargs)
+                    m_exc_device_ips="$m_exc_device_ips $ip"
+                else
+                    EXC_DEVICE_IPS="${EXC_DEVICE_IPS:+$EXC_DEVICE_IPS }$ip"
+                    p_exc_device_ips="$p_exc_device_ips $ip"
+                fi
             done
+            sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
+            [ -n "$m_exc_device_ips" ] && { m_exc_device_ips=$(echo "$m_exc_device_ips" | xargs); echo "$MESSAGE62
+ $m_exc_device_ips"; }
+            [ -n "$p_exc_device_ips" ] && { p_exc_device_ips=$(echo "$p_exc_device_ips" | xargs); echo "$MESSAGE63
+ $p_exc_device_ips"; }
         fi
     else
-        EXC_DEVICE_IPS=""
         sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
     fi
-
-    echo "$MESSAGE66"
 }
 
 configure_finterface() {
     source "$SBS_CONF"
+    fcidrs=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep / | xargs)
+    echo
+    [ -n "$DEVICE_FIPS" ] && [ -n "$fcidrs" ] && echo "$MESSAGE68
+ $DEVICE_FIPS
 
-    if [ -z "$DEVICE_FIPS" ]; then
-        echo ""
-        echo "$MESSAGE67"
-        while true; do
-            read -p "$MESSAGE18" initial_fchoice
-            case "$initial_fchoice" in
-                0) echo "$MESSAGE39"; break ;;
-                1) read -p "$MESSAGE40" new_fips
-                   if [ -z "$new_fips" ]; then
-                       echo "$MESSAGE41"
-                   else
-                       DEVICE_FIPS="$new_fips"
-                       sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$new_fips\"|" "$SBS_CONF"
-                       echo "$MESSAGE42"
-                   fi; break ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
+$MESSAGE40"
+    [ -n "$DEVICE_FIPS" ] && [ -z "$fcidrs" ] && echo "$MESSAGE68
+ $DEVICE_FIPS
+
+$MESSAGE67"
+    [ -z "$DEVICE_FIPS" ] && echo "$MESSAGE44"
+    read -p ": " finput
+    if [ -z "$(echo "$finput" | tr -d '[[:space:]]')" ]; then
+        echo "$MESSAGE52"
+    elif [ "$finput" = "0" ]; then
+        sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"\"|" "$SBS_CONF"
+        sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
+        echo "$MESSAGE71" && return
+    elif echo "$finput" | grep -q "^0[[:space:]][^[:space:]]"; then
+        DEVICE_FIPS=$(echo "$finput" | sed 's/^0[[:space:]]*//')
+        sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
+        echo "$MESSAGE72:
+ $DEVICE_FIPS"
     else
-        echo ""
-        printf "$MESSAGE68\n" "$DEVICE_FIPS"
-        while true; do
-            echo ""
-            echo "$MESSAGE44"
-            echo "$MESSAGE45"
-            echo "$MESSAGE46"
-            read -p "$MESSAGE47" action_fchoice
-            case "$action_fchoice" in
-                1) read -p "$MESSAGE48" ips_finput
-                   if [ -z "$ips_finput" ]; then
-                       echo "$MESSAGE49"
-                   else
-                       for ip in $ips_finput; do
-                           if echo "$DEVICE_FIPS" | grep -q "$ip"; then
-                               DEVICE_FIPS=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
-                               printf "$MESSAGE69\n" "$ip"
-                           else
-                               DEVICE_FIPS="${DEVICE_FIPS:+$DEVICE_FIPS }$ip"
-                               printf "$MESSAGE70\n" "$ip"
-                           fi
-                       done
-                       sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
-                   fi; break ;;
-                2) read -p "$MESSAGE52" new_fips
-                   if [ -z "$new_fips" ]; then
-                       DEVICE_FIPS=""
-                       sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"\"|" "$SBS_CONF"
-                       echo "$MESSAGE71"
-                   else
-                       DEVICE_FIPS="$new_fips"
-                       sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$new_fips\"|" "$SBS_CONF"
-                       echo "$MESSAGE72"
-                   fi; break ;;
-                0) echo "$MESSAGE55"; break ;;
-                *) echo "$MESSAGE6" ;;
-            esac
+        m_device_fips=""
+        p_device_fips=""
+        for fip in $finput; do
+            if echo "$DEVICE_FIPS" | grep -qw "$fip"; then
+                DEVICE_FIPS=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep -Fvx "$fip" | tr '\n' ' ' | xargs)
+                m_device_fips="$m_device_fips $fip"
+            else
+                DEVICE_FIPS="${DEVICE_FIPS:+$DEVICE_FIPS }$fip"
+                p_device_fips="$p_device_fips $fip"
+            fi
         done
+        sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
+        [ -n "$m_device_fips" ] && { m_device_fips=$(echo "$m_device_fips" | xargs); echo "$MESSAGE69
+ $m_device_fips"; }
+        [ -n "$p_device_fips" ] && { p_device_fips=$(echo "$p_device_fips" | xargs); echo "$MESSAGE70
+ $p_device_fips"; }
     fi
 
-    fcidrs=""
-    for ip in $DEVICE_FIPS; do
-        if echo "$ip" | grep -q '/'; then
-            fcidrs="$fcidrs $ip"
-        fi
-    done
+    fcidrs=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep / | xargs)
+
     if [ -n "$fcidrs" ]; then
-        if [ -z "$EXC_DEVICE_FIPS" ]; then
-            echo ""
-            printf "$MESSAGE73\n" "$fcidrs"
-            echo "$MESSAGE74"
-            while true; do
-                read -p "$MESSAGE18" initial_exc_fchoice
-                case "$initial_exc_fchoice" in
-                    0) echo "$MESSAGE39"; break ;;
-                    1) read -p "$MESSAGE40" exc_new_fips
-                       if [ -z "$exc_new_fips" ]; then
-                           echo "$MESSAGE75"
-                       else
-                           EXC_DEVICE_FIPS="$exc_new_fips"
-                           sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$exc_new_fips\"|" "$SBS_CONF"
-                           echo "$MESSAGE76"
-                       fi; break ;;
-                    *) echo "$MESSAGE6" ;;
-                esac
+        EXC_DEVICE_FIPS=$(for fexc in $EXC_DEVICE_FIPS; do
+            for fsubnet in $fcidrs; do
+                cidr_in_cidr "$fexc" "$fsubnet" && echo "$fexc" && break
             done
+        done | xargs)
+        sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
+        echo
+        echo "$MESSAGE73
+ $fcidrs"
+        [ -n "$EXC_DEVICE_FIPS" ] && echo "$MESSAGE77
+ $EXC_DEVICE_FIPS
+
+$MESSAGE45"
+        [ -z "$EXC_DEVICE_FIPS" ] && echo "$MESSAGE74"
+        read -p ": " exc_finput
+        orig_exc_finput="$exc_finput"
+        fips_part=$(echo "$exc_finput" | sed 's/^0[[:space:]]*//')
+        if [ -n "$fips_part" ]; then
+            exc_finput=$(for fexci in $fips_part; do
+                for fsubnet in $fcidrs; do
+                    cidr_in_cidr "$fexci" "$fsubnet" && echo "$fexci" && break
+                done
+            done | xargs)
+            fprefix=$(echo "$orig_exc_finput" | sed -n 's/^\(0[[:space:]]*\).*/\1/p')
+            exc_finput="$fprefix$exc_finput"
         else
-            echo ""
-            printf "$MESSAGE73\n" "$fcidrs"
-            printf "$MESSAGE77\n" "$EXC_DEVICE_FIPS"
-            while true; do
-            echo ""
-            echo "$MESSAGE44"
-            echo "$MESSAGE45"
-            echo "$MESSAGE46"
-            read -p "$MESSAGE47" action_exc_fchoice
-                case "$action_exc_fchoice" in
-                    1) read -p "$MESSAGE48" exc_ips_finput
-                       if [ -z "$exc_ips_finput" ]; then
-                           echo "$MESSAGE78"
-                       else
-                           for ip in $exc_ips_finput; do
-                               if echo "$EXC_DEVICE_FIPS" | grep -q "$ip"; then
-                                   EXC_DEVICE_FIPS=$(echo "$EXC_DEVICE_FIPS" | tr ' ' '\n' | grep -v "^$ip$" | tr '\n' ' ' | xargs)
-                                   printf "$MESSAGE79\n" "$ip"
-                               else
-                                   EXC_DEVICE_FIPS="${EXC_DEVICE_FIPS:+$EXC_DEVICE_FIPS }$ip"
-                                   printf "$MESSAGE80\n" "$ip"
-                               fi
-                           done
-                           sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
-                       fi; break ;;
-                    2) read -p "$MESSAGE52" exc_new_fips
-                       if [ -z "$exc_new_fips" ]; then
-                           EXC_DEVICE_FIPS=""
-                           sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
-                           echo "$MESSAGE81"
-                       else
-                           EXC_DEVICE_FIPS="$exc_new_fips"
-                           sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$exc_new_fips\"|" "$SBS_CONF"
-                           echo "$MESSAGE82"
-                       fi; break ;;
-                    0) echo "$MESSAGE55"; break ;;
-                    *) echo "$MESSAGE6" ;;
-                esac
+            exc_finput="$orig_exc_finput"
+        fi
+        if [ -z "$(echo "$exc_finput" | tr -d '[[:space:]]')" ]; then
+            echo "$MESSAGE52"
+        elif [ "$exc_finput" = "0" ]; then
+            sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE81"
+        elif echo "$exc_finput" | grep -q "^0[[:space:]][^[:space:]]"; then
+            EXC_DEVICE_FIPS=$(echo "$exc_finput" | sed 's/^0[[:space:]]*//')
+            sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
+            echo "$MESSAGE82:
+ $EXC_DEVICE_FIPS"
+        else
+            m_exc_device_fips=""
+            p_exc_device_fips=""
+            for fip in $exc_finput; do
+                if echo "$EXC_DEVICE_FIPS" | grep -qw "$fip"; then
+                    EXC_DEVICE_FIPS=$(echo "$EXC_DEVICE_FIPS" | tr ' ' '\n' | grep -Fvx "$fip" | tr '\n' ' ' | xargs)
+                    m_exc_device_fips="$m_exc_device_fips $fip"
+                else
+                    EXC_DEVICE_FIPS="${EXC_DEVICE_FIPS:+$EXC_DEVICE_FIPS }$fip"
+                    p_exc_device_fips="$p_exc_device_fips $fip"
+                fi
             done
+            sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
+            [ -n "$m_exc_device_fips" ] && { m_exc_device_fips=$(echo "$m_exc_device_fips" | xargs); echo "$MESSAGE79
+ $m_exc_device_fips"; }
+            [ -n "$p_exc_device_fips" ] && { p_exc_device_fips=$(echo "$p_exc_device_fips" | xargs); echo "$MESSAGE80
+ $p_exc_device_fips"; }
         fi
     else
-        EXC_DEVICE_FIPS=""
         sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
     fi
-
-    echo "$MESSAGE66"
 }
 
 configure_table() {
     source "$SBS_CONF"
-
-    echo ""
-    printf "$MESSAGE83\n" "$ROUTE_TABLE"
-    echo "$MESSAGE84"
+    echo
+    echo "$MESSAGE83 $ROUTE_TABLE"
     while true; do
-        read -p "$MESSAGE18" choice
-        case "$choice" in
-            0) echo "$MESSAGE85"; break ;;
-            1) read -p "$MESSAGE86" new_table
-               ROUTE_TABLE="$new_table"
-               sed -i "s|^ROUTE_TABLE=\".*\"$|ROUTE_TABLE=\"$new_table\"|" "$SBS_CONF"
-               log_msg "$(printf "$MESSAGE87\n" "$ROUTE_TABLE")"; break ;;
-            *) echo "$MESSAGE6" ;;
-        esac
+        read -p "$MESSAGE86" new_table
+        [ -z "$new_table" ] && echo "$MESSAGE52" && break
+        ROUTE_TABLE="$new_table"
+        sed -i "s|^ROUTE_TABLE=\".*\"$|ROUTE_TABLE=\"$new_table\"|" "$SBS_CONF"
+        echo "$MESSAGE87 $ROUTE_TABLE"; break
     done
-    echo "$MESSAGE66"
 }
 
 configure_fwmark() {
     source "$SBS_CONF"
-
-    echo ""
-    printf "$MESSAGE197\n" "$FW_MARK"
+    echo
+    echo "$MESSAGE197 $FW_MARK"
     while true; do
-        read -p "$MESSAGE18" choice
-        case "$choice" in
-            0) echo "$MESSAGE199"; break ;;
-            1) read -p "$MESSAGE198" new_fwmark
-               FW_MARK="$new_fwmark"
-               sed -i "s|^FW_MARK=\".*\"$|FW_MARK=\"$new_fwmark\"|" "$SBS_CONF"
-               log_msg "$(printf "$MESSAGE147\n" "$FW_MARK")"; break ;;
-            *) echo "$MESSAGE6" ;;
-        esac
+        read -p "$MESSAGE198" new_fwmark
+        [ -z "$new_fwmark" ] && echo "$MESSAGE52" && break
+        FW_MARK="$new_fwmark"
+        sed -i "s|^FW_MARK=\".*\"$|FW_MARK=\"$new_fwmark\"|" "$SBS_CONF"
+        echo "$MESSAGE147 $FW_MARK"; break
     done
-    echo "$MESSAGE66"
 }
 
 setup_sing_box() {
@@ -1306,65 +1350,65 @@ setup_sing_box() {
     source "$SBS_CONF"
 
     if [ -z "$TUN_INTERFACE" ] && [ -z "$TPROXY_PORT" ]; then
-        echo ""
+        echo
         echo "$MESSAGE88"
         exit 0
     fi
     if [ -z "$FAKEIP_SUBNET" ]; then
         while true; do
-            echo ""
+            echo
             echo "$MESSAGE91"
-            echo ""
+            echo
             [ -z "$DEVICE_IPS" ] && echo "$MESSAGE92"
-            is_running && echo "$MESSAGE103"
+            is_running && echo "$MESSAGE125"
             echo "$MESSAGE93"
             echo "2. $MESSAGE94"
-            echo "0. $MESSAGE95"
-            read -p "$MESSAGE99 [0-2]: " if_choice
+            read -p "$MESSAGE99" if_choice
+            [ -z "$if_choice" ] && echo "$MESSAGE95" && break
             case "$if_choice" in
                 1) is_running && stop_sing_box; configure_interface; source "$SBS_CONF" ;;
-                2) is_running && stop_sing_box; if ! setup_pro; then continue; fi ;;
-                0) break ;;
+                2) setup_pro ;;
                 *) echo "$MESSAGE6" ;;
             esac
         done
     else
         while true; do
-            echo ""
+            echo
             echo "$MESSAGE91"
-            echo ""
+            echo
             [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && echo "$MESSAGE96"
-            is_running && echo "$MESSAGE89"
+            is_running && echo "$MESSAGE41"
             echo "$MESSAGE93"
             echo "$MESSAGE97"
             echo "3. $MESSAGE94"
-            echo "0. $MESSAGE95"
-            read -p "$MESSAGE99 [0-3]: " if_choice
+            read -p "$MESSAGE99" if_choice
+            [ -z "$if_choice" ] && echo "$MESSAGE95" && break
             case "$if_choice" in
                 1) is_running && stop_sing_box; configure_interface; source "$SBS_CONF" ;;
                 2) is_running && stop_sing_box; configure_finterface; source "$SBS_CONF" ;;
-                3) is_running && stop_sing_box; if ! setup_pro; then continue; fi ;;
-                0) break ;;
+                3) setup_pro ;;
                 *) echo "$MESSAGE6" ;;
             esac
         done
     fi
+    echo
     is_running || sing_box_start
 }
 
 setup_pro() {
     while true; do
-        echo ""
+        echo
         echo "$MESSAGE194"
-        echo ""
+        echo
+        is_running && echo "$MESSAGE103"
         echo "$MESSAGE98"
         echo "$MESSAGE195"
-        echo "$MESSAGE196"
-        read -p "$MESSAGE99 [0-2]: " if_choice
+        read -p "$MESSAGE196
+: " if_choice
+        [ -z "$if_choice" ] && echo "$MESSAGE199" && break
         case "$if_choice" in
-            1) configure_table; source "$SBS_CONF" ;;
-            2) configure_fwmark; source "$SBS_CONF" ;;
-            0) return 1 ;;
+            1) is_running && stop_sing_box; configure_table; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box; configure_fwmark; source "$SBS_CONF" ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1396,7 +1440,7 @@ download_updates() {
     elif [ "$SB_REPO" = "customb" ]; then
         UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO_B|")
     fi
-    echo ""
+    echo
     echo "$MESSAGE100"
     rm -rf "$SB_DOWNLOAD_DIR"
     silent_create_dir "$SB_DOWNLOAD_DIR"
@@ -1498,10 +1542,10 @@ update_sing_box_menu() {
         else
             sb_vers_new=""
         fi
-        echo ""
+        echo
         echo "$MESSAGE102"
-        echo ""
-        is_running && echo "$MESSAGE103"
+        echo
+        is_running && echo "$MESSAGE41"
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
         printf "$MESSAGE105\n" "${sb_vers:-$MESSAGE169}" "${sb_vers_new:-$MESSAGE169.}"
         printf "$MESSAGE235\n" "$additionally" "$given_value"
@@ -1510,13 +1554,12 @@ update_sing_box_menu() {
         else
             printf "   $MESSAGE209\n" "30"
         fi
-        echo "0. $MESSAGE95"
-        read -p "$MESSAGE99 [0-3]: " choice
+        read -p "$MESSAGE99" choice
+        [ -z "$choice" ] && { rm -rf "$SB_DOWNLOAD_DIR"; echo "$MESSAGE95"; is_running || sing_box_start; exit 0; }
         case "$choice" in
             1) is_running && stop_sing_box; update_sbs; break ;;
             2) [ -n "$sb_vers_new" ] && { is_running && stop_sing_box; updcore_sing_box; source "$SBS_CONF"; download_updates; continue; } || echo "$MESSAGE219" ;;
             3) change_repo_vers; source "$SBS_CONF"; download_updates; continue ;;
-            0) rm -rf "$SB_DOWNLOAD_DIR"; echo "$MESSAGE106"; is_running || sing_box_start; exit 0 ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1524,8 +1567,9 @@ update_sing_box_menu() {
 
 change_repo_vers() {
     while true; do
-        echo ""
+        echo
         echo "$MESSAGE234"
+        echo
         printf "$MESSAGE202\n" "$additionally"
         printf "$MESSAGE221\n" "$given_value"
         if [ -n "$NUM_RELEASES" ]; then
@@ -1533,12 +1577,11 @@ change_repo_vers() {
         else
             printf "   $MESSAGE209\n" "30"
         fi
-        echo "0. $MESSAGE206"
-        read -p "$MESSAGE99 [0-2]: " choice_repo_vers
+        read -p "$MESSAGE196: " choice_repo_vers
+        [ -z "$choice_repo_vers" ] && echo "$MESSAGE199" && return
         case "$choice_repo_vers" in
             1) change_sing_box_repo; source "$SBS_CONF"; continue ;;
             2) change_core_vers; source "$SBS_CONF"; continue ;;
-            0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1554,7 +1597,7 @@ change_sing_box_repo() {
           customa) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
           customb) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
         esac
-        echo ""
+        echo
         echo "$MESSAGE203"
         echo "$additionally"
         echo "1. $MESSAGE204"
@@ -1564,33 +1607,50 @@ change_sing_box_repo() {
         [ -n "$CUSTOM_REPO_A" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
         echo "5. $MESSAGE211 B."
         [ -n "$CUSTOM_REPO_B" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
-        echo "0. $MESSAGE218"
-        read -p "$MESSAGE99 [0-5]: " choice_repo
+        read -p "$MESSAGE196: " choice_repo
+        [ -z "$choice_repo" ] && echo "$MESSAGE199" && return
         case "$choice_repo" in
             1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" ;;
             2) [ -n "$CUSTOM_REPO_A" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customa"|' "$SBS_CONF" || printf "$MESSAGE216\n" "A" ;;
             3) [ -n "$CUSTOM_REPO_B" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customb"|' "$SBS_CONF" || printf "$MESSAGE216\n" "B" ;;
-            4) echo ""
+            4) echo
                echo "$MESSAGE210"
-               read -p "$MESSAGE212 A: " newrepoa
+               echo
+               read -p "$MESSAGE212 A,
+$MESSAGE42
+: " newrepoa
                if [ -z "$newrepoa" ]; then
-                   sed -i 's|^CUSTOM_REPO_A="[^"]*"|CUSTOM_REPO_A=""|' "$SBS_CONF"
-               elif echo "$newrepoa" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
-                   echo "$MESSAGE217"
+                   echo "$MESSAGE52"
                else
-                   sed -i "s|^CUSTOM_REPO_A=\"[^\"]*\"|CUSTOM_REPO_A=\"$newrepoa\"|" "$SBS_CONF"
+                   if [ "$newrepoa" = "0" ]; then
+                       sed -i 's|^CUSTOM_REPO_A="[^"]*"|CUSTOM_REPO_A=""|' "$SBS_CONF"
+                       printf "$MESSAGE106\n" "A"
+                   elif echo "$newrepoa" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
+                       echo "$MESSAGE217"
+                   else
+                       sed -i "s|^CUSTOM_REPO_A=\"[^\"]*\"|CUSTOM_REPO_A=\"$newrepoa\"|" "$SBS_CONF"
+                       printf "$MESSAGE90\n" "A" "$newrepoa"
+                   fi
                fi ;;
-            5) echo ""
+            5) echo
                echo "$MESSAGE210"
-               read -p "$MESSAGE212 B: " newrepob
+               echo
+               read -p "$MESSAGE212 B,
+$MESSAGE42
+: " newrepob
                if [ -z "$newrepob" ]; then
-                   sed -i 's|^CUSTOM_REPO_B="[^"]*"|CUSTOM_REPO_B=""|' "$SBS_CONF"
-               elif echo "$newrepob" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
-                   echo "$MESSAGE217"
+                   echo "$MESSAGE52"
                else
-                   sed -i "s|^CUSTOM_REPO_B=\"[^\"]*\"|CUSTOM_REPO_B=\"$newrepob\"|" "$SBS_CONF"
+                   if [ "$newrepob" = "0" ]; then
+                       sed -i 's|^CUSTOM_REPO_B="[^"]*"|CUSTOM_REPO_B=""|' "$SBS_CONF"
+                       printf "$MESSAGE106\n" "B"
+                   elif echo "$newrepob" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
+                       echo "$MESSAGE217"
+                   else
+                       sed -i "s|^CUSTOM_REPO_B=\"[^\"]*\"|CUSTOM_REPO_B=\"$newrepob\"|" "$SBS_CONF"
+                       printf "$MESSAGE90\n" "B" "$newrepob"
+                   fi
                fi ;;
-            0) return ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1605,7 +1665,7 @@ change_core_vers() {
           pre_release) given_value="$MESSAGE227" ;;
           given) given_value="$MESSAGE228 $GIVEN_VERS" ;;
         esac
-        echo ""
+        echo
         echo "$MESSAGE229"
         echo "$given_value"
         echo "1. $MESSAGE222"
@@ -1615,21 +1675,48 @@ change_core_vers() {
         [ -n "$GIVEN_VERS" ] && printf "   $MESSAGE214\n" ": $GIVEN_VERS"
         echo "5. $MESSAGE233"
         [ -n "$NUM_RELEASES" ] && { printf "   $MESSAGE214" "$NUM_RELEASES"; echo " $MESSAGE215"; } || { printf "   $MESSAGE214" "30"; echo " $MESSAGE215"; }
-        echo "0. $MESSAGE218"
-        read -p "$MESSAGE99 [0-4]: " choice_vers
+        read -p "$MESSAGE196: " choice_vers
+        [ -z "$choice_vers" ] && echo "$MESSAGE199" && return
         case "$choice_vers" in
             1) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF" ;;
             2) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="pre_release"|' "$SBS_CONF" ;;
             3) [ -n "$GIVEN_VERS" ] && sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="given"|' "$SBS_CONF" || echo "$MESSAGE231" ;;
-            4) echo ""; read -p "$MESSAGE232: " new_given_vers; [ -z "$new_given_vers" ] && { sed -i 's|^GIVEN_VERS="[^"]*"|GIVEN_VERS=""|' "$SBS_CONF"; echo "$MESSAGE230"; } || { sed -i "s|^GIVEN_VERS=\"[^\"]*\"|GIVEN_VERS=\"$new_given_vers\"|" "$SBS_CONF"; } ;;
-            5) echo ""; read -p "$MESSAGE208: " new_num_releases; [ -z "$new_num_releases" ] && { sed -i 's|^NUM_RELEASES="[^"]*"|NUM_RELEASES=""|' "$SBS_CONF"; } || { sed -i "s|^NUM_RELEASES=\"[^\"]*\"|NUM_RELEASES=\"$new_num_releases\"|" "$SBS_CONF"; } ;;
-            0) return ;;
+            4) echo
+               read -p "$MESSAGE232,
+$MESSAGE42
+: " new_given_vers
+               if [ -z "$new_given_vers" ]; then
+                   echo "$MESSAGE52"
+               else
+                   if [ "$new_given_vers" = "0" ]; then
+                       sed -i 's|^GIVEN_VERS="[^"]*"|GIVEN_VERS=""|' "$SBS_CONF"
+                       echo "$MESSAGE230"
+                   else
+                       sed -i "s|^GIVEN_VERS=\"[^\"]*\"|GIVEN_VERS=\"$new_given_vers\"|" "$SBS_CONF"
+                       echo "$MESSAGE46 $new_given_vers"
+                   fi
+               fi ;;
+            5) echo
+               read -p "$MESSAGE208,
+$MESSAGE42
+: " new_num_releases
+               if [ -z "$new_num_releases" ]; then
+                   echo "$MESSAGE52"
+               else
+                   if [ "$new_num_releases" = "0" ]; then
+                       sed -i 's|^NUM_RELEASES="[^"]*"|NUM_RELEASES=""|' "$SBS_CONF"
+                   else
+                       sed -i "s|^NUM_RELEASES=\"[^\"]*\"|NUM_RELEASES=\"$new_num_releases\"|" "$SBS_CONF"
+                       printf "$MESSAGE47\n" "$new_num_releases"
+                   fi
+               fi ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
 }
+
 update_sbs() {
-    echo ""
+    echo
     echo "$MESSAGE107"
     cp $TEMP_SCRIPT_PATH $SCRIPT_PATH
     chmod 775 $SCRIPT_PATH
@@ -1656,7 +1743,7 @@ updmonandconf_sing_box() {
     existing_vars=$(grep '^[A-Za-z0-9_]\+=' "$SBS_CONF")
     {
         echo "$comments"
-        echo ""
+        echo
         for var in $vars_in_tmp; do
             name=$(echo "$var" | cut -d= -f1)
             old_value=$(echo "$existing_vars" | grep "^$name=")
@@ -1675,7 +1762,7 @@ updmonandconf_sing_box() {
 }
 
 updcore_sing_box() {
-    echo ""
+    echo
     echo "$MESSAGE109"
     cp "$singbox_file" "$SB_DIR"; echo "$MESSAGE110"
     return
@@ -1683,18 +1770,18 @@ updcore_sing_box() {
 
 check_sing_box() {
     while true; do
-        echo ""; echo "$MESSAGE111"
+        echo; echo "$MESSAGE111"
         if ! output=$($SB_PATH check -c $SB_CONFIG 2>&1); then
             echo "$MESSAGE112"
             echo "$output"
-            echo ""
+            echo
             echo "$MESSAGE113"
             is_running && echo "$MESSAGE114"
             while true; do
                 read -p "$MESSAGE18" choice
+                [ -z "$choice" ] && echo "$MESSAGE115" && break
                 case "$choice" in
-                    0) echo "$MESSAGE115"; break 2 ;;
-                    1) echo ""; is_running && stop_sing_box; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE117"; break ;;
+                    1) echo; is_running && stop_sing_box; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE117"; break ;;
                     *) echo "$MESSAGE6" ;;
                 esac
             done
@@ -1706,18 +1793,17 @@ check_sing_box() {
 
 format_sing_box() {
     if ! output=$($SB_PATH format -c $SB_CONFIG 2>&1); then
-        echo ""; echo "$MESSAGE112"
+        echo; echo "$MESSAGE112"
         echo "$output"
         echo "$MESSAGE119"
-        echo "$MESSAGE66"
     else
-        echo ""; echo "$MESSAGE120"
+        echo; echo "$MESSAGE120"
         echo "$output"
         while true; do
             echo "$MESSAGE121"
             read -p "$MESSAGE18" save_choice
+            [ -z "$save_choice" ] && echo "$MESSAGE122" && break
             case "$save_choice" in
-                0) echo "$MESSAGE122"; break ;;
                 1) $SB_PATH format -w -c $SB_CONFIG; echo "$MESSAGE123"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
@@ -1730,20 +1816,19 @@ config_sing_box() {
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
     while true; do
-        echo ""
+        echo
         echo "$MESSAGE124"
-        echo ""
+        echo
         is_running && echo "$MESSAGE125" 
         echo "$MESSAGE126"
         echo "$MESSAGE127"
         echo "$MESSAGE128"
-        echo "0-$MESSAGE95"
-        read -p "$MESSAGE99 [0-3]: " choice
+        read -p "$MESSAGE99" choice
+        [ -z "$choice" ] && echo "$MESSAGE95" && break
         case "$choice" in
-            1) is_running && stop_sing_box; echo ""; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE129" ;;
+            1) is_running && stop_sing_box; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE129" ;;
             2) check_sing_box ;;
             3) format_sing_box ;;
-            0) break ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1754,245 +1839,119 @@ status_sing_box() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
-
+    echo
     if is_running; then
         echo "$MESSAGE30"
     else
         echo "$MESSAGE37"
     fi
-
     sbs_version=$(get_sbs_version $SCRIPT_PATH)
     if [ -n "$sbs_version" ]; then
         printf "$MESSAGE130\n" "$sbs_version"
     else
         echo "$MESSAGE131"
     fi
-
     sb_versplat=$(get_sb_versplat $SB_PATH)
     if [ -n "$sb_versplat" ]; then
         printf "$MESSAGE132\n" "$sb_versplat"
     else
         echo "$MESSAGE133"
     fi
-
     echo "$MESSAGE134"
     echo "$MESSAGE135"
     is_running && [ -n "$WAN_PORTS" ] && printf "$MESSAGE189\n" "$WAN_PORTS"
-}
-
-check_wan_ports() {
-    current_ports=$(echo "$WAN_PORTS" | tr ' ' '\n')
-    updated_ports=""
-    for combination in $current_ports; do
-        proxy_type=$(echo "$combination" | cut -d':' -f1)
-        port=$(echo "$combination" | cut -d':' -f2)
-        found_match=0
-        in_inbounds=0
-        search_port=0
-        while read -r line; do
-            if echo "$line" | grep -q '^[[:space:]]*"inbounds"'; then
-                in_inbounds=1
-            fi
-            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$proxy_type\""; then
-                search_port=1
-                continue
-            fi
-            if [ "$search_port" = "1" ] && echo "$line" | grep -q "^[[:space:]]*\"listen_port\"[[:space:]]*:[[:space:]]*$port\\b"; then
-                found_match=1
-                break
-            fi
-            if echo "$line" | grep -q '^[[:space:]]*"type"[[:space:]]*:[[:space:]]*'; then
-                search_port=0
-            fi
-        done < "$SB_CONFIG"
-        if [ "$found_match" -eq 1 ]; then
-            updated_ports="$updated_ports $combination"
-        fi
-    done
-    updated_ports=$(echo "$updated_ports" | tr -s ' ' | sed 's/^ //')
-    sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$updated_ports\"|" "$SBS_CONF"
-}
-
-add_del_ports() {
-    source "$SBS_CONF"
-    VALID_TYPES="vless vmess shadowsocks trojan naive hysteria shadowtls tuic hysteria2"
-    read -p "$MESSAGE136" input_combinations
-    if [ -z "$input_combinations" ]; then
-        echo "$MESSAGE137"
-    fi
-    combinations=$(echo "$input_combinations" | tr ' ' '\n')
-    current_ports=$(grep "^WAN_PORTS=" "$SBS_CONF" | cut -d '"' -f 2)
-    for combination in $combinations; do
-      found_match=0
-      proxy_type=$(echo "$combination" | cut -d':' -f1)
-      port=$(echo "$combination" | cut -d':' -f2)
-      if ! echo "$VALID_TYPES" | grep -qw "$proxy_type"; then
-        printf "$MESSAGE138\n" "$proxy_type"
-        continue
-      fi
-      in_inbounds=0
-      search_port=0
-      while read -r line; do
-        if echo "$line" | grep -q '^[[:space:]]*"inbounds"[[:space:]]*:'; then
-          in_inbounds=1
-        fi
-        if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$proxy_type\""; then
-          search_port=1
-          continue
-        fi
-        if [ "$search_port" = "1" ] && echo "$line" | grep -q "^[[:space:]]*\"listen_port\"[[:space:]]*:[[:space:]]*$port\\b"; then
-          found_match=1
-          break
-        fi
-        if echo "$line" | grep -q '^[[:space:]]*"type"[[:space:]]*:'; then
-          search_port=0
-        fi
-      done < "$SB_CONFIG"
-      if [ "$found_match" -eq 0 ]; then
-        printf "$MESSAGE139\n" "$proxy_type:$port"
-        continue
-      fi
-      if echo "$current_ports" | grep -wq "$proxy_type:$port"; then
-        current_ports=$(echo "$current_ports" | sed "s/\b$proxy_type:$port\b//g" | tr -s ' ' | sed 's/^ //')
-        printf "$MESSAGE140\n" "$proxy_type:$port"
-      else
-        if [ -n "$current_ports" ]; then
-          current_ports="$current_ports $proxy_type:$port"
-        else
-          current_ports="$proxy_type:$port"
-        fi
-        printf "$MESSAGE141\n" "$proxy_type:$port"
-      fi
-    done
-    sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$current_ports\"|" "$SBS_CONF"
-    source "$SBS_CONF"
-    echo ""
-    if [ -z "$WAN_PORTS" ]; then
-        echo "$MESSAGE142"
-    else
-        printf "$MESSAGE143\n" "$WAN_PORTS"
-    fi
-    serv_sing_box
-}
-
-exch_ports() {
-    source "$SBS_CONF"
-    VALID_TYPES="vless vmess shadowsocks trojan naive hysteria shadowtls tuic hysteria2"
-    read -p "$MESSAGE136" input_combinations
-    if [ -z "$input_combinations" ];then
-        echo "$MESSAGE137"
-        sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"\"|" "$SBS_CONF"
-        source "$SBS_CONF"
-        echo ""
-        echo "$MESSAGE144"
-        serv_sing_box
-        return
-    fi
-    combinations=$(echo "$input_combinations" | tr ' ' '\n')
-    new_ports=""
-    invalid_combinations=0
-    for combination in $combinations; do
-        found_match=0
-        proxy_type=$(echo "$combination" | cut -d':' -f1)
-        port=$(echo "$combination" | cut -d':' -f2)
-        if ! echo "$VALID_TYPES" | grep -qw "$proxy_type"; then
-            printf "$MESSAGE138\n" "$proxy_type"
-            invalid_combinations=1
-            continue
-        fi
-        in_inbounds=0
-        search_port=0
-        while read -r line; do
-            if echo "$line" | grep -q '^[[:space:]]*"inbounds"[[:space:]]*:'; then
-                in_inbounds=1
-            fi
-            if [ "$in_inbounds" -eq 1 ] && echo "$line" | grep -q "^[[:space:]]*\"type\"[[:space:]]*:[[:space:]]*\"$proxy_type\""; then
-                search_port=1
-                continue
-            fi
-            if [ "$search_port" = "1" ] && echo "$line" | grep -q "^[[:space:]]*\"listen_port\"[[:space:]]*:[[:space:]]*$port\\b"; then
-                found_match=1
-                break
-            fi
-            if echo "$line" | grep -q '^[[:space:]]*"type"[[:space:]]*:'; then
-                search_port=0
-            fi
-        done < "$SB_CONFIG"
-        if [ "$found_match" -eq 0 ]; then
-            printf "$MESSAGE139\n" "$proxy_type:$port"
-            invalid_combinations=1
-            continue
-        fi
-        if [ -n "$new_ports" ]; then
-            new_ports="$new_ports $proxy_type:$port"
-        else
-            new_ports="$proxy_type:$port"
-        fi
-    done
-    if [ -n "$new_ports" ]; then
-        sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$new_ports\"|" "$SBS_CONF"
-        source "$SBS_CONF"
-        echo ""
-        printf "$MESSAGE145\n" "$WAN_PORTS"
-    else
-        echo "$MESSAGE146"
-        echo ""
-        printf "$MESSAGE143\n" "$WAN_PORTS"
-    fi
-    serv_sing_box
+    echo
 }
 
 server_sing_box() {
     source "$SBS_CONF"
+    check_wan_ports
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
-    echo ""
-    echo "$MESSAGE149"
-    echo ""
+    echo
+    echo "$MESSAGE149"; echo
     echo "$MESSAGE150"
     echo "$MESSAGE151"
-    echo "$MESSAGE152"
-    echo ""
-    check_wan_ports
-    source "$SBS_CONF"
-    if [ -z "$WAN_PORTS" ]; then
-        echo "$MESSAGE142"
-        is_running && echo "$MESSAGE125"
-    else
-        printf "$MESSAGE143\n" "$WAN_PORTS"
-        is_running && echo "$MESSAGE103"
-    fi
-    serv_sing_box
-}
-
-serv_sing_box() {
-    check_wan_ports
-    source "$SBS_CONF"
-    if [ -z "$WAN_PORTS" ]; then
-        while true; do
+    echo "$MESSAGE136"; echo
+    while true; do
+        source "$SBS_CONF"
+        if [ -z "$WAN_PORTS" ]; then
+            echo "$MESSAGE142"; echo
+            is_running && echo "$MESSAGE154" && echo
             echo "$MESSAGE153"
-            read -p "$MESSAGE18" init_portchoice
-            case "$init_portchoice" in
-                0) echo "$MESSAGE154"; break ;;
-                1) is_running && stop_sing_box; add_del_ports; exit 0 ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
-    else
-        while true; do
-            echo "$MESSAGE155"
-            echo "$MESSAGE156"
-            echo "0. $MESSAGE95"
-            read -p "$MESSAGE47" act_portchoice
-            case "$act_portchoice" in
-                1) is_running && stop_sing_box; add_del_ports; exit 0 ;;
-                2) is_running && stop_sing_box; exch_ports; exit 0 ;;
-                0) echo "$MESSAGE95"; break ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
-    fi
-    is_running || sing_box_start
+        else
+            printf "$MESSAGE143\n" "$WAN_PORTS"; echo
+            is_running && echo "$MESSAGE154" && echo
+            echo "$MESSAGE152"
+        fi
+        read -p ": " input_combinations
+        if [ -z "$input_combinations" ]; then
+            echo "$MESSAGE52"; echo
+            is_running || sing_box_start
+            return 0
+        fi
+        is_running && stop_sing_box || echo
+        if [ "$input_combinations" = "0" ]; then
+            sed -i "s|^WAN_PORTS=\".*\"$|WAN_PORTS=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE144"
+        elif echo "$input_combinations" | grep -q "^0[[:space:]]"; then
+            input_combinations=$(echo "$input_combinations" | sed 's/^0[[:space:]]*//')
+            combinations=$(echo "$input_combinations" | tr ' ' '\n')
+            new_ports=""
+            for combination in $combinations; do
+                if ! is_valid_combs "$combination"; then
+                    printf "$MESSAGE138\n" "$combination"
+                    continue
+                fi
+                if ! valid_combs "$combination"; then
+                    printf "$MESSAGE139\n" "$combination"
+                    continue
+                fi
+                new_ports="${new_ports:+$new_ports }$combination"
+            done
+            if [ -n "$new_ports" ]; then
+                sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$new_ports\"|" "$SBS_CONF"
+                echo
+                printf "$MESSAGE145\n" "$new_ports"
+            else
+                echo "$MESSAGE146"
+            fi
+        else
+            combinations=$(echo "$input_combinations" | tr ' ' '\n')
+            valid_found=0
+            valid_list=""
+            for combination in $combinations; do
+                if ! is_valid_combs "$combination"; then
+                    printf "$MESSAGE138\n" "$combination"
+                    continue
+                fi
+                if ! valid_combs "$combination"; then
+                    printf "$MESSAGE139\n" "$combination"
+                    continue
+                fi
+                valid_found=1
+                valid_list="${valid_list:+$valid_list }$combination"
+            done
+            if [ "$valid_found" -eq 0 ]; then
+                echo "$MESSAGE146"
+            fi
+            current_ports=$(grep "^WAN_PORTS=" "$SBS_CONF" | cut -d '"' -f2)
+            for combination in $valid_list; do
+                if echo "$current_ports" | grep -wq "$combination"; then
+                    current_ports=$(echo "$current_ports" | sed "s/\b$combination\b//g" | tr -s ' ' | sed 's/^ //')
+                    printf "$MESSAGE140\n" "$combination"
+                else
+                    current_ports="${current_ports:+$current_ports }$combination"
+                    printf "$MESSAGE141\n" "$combination"
+                fi
+            done
+            if [ -n "$current_ports" ]; then
+                sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$current_ports\"|" "$SBS_CONF"
+            else
+                sed -i "s|^WAN_PORTS=\".*\"$|WAN_PORTS=\"\"|" "$SBS_CONF"
+            fi
+        fi; echo
+    done
 }
 
 memlim_sing_box() {
@@ -2000,101 +1959,102 @@ memlim_sing_box() {
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
     while true; do
-        echo ""
+        echo
         echo "$MESSAGE241"
-        echo ""
-        echo "   $MESSAGE250:"
-        [ -n "$H_MEMLIM" ] && echo "   $MESSAGE243: $H_MEMLIM MiB" || echo "   $MESSAGE243 $MESSAGE245"
-        [ -n "$S_MEMLIM" ] && echo "   $MESSAGE244: $S_MEMLIM MiB" || echo "   $MESSAGE244 $MESSAGE245"
-        [ -n "$K_GOGC" ] && echo "   GOGC: $K_GOGC" || echo "   GOGC $MESSAGE245"
-        echo ""
-        is_running && echo "$MESSAGE103"
+        echo
+        echo "   $MESSAGE61:"
+        [ -n "$H_MEMLIM" ] && echo "   $MESSAGE4: $H_MEMLIM MiB" || echo "   $MESSAGE4 $MESSAGE19"
+        [ -n "$S_MEMLIM" ] && echo "   $MESSAGE9: $S_MEMLIM MiB" || echo "   $MESSAGE9 $MESSAGE19"
+        [ -n "$K_GOGC" ] && echo "   GOGC: $K_GOGC" || echo "   GOGC $MESSAGE19"
+        echo
+        is_running && echo "$MESSAGE125" && echo
         echo "1. $MESSAGE242"
         echo "2. $MESSAGE94"
-        echo "0. $MESSAGE95"
-        read -p "$MESSAGE99 [0-2]: " lim_choice
+        read -p "$MESSAGE99" lim_choice
+        [ -z "$lim_choice" ] && break
         case "$lim_choice" in
-            1) is_running && stop_sing_box; set_easy_memlim; source "$SBS_CONF" ;;
-            2) is_running && stop_sing_box; if ! expert_memlim; then continue; fi ;;
-            0) break ;;
+            1) is_running && stop_sing_box || echo; set_easy_memlim; source "$SBS_CONF" ;;
+            2) expert_memlim ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
+    echo "$MESSAGE95"
+    echo
     is_running || sing_box_start
 }
 
 set_easy_memlim() {
-    echo ""
-    echo "$MESSAGE246"
+    echo "$MESSAGE48"
+    echo
     while true; do
-        echo ""
-        [ -n "$H_MEMLIM" ] && echo "$MESSAGE247: $H_MEMLIM MiB" || echo "$MESSAGE247 $MESSAGE253"
-        read -p "$MESSAGE248" new_h_memlim
-        [ -z "$new_h_memlim" ] && { echo "$MESSAGE264"; return; }
+        [ -n "$H_MEMLIM" ] && echo "$MESSAGE49: $H_MEMLIM MiB" || echo "$MESSAGE49 $MESSAGE76"
+        echo
+        read -p "$MESSAGE55" new_h_memlim
+        [ -z "$new_h_memlim" ] && { echo "$MESSAGE52"; return; }
         if [ "$new_h_memlim" = "0" ]; then
             sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"\"|" "$SBS_CONF"
             sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"\"|" "$SBS_CONF"
             sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
-            echo "$MESSAGE265"
+            echo "$MESSAGE243"
             return
         fi
         case "$new_h_memlim" in
             *[!0-9]*|0[0-9]*)
-                echo "$MESSAGE251"
+                echo "$MESSAGE66"
                 continue ;;
         esac
         if [ "$new_h_memlim" -lt 50 ] || [ "$new_h_memlim" -gt 500 ]; then
-            echo "$MESSAGE252"
+            echo "$MESSAGE75"
             continue
         fi
         new_s_memlim=$(awk "BEGIN {print int($new_h_memlim/0.9)}")
         sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
         sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
         sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
-        echo "$MESSAGE249: $new_h_memlim MiB"
+        echo "$MESSAGE59: $new_h_memlim MiB"
         return
     done
 }
 
 expert_memlim() {
     while true; do
-        echo ""
-        echo "$MESSAGE254"
-        echo ""
-        echo "1. $MESSAGE255"
-        [ -n "$H_MEMLIM" ] && echo "   $MESSAGE247: $H_MEMLIM MiB" || echo "   $MESSAGE247 $MESSAGE253"
-        echo "2. $MESSAGE256"
-        [ -n "$S_MEMLIM" ] && echo "   $MESSAGE247: $S_MEMLIM MiB" || echo "   $MESSAGE247 $MESSAGE253"
-        echo "3. $MESSAGE257"
-        [ -n "$K_GOGC" ] && echo "   $MESSAGE247: $K_GOGC" || echo "   $MESSAGE247 $MESSAGE253"
-        echo "0. $MESSAGE258"
-        read -p "$MESSAGE99 [0-3]: " if_choice
+        echo
+        echo "$MESSAGE78"
+        echo
+        is_running && echo "$MESSAGE103" && echo
+        echo "1. $MESSAGE85"
+        [ -n "$H_MEMLIM" ] && echo "   $MESSAGE49: $H_MEMLIM MiB" || echo "   $MESSAGE49 $MESSAGE76"
+        echo "2. $MESSAGE89"
+        [ -n "$S_MEMLIM" ] && echo "   $MESSAGE49: $S_MEMLIM MiB" || echo "   $MESSAGE49 $MESSAGE76"
+        echo "3. $MESSAGE137"
+        [ -n "$K_GOGC" ] && echo "   $MESSAGE49: $K_GOGC" || echo "   $MESSAGE49 $MESSAGE76"
+        read -p "$MESSAGE196
+: " if_choice
+        [ -z "$if_choice" ] && break
         case "$if_choice" in
-            1) set_h_memlim; source "$SBS_CONF" ;;
-            2) set_s_memlim; source "$SBS_CONF" ;;
-            3) set_gogc; source "$SBS_CONF" ;;
-            0) return 1 ;;
+            1) is_running && stop_sing_box || echo; set_h_memlim; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box || echo; set_s_memlim; source "$SBS_CONF" ;;
+            3) is_running && stop_sing_box || echo; set_gogc; source "$SBS_CONF" ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
 }
 
 set_h_memlim() {
-    echo ""
-    echo "$MESSAGE259"
+    echo "$MESSAGE155"
     while true; do
-        echo ""
-        [ -n "$H_MEMLIM" ] && echo "$MESSAGE247: $H_MEMLIM MiB" || echo "$MESSAGE247 $MESSAGE253"
-        read -p "$MESSAGE260" new_h_memlim
-        [ -z "$new_h_memlim" ] && { echo "$MESSAGE264"; return; }
+        echo
+        [ -n "$H_MEMLIM" ] && echo "$MESSAGE49: $H_MEMLIM MiB" || echo "$MESSAGE49 $MESSAGE76"
+        read -p "$MESSAGE156" new_h_memlim
+        [ -z "$new_h_memlim" ] && { echo "$MESSAGE52"; return; }
         if [ "$new_h_memlim" = "0" ]; then
             sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"\"|" "$SBS_CONF"
-            echo "$MESSAGE265"
+            echo "$MESSAGE243"
             return
         fi
         case "$new_h_memlim" in
             *[!0-9]*|0[0-9]*)
-                echo "$MESSAGE251"
+                echo "$MESSAGE66"
                 continue ;;
         esac
         sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
@@ -2104,21 +2064,20 @@ set_h_memlim() {
 }
 
 set_s_memlim() {
-    echo ""
-    echo "$MESSAGE261"
+    echo "$MESSAGE187"
     while true; do
-        echo ""
-        [ -n "$S_MEMLIM" ] && echo "$MESSAGE247: $S_MEMLIM MiB" || echo "$MESSAGE247 $MESSAGE253"
-        read -p "$MESSAGE260" new_s_memlim
-        [ -z "$new_s_memlim" ] && { echo "$MESSAGE264"; return; }
+        echo
+        [ -n "$S_MEMLIM" ] && echo "$MESSAGE49: $S_MEMLIM MiB" || echo "$MESSAGE49 $MESSAGE76"
+        read -p "$MESSAGE156" new_s_memlim
+        [ -z "$new_s_memlim" ] && { echo "$MESSAGE52"; return; }
         if [ "$new_s_memlim" = "0" ]; then
             sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"\"|" "$SBS_CONF"
-            echo "$MESSAGE265"
+            echo "$MESSAGE243"
             return
         fi
         case "$new_s_memlim" in
             *[!0-9]*|0[0-9]*)
-                echo "$MESSAGE251"
+                echo "$MESSAGE66"
                 continue ;;
         esac
         sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
@@ -2128,21 +2087,20 @@ set_s_memlim() {
 }
 
 set_gogc() {
-    echo ""
-    echo "$MESSAGE262"
+    echo "$MESSAGE206"
     while true; do
-        echo ""
-        [ -n "$K_GOGC" ] && echo "$MESSAGE247: $K_GOGC" || echo "$MESSAGE247 $MESSAGE253"
-        read -p "$MESSAGE263" new_k_gogc
-        [ -z "$new_k_gogc" ] && { echo "$MESSAGE264"; return; }
+        echo
+        [ -n "$K_GOGC" ] && echo "$MESSAGE49: $K_GOGC" || echo "$MESSAGE49 $MESSAGE76"
+        read -p "$MESSAGE218" new_k_gogc
+        [ -z "$new_k_gogc" ] && { echo "$MESSAGE52"; return; }
         if [ "$new_k_gogc" = "0" ]; then
             sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
-            echo "$MESSAGE265"
+            echo "$MESSAGE243"
             return
         fi
         case "$new_k_gogc" in
             *[!0-9]*|0[0-9]*)
-                echo "$MESSAGE251"
+                echo "$MESSAGE66"
                 continue ;;
         esac
         sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"$new_k_gogc\"|" "$SBS_CONF"
@@ -2152,51 +2110,47 @@ set_gogc() {
 }
 
 install_sing_box() {
-    uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; exit 1; }
-    { [ "$(uname -r | cut -d. -f1)" -gt 4 ] || [ "$(uname -r | cut -d. -f1)" -eq 4 -a "$(uname -r | cut -d. -f2)" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; exit 1; }
-    if [ -n "$ROOT_DIR" ]; then
-        create_or_use_existing "$SB_DIR"
-    else
-        printf "$MESSAGE162\n" "$ROOT_DIR"
-        del_if_notcurrent
-        exit 1
-    fi
-    create_dir "$SB_DOWNLOAD_DIR"
-    handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
+    rm -f $TEMP_LANG_RU $TEMP_LANG_EN
     echo "Выбор языка / Select language:"
     while true; do
-        echo " 1 - Русский / Russian"
-        echo " 2 - Aнглийский / English"
-        echo " 0 - Выход / Exit"
+        echo " 1. Русский."
+        echo " 2. English."
         read -p "Введите номер пункта / Enter item number: " language_choice
+        [ -z "$language_choice" ] && { echo "Пустой ввод. Отмена установки. / Empty input. Cancel installation."; exit 0; }
         case "$language_choice" in
-            1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; sed -i 's/^LANG=".*"/LANG="ru"/' "$TEMP_SBS_CONF"; break ;;
-            2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; sed -i 's/^LANG=".*"/LANG="en"/' "$TEMP_SBS_CONF"; break ;;
-            0) del_if_notcurrent; rm -f "$TEMP_SBS_CONF"; exit 0 ;;
+            1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; break ;;
+            2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; break ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
         esac
     done
 
-    source "$TEMP_SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$TEMP_LANG_RU"
-    [ "$LANG" = "en" ] && source "$TEMP_LANG_EN"
+    uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
+    { set -- $(uname -r | cut -d. -f1,2 | tr . ' '); [ "$1" -gt 4 ] || [ "$1" -eq 4 -a "$2" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
+    { [ -n "$ROOT_DIR" ] && create_or_use_existing "$SB_DIR"; } || { printf "$MESSAGE162\n" "$ROOT_DIR"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
+
+    create_dir "$SB_DOWNLOAD_DIR"
+    handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
+    [ -f "$TEMP_LANG_RU" ] && sed -i "s|^LANG=\".*\"$|LANG=\"ru\"|" "$TEMP_SBS_CONF"
+    [ -f "$TEMP_LANG_EN" ] && sed -i "s|^LANG=\".*\"$|LANG=\"en\"|" "$TEMP_SBS_CONF"
 
     echo "$MESSAGE158"
     while true; do
         read -p "$MESSAGE18" choice
+        [ -z "$choice" ] && { del_if_notcurrent; rm -rf $SB_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
         case $choice in
-            0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
             1) if is_running; then
                 echo "$MESSAGE160"
                 while true; do
                    read -p "$MESSAGE18" continue_choice
+                   [ -z "$continue_choice" ] && { del_if_notcurrent; rm -rf $SB_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
                    case "$continue_choice" in
-                       0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
-                       1) stop_sing_box; break ;;
+                       1) stop_sing_box; break 2 ;;
                        *) echo "$MESSAGE6" ;;
                    esac
                 done
-               else break; fi; break ;;
+               else
+                   break
+               fi ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -2243,8 +2197,8 @@ install_sing_box() {
             echo "$MESSAGE165"
             while true; do
                 read -p "$MESSAGE12" choice
+                [ -z "$choice" ] && { echo "$MESSAGE13"; break; }
                 case $choice in
-                    0) echo "$MESSAGE13"; break ;;
                     1) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; printf "$MESSAGE166\n" "$SB_PATH"; break ;;
                     *) echo "$MESSAGE6" ;;
                 esac
@@ -2253,15 +2207,11 @@ install_sing_box() {
             cp "$sing_box_file" "$SB_DIR"; printf "$MESSAGE168\n" "$SB_DIR"
         fi
     else
-        if [ -f "$SB_PATH" ]; then
-            echo "$MESSAGE167 $MESSAGE13"
-        else
-            echo "$MESSAGE167 $MESSAGE220"
-        fi
+        [ -f "$SB_PATH" ] && echo "$MESSAGE167 $MESSAGE13" || echo "$MESSAGE167 $MESSAGE220"
     fi
-    del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN
+    del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_LANG_RU $TEMP_LANG_EN
     printf "$MESSAGE170\n" "$SB_DOWNLOAD_DIR"
-    echo ""
+    echo
     echo "$MESSAGE171"
 }
 
@@ -2269,12 +2219,11 @@ remove_sing_box() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
-
     echo "$MESSAGE172"
     while true; do
         read -p "$MESSAGE18" choice
+        [ -z "$choice" ] && echo "$MESSAGE173" && exit 0
         case $choice in
-            0) echo "$MESSAGE173"; exit 0 ;;
             1) is_running && stop_sing_box; echo "$MESSAGE174"; rm -rf $SB_DIR $JFFS_SB_DIR $LN_PATH; echo "$MESSAGE175"; exit 0 ;;
             *) echo "$MESSAGE6" ;;
         esac
@@ -2285,21 +2234,20 @@ show_menu() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
-
+    echo
     echo "$MESSAGE176"
-    echo "$MESSAGE177"
+    echo
     echo "$MESSAGE178"
     echo "$MESSAGE179"
     echo "$MESSAGE180"
+    echo "$MESSAGE184"
     echo "$MESSAGE181"
     echo "$MESSAGE182"
-    echo "$MESSAGE183"
-    echo "$MESSAGE184"
-    echo "$MESSAGE185"
-    echo "$MESSAGE157"
     echo "$MESSAGE240"
+    echo "$MESSAGE185"
+    echo "$MESSAGE183"
+    echo "$MESSAGE157"
     echo "$MESSAGE186"
-    echo "0) $MESSAGE95"
 }
 
 case "$1" in
@@ -2307,32 +2255,32 @@ case "$1" in
     start) start_sing_box ;;
     stop) stop_sing_box ;;
     restart) stop_sing_box; sleep 3; start_sing_box ;;
+    status) status_sing_box ;;
     config) config_sing_box ;;
     setup) setup_sing_box ;;
-    update) update_sing_box ;;
-    status) status_sing_box ;;
-    server) server_sing_box ;;
-    lang) change_language ;;
     limit) memlim_sing_box ;;
+    server) server_sing_box ;;
+    update) update_sing_box ;;
+    lang) change_language ;;
     remove) remove_sing_box ;;
     updmonandconf) updmonandconf_sing_box ;;
     *)
     while true; do
         show_menu
-        read -p "$MESSAGE187" choice
+        read -p "$MESSAGE177" choice
+        [ -z "$choice" ] && echo "$MESSAGE95" && exit 0
         case $choice in
             1) start_sing_box; break ;;
             2) stop_sing_box; break ;;
             3) stop_sing_box; sleep 3; start_sing_box; break ;;
-            4) config_sing_box; break ;;
-            5) setup_sing_box; break ;;
-            6) update_sing_box; break ;;
-            7) status_sing_box; break ;;
+            4) status_sing_box; break ;;
+            5) config_sing_box; break ;;
+            6) setup_sing_box; break ;;
+            7) memlim_sing_box; break ;;
             8) server_sing_box; break ;;
-            9) change_language; break ;;
-            10) memlim_sing_box; break ;;
-            11) remove_sing_box; break ;;
-            0) exit 0 ;;
+            9) update_sing_box; break ;;
+            10) change_language; break ;;
+            0) remove_sing_box; break ;;
             *) echo "$MESSAGE6" ;;
         esac
     done ;;
