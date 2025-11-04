@@ -176,7 +176,7 @@ MESSAGE133="Версия ядра sing-box не найдена."
 MESSAGE134="Архитектура CPU роутера: $(uname -m)"
 MESSAGE135="Версия ядра системы: $(uname -r)"
 MESSAGE136="Принимаются комбинации типа сервера и порта в формате 'type:port', через пробел (например: 'vless:443 shadowsocks:4567'), если данные типы сервером с данными портами действительно присутствуют в вашем конфигурационном файле config.json.
-Допустимые типы inbound прокси-серверов: vless, vmess, shadowsocks, trojan, naive, hysteria, hysteria2, shadowtls и tuic." 
+Допустимые типы inbound прокси-серверов: vless, vmess, shadowsocks, trojan, naive, hysteria, hysteria2, shadowtls, tuic, anytls и wireguard." 
 MESSAGE137="Задать значение GOGC."
 MESSAGE138="Недопустимая комбинация inbound прокси-сервера: %s"
 MESSAGE139="Комбинация %s не найдена в конфигурационном файле sing-box."
