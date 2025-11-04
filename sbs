@@ -1572,8 +1572,8 @@ update_sing_box_menu() {
         read -p "$MESSAGE99" choice
         [ -z "$choice" ] && { rm -rf "$SB_DOWNLOAD_DIR"; echo "$MESSAGE95"; is_running || sing_box_start; exit 0; }
         case "$choice" in
-            1) is_running && stop_sing_box; update_sbs; break ;;
-            2) [ -n "$sb_vers_new" ] && { is_running && stop_sing_box; updcore_sing_box; source "$SBS_CONF"; download_updates; continue; } || echo "$MESSAGE219" ;;
+            1) is_running && stop_sing_box || echo; update_sbs; break ;;
+            2) [ -n "$sb_vers_new" ] && { is_running && stop_sing_box || echo; updcore_sing_box; source "$SBS_CONF"; download_updates; continue; } || echo "$MESSAGE219" ;;
             3) change_repo_vers; source "$SBS_CONF"; download_updates; continue ;;
             *) echo "$MESSAGE6" ;;
         esac
