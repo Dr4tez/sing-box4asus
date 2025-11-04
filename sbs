@@ -1731,7 +1731,6 @@ $MESSAGE42
 }
 
 update_sbs() {
-    echo
     echo "$MESSAGE107"
     cp $TEMP_SCRIPT_PATH $SCRIPT_PATH
     chmod 775 $SCRIPT_PATH
@@ -1777,7 +1776,6 @@ updmonandconf_sing_box() {
 }
 
 updcore_sing_box() {
-    echo
     echo "$MESSAGE109"
     cp "$singbox_file" "$SB_DIR"; echo "$MESSAGE110"
     return
