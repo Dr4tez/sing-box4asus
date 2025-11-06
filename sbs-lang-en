@@ -1,4 +1,4 @@
-# For SBS version 2.3.5
+# For SBS version 2.3.6
 # English localization file.
 
 MESSAGE1="Directory %s created."
@@ -162,7 +162,7 @@ MESSAGE154="Refused to add ports."
 MESSAGE155="1. Add/remove ports."
 MESSAGE156="2. Replace ports."
 MESSAGE157="9) lang (Change the menu and message language to Russian)"
-MESSAGE158="Install the sing-box script?"
+MESSAGE158="The script's compatibility checks with the router have been successfully completed. Install the sing-box script?"
 MESSAGE159="The installation of the sing-box script has been cancelled."
 MESSAGE160="The sing-box script is already installed and running. Continue installation despite this?"
 MESSAGE161="Starting the installation of the sing-box script..."
