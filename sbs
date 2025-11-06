@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.14
+# Version 2.3.15
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.14
+# Создан в SBS 2.3.15
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -96,7 +96,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.14
+# Создан в SBS 2.3.15
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -2129,7 +2129,7 @@ install_sing_box() {
         echo " 1. Русский."
         echo " 2. English."
         read -p "Введите номер пункта / Enter item number: " language_choice
-        [ -z "$language_choice" ] && { echo "Пустой ввод. Отмена установки. / Empty input. Cancel installation."; exit 0; }
+        [ -z "$language_choice" ] && { echo "Пустой ввод. Отмена установки. / Empty input. Cancel installation."; del_if_notcurrent; exit 0; }
         case "$language_choice" in
             1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; break ;;
             2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; break ;;
@@ -2149,13 +2149,13 @@ install_sing_box() {
     echo "$MESSAGE158"
     while true; do
         read -p "$MESSAGE18" choice
-        [ -z "$choice" ] && { del_if_notcurrent; rm -rf $SB_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
+        [ -z "$choice" ] && { del_if_notcurrent; [ -f "$SBS_CONF" ] || rm -rf $SB_DIR; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
         case $choice in
             1) if is_running; then
                 echo "$MESSAGE160"
                 while true; do
                    read -p "$MESSAGE18" continue_choice
-                   [ -z "$continue_choice" ] && { del_if_notcurrent; rm -rf $SB_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
+                   [ -z "$continue_choice" ] && { del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
                    case "$continue_choice" in
                        1) stop_sing_box; break 2 ;;
                        *) echo "$MESSAGE6" ;;
