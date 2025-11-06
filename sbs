@@ -2014,7 +2014,7 @@ install_sing_box() {
     while true; do
         read -p "$MESSAGE18" choice
         case $choice in
-            0) del_if_notcurrent; [ -f "$SBS_CONF" ] || rm -rf $SB_DIR; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
+            0) del_if_notcurrent; [ -f "$SBS_CONF" ] && rm -rf $SB_DOWNLOAD_DIR || rm -rf $SB_DIR; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
             1) if is_running; then
                 echo "$MESSAGE160"
                 while true; do
