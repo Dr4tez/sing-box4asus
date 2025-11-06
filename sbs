@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.4
+# Version 2.3.5
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -23,8 +23,8 @@ SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
 TEMP_UPDATE="$SB_DOWNLOAD_DIR/temp-update"
 TEMP_SCRIPT_PATH="$SB_DOWNLOAD_DIR/sbs"
 TEMP_SBS_CONF="$SB_DOWNLOAD_DIR/sbs-conf"
-TEMP_LANG_RU="$SB_DOWNLOAD_DIR/sbs-lang-ru"
-TEMP_LANG_EN="$SB_DOWNLOAD_DIR/sbs-lang-en"
+TEMP_LANG_RU="/jffs/scripts/sbs-lang-ru"
+TEMP_LANG_EN="/jffs/scripts/sbs-lang-en"
 FW_SCRIPT="/jffs/scripts/firewall-start"
 NAT_SCRIPT="/jffs/scripts/nat-start"
 SS_SCRIPT="/jffs/scripts/services-start"
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.4
+# Создан в SBS 2.3.5
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -90,7 +90,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.4
+# Создан в SBS 2.3.5
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -1332,37 +1332,21 @@ setup_sing_box() {
 }
 
 setup_pro() {
-    if [ -n "$TUN_INTERFACE" ]; then
-        while true; do
-            echo ""
-            echo "$MESSAGE194"
-            echo ""
-            echo "$MESSAGE98"
-            echo "$MESSAGE196"
-            read -p "$MESSAGE99 [0-1]: " if_choice
-            case "$if_choice" in
-                1) configure_table; source "$SBS_CONF" ;;
-                0) return 1 ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
-    elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
-        while true; do
-            echo ""
-            echo "$MESSAGE194"
-            echo ""
-            echo "$MESSAGE98"
-            echo "$MESSAGE195"
-            echo "$MESSAGE196"
-            read -p "$MESSAGE99 [0-2]: " if_choice
-            case "$if_choice" in
-                1) configure_table; source "$SBS_CONF" ;;
-                2) configure_fwmark; source "$SBS_CONF" ;;
-                0) return 1 ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
-    fi
+    while true; do
+        echo ""
+        echo "$MESSAGE194"
+        echo ""
+        echo "$MESSAGE98"
+        echo "$MESSAGE195"
+        echo "$MESSAGE196"
+        read -p "$MESSAGE99 [0-2]: " if_choice
+        case "$if_choice" in
+            1) configure_table; source "$SBS_CONF" ;;
+            2) configure_fwmark; source "$SBS_CONF" ;;
+            0) return 1 ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
 }
 
 download_updates() {
@@ -2002,17 +1986,7 @@ serv_sing_box() {
 }
 
 install_sing_box() {
-    uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; exit 1; }
-    { [ "$(uname -r | cut -d. -f1)" -gt 4 ] || [ "$(uname -r | cut -d. -f1)" -eq 4 -a "$(uname -r | cut -d. -f2)" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; exit 1; }
-    if [ -n "$ROOT_DIR" ]; then
-        create_or_use_existing "$SB_DIR"
-    else
-        printf "$MESSAGE162\n" "$ROOT_DIR"
-        del_if_notcurrent
-        exit 1
-    fi
-    create_dir "$SB_DOWNLOAD_DIR"
-    handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
+    rm -f $TEMP_LANG_RU $TEMP_LANG_EN
     echo "Выбор языка / Select language:"
     while true; do
         echo " 1 - Русский / Russian"
@@ -2020,33 +1994,40 @@ install_sing_box() {
         echo " 0 - Выход / Exit"
         read -p "Введите номер пункта / Enter item number: " language_choice
         case "$language_choice" in
-            1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; sed -i 's/^LANG=".*"/LANG="ru"/' "$TEMP_SBS_CONF"; break ;;
-            2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; sed -i 's/^LANG=".*"/LANG="en"/' "$TEMP_SBS_CONF"; break ;;
-            0) del_if_notcurrent; rm -f "$TEMP_SBS_CONF"; exit 0 ;;
+            1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; break ;;
+            2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; break ;;
+            0) echo "Отмена установки. / Cancel installation."; del_if_notcurrent; exit 0 ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
         esac
     done
 
-    source "$TEMP_SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$TEMP_LANG_RU"
-    [ "$LANG" = "en" ] && source "$TEMP_LANG_EN"
+    uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
+    { set -- $(uname -r | cut -d. -f1,2 | tr . ' '); [ "$1" -gt 4 ] || [ "$1" -eq 4 -a "$2" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
+    { [ -n "$ROOT_DIR" ] && create_or_use_existing "$SB_DIR"; } || { printf "$MESSAGE162\n" "$ROOT_DIR"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
+
+    create_dir "$SB_DOWNLOAD_DIR"
+    handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
+    [ -f "$TEMP_LANG_RU" ] && sed -i "s|^LANG=\".*\"$|LANG=\"ru\"|" "$TEMP_SBS_CONF"
+    [ -f "$TEMP_LANG_EN" ] && sed -i "s|^LANG=\".*\"$|LANG=\"en\"|" "$TEMP_SBS_CONF"
 
     echo "$MESSAGE158"
     while true; do
         read -p "$MESSAGE18" choice
         case $choice in
-            0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
+            0) del_if_notcurrent; [ -f "$SBS_CONF" ] || rm -rf $SB_DIR; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
             1) if is_running; then
                 echo "$MESSAGE160"
                 while true; do
                    read -p "$MESSAGE18" continue_choice
                    case "$continue_choice" in
-                       0) del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
-                       1) stop_sing_box; break ;;
+                       0) del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0 ;;
+                       1) stop_sing_box; break 2;;
                        *) echo "$MESSAGE6" ;;
                    esac
                 done
-               else break; fi; break ;;
+               else
+                   break
+               fi ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
