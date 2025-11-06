@@ -372,7 +372,7 @@ create_or_use_existing() {
         while true; do
             read -p ": " choice
             if [ -z "$choice" ]; then
-                del_if_notcurrent; rm -f $SB_DOWNLOAD_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0
+                del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0
             fi
             case $choice in
                 1) printf "$MESSAGE11\n" "$dir_path"; break ;;
