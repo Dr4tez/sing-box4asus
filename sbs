@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.15
+# Version 2.3.16
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.15
+# Создан в SBS 2.3.16
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -96,7 +96,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.15
+# Создан в SBS 2.3.16
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -2139,23 +2139,18 @@ install_sing_box() {
 
     uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
     { set -- $(uname -r | cut -d. -f1,2 | tr . ' '); [ "$1" -gt 4 ] || [ "$1" -eq 4 -a "$2" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
-    { [ -n "$ROOT_DIR" ] && create_or_use_existing "$SB_DIR"; } || { printf "$MESSAGE162\n" "$ROOT_DIR"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
-
-    create_dir "$SB_DOWNLOAD_DIR"
-    handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
-    [ -f "$TEMP_LANG_RU" ] && sed -i "s|^LANG=\".*\"$|LANG=\"ru\"|" "$TEMP_SBS_CONF"
-    [ -f "$TEMP_LANG_EN" ] && sed -i "s|^LANG=\".*\"$|LANG=\"en\"|" "$TEMP_SBS_CONF"
+    [ -d "$ROOT_DIR" ] || { printf "$MESSAGE162\n" "$ROOT_DIR"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
 
     echo "$MESSAGE158"
     while true; do
         read -p "$MESSAGE18" choice
-        [ -z "$choice" ] && { del_if_notcurrent; [ -f "$SBS_CONF" ] && rm -rf $SB_DOWNLOAD_DIR || rm -rf $SB_DIR; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
+        [ -z "$choice" ] && { del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
         case $choice in
             1) if is_running; then
                 echo "$MESSAGE160"
                 while true; do
                    read -p "$MESSAGE18" continue_choice
-                   [ -z "$continue_choice" ] && { del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
+                   [ -z "$continue_choice" ] && { del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
                    case "$continue_choice" in
                        1) stop_sing_box; break 2 ;;
                        *) echo "$MESSAGE6" ;;
@@ -2167,6 +2162,12 @@ install_sing_box() {
             *) echo "$MESSAGE6" ;;
         esac
     done
+
+    create_or_use_existing "$SB_DIR"
+    create_dir "$SB_DOWNLOAD_DIR"
+    handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
+    [ -f "$TEMP_LANG_RU" ] && sed -i "s|^LANG=\".*\"$|LANG=\"ru\"|" "$TEMP_SBS_CONF"
+    [ -f "$TEMP_LANG_EN" ] && sed -i "s|^LANG=\".*\"$|LANG=\"en\"|" "$TEMP_SBS_CONF"
 
     echo "$MESSAGE161"
     create_or_use_existing "$JFFS_SB_DIR"
