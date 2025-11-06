@@ -2149,7 +2149,7 @@ install_sing_box() {
     echo "$MESSAGE158"
     while true; do
         read -p "$MESSAGE18" choice
-        [ -z "$choice" ] && { del_if_notcurrent; [ -f "$SBS_CONF" ] || rm -rf $SB_DIR; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
+        [ -z "$choice" ] && { del_if_notcurrent; [ -f "$SBS_CONF" ] && rm -rf $SB_DOWNLOAD_DIR || rm -rf $SB_DIR; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
         case $choice in
             1) if is_running; then
                 echo "$MESSAGE160"
