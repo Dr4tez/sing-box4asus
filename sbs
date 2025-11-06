@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.16
+# Version 2.3.17
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -47,7 +47,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.16
+# Создан в SBS 2.3.17
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -96,7 +96,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.16
+# Создан в SBS 2.3.17
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -372,7 +372,7 @@ create_or_use_existing() {
         while true; do
             read -p ": " choice
             if [ -z "$choice" ]; then
-                del_if_notcurrent; rm -f $TEMP_SBS_CONF $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0
+                del_if_notcurrent; rm -f $SB_DOWNLOAD_DIR $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE10"; exit 0
             fi
             case $choice in
                 1) printf "$MESSAGE11\n" "$dir_path"; break ;;
