@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.17
+# Version 2.3.18
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -42,12 +42,13 @@ log_msg() {
 create_dir() {
     mkdir -p "$1"
     chmod 775 "$1"
-    printf "$MESSAGE1\n" "$1"
+    local create_dir_message="$2"
+    [ -n "$create_dir_message" ] && printf "$create_dir_message\n" "$1"
 }
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.17
+# Создан в SBS 2.3.18
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -96,7 +97,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.17
+# Создан в SBS 2.3.18
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -380,7 +381,7 @@ create_or_use_existing() {
             esac
         done
     else
-        create_dir "$dir_path"
+        create_dir "$dir_path" "$MESSAGE1"
     fi
 }
 
@@ -488,11 +489,6 @@ get_sb_version() {
 self_copy() {
     local destination="$1"
     cp "$0" "$destination"
-}
-
-silent_create_dir() {
-    mkdir -p "$1"
-    chmod 775 "$1"
 }
 
 sing_box_start() {
@@ -676,13 +672,9 @@ cidr_in_cidr() {
     b_mask="$3"
     b_net="$4"
 
+    [ "$a_net" -eq "$b_net" ] && [ "$a_bits" -eq "$b_bits" ] && return 1
     [ "$a_bits" -lt "$b_bits" ] && return 1
-
-    if [ "$(( a_net & b_mask ))" -eq "$b_net" ]; then
-        return 0
-    else
-        return 1
-    fi
+    [ "$(( a_net & b_mask ))" -eq "$b_net" ] && return 0 || return 1
 }
 
 valid_combs() {
@@ -749,6 +741,25 @@ check_wan_ports() {
     done
     updated_ports=$(echo "$updated_ports" | tr -s ' ' | sed 's/^ //')
     sed -i "s|^WAN_PORTS=.*|WAN_PORTS=\"$updated_ports\"|" "$SBS_CONF"
+}
+
+remove_duplicates() {
+    local device_ips="$1"
+    local exc_device_ips="$2"
+    local remove_massage="$3"
+    local del_ips=""
+
+    for ip in $device_ips; do
+        for exc_ip in $exc_device_ips; do
+            if [ "$ip" = "$exc_ip" ]; then
+                device_ips=$(echo "$device_ips" | tr ' ' '\n' | grep -Fvx "$ip" | tr '\n' ' ' | xargs)
+                del_ips="$del_ips $ip"
+                break
+            fi
+        done
+    done
+    [ -n "$del_ips" ] && printf "$remove_massage\n" "$del_ips" >&2
+    echo "$device_ips"
 }
 
 start_sing_box() {
@@ -1111,229 +1122,457 @@ stop_sing_box() {
     echo
 }
 
-configure_interface() {
-    source "$SBS_CONF"
-    cidrs=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep / | xargs)
-    echo
-    [ -n "$DEVICE_IPS" ] && [ -n "$cidrs" ] && echo "$MESSAGE43
- $DEVICE_IPS
-
-$MESSAGE84"
-    [ -n "$DEVICE_IPS" ] && [ -z "$cidrs" ] && echo "$MESSAGE43
- $DEVICE_IPS
-
-$MESSAGE38"
-    [ -z "$DEVICE_IPS" ] && echo "$MESSAGE39"
-    read -p ": " input
-    if [ -z "$(echo "$input" | tr -d '[[:space:]]')" ]; then
-        echo "$MESSAGE52"
-    elif [ "$input" = "0" ]; then
-        sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"\"|" "$SBS_CONF"
-        sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
-        echo "$MESSAGE53" && return
-    elif echo "$input" | grep -q "^0[[:space:]][^[:space:]]"; then
-        DEVICE_IPS=$(echo "$input" | sed 's/^0[[:space:]]*//')
-        sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
-        echo "$MESSAGE54:
- $DEVICE_IPS"
-    else
-        m_device_ips=""
-        p_device_ips=""
-        for ip in $input; do
-            if echo "$DEVICE_IPS" | grep -qw "$ip"; then
-                DEVICE_IPS=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep -Fvx "$ip" | tr '\n' ' ' | xargs)
-                m_device_ips="$m_device_ips $ip"
-            else
-                DEVICE_IPS="${DEVICE_IPS:+$DEVICE_IPS }$ip"
-                p_device_ips="$p_device_ips $ip"
-            fi
-        done
-        sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
-        [ -n "$m_device_ips" ] && { m_device_ips=$(echo "$m_device_ips" | xargs); echo "$MESSAGE50
- $m_device_ips"; }
-        [ -n "$p_device_ips" ] && { p_device_ips=$(echo "$p_device_ips" | xargs); echo "$MESSAGE51
- $p_device_ips"; }
-    fi
-
-    cidrs=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep / | xargs)
-
-    if [ -n "$cidrs" ]; then
-        EXC_DEVICE_IPS=$(for exc in $EXC_DEVICE_IPS; do
-            for subnet in $cidrs; do
-                cidr_in_cidr "$exc" "$subnet" && echo "$exc" && break
-            done
-        done | xargs)
-        sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
-        echo
-        echo "$MESSAGE56
- $cidrs"
-        [ -n "$EXC_DEVICE_IPS" ] && echo "$MESSAGE60
- $EXC_DEVICE_IPS
-
-$MESSAGE57"
-        [ -z "$EXC_DEVICE_IPS" ] && echo "$MESSAGE58"
-        read -p ": " exc_input
-        orig_exc_input="$exc_input"
-        ips_part=$(echo "$exc_input" | sed 's/^0[[:space:]]*//')
-        if [ -n "$ips_part" ]; then
-            exc_input=$(for exci in $ips_part; do
-                for subnet in $cidrs; do
-                    cidr_in_cidr "$exci" "$subnet" && echo "$exci" && break
-                done
-            done | xargs)
-            prefix=$(echo "$orig_exc_input" | sed -n 's/^\(0[[:space:]]*\).*/\1/p')
-            exc_input="$prefix$exc_input"
+check_ips_duplicates() {
+    local input_ips="$1"
+    local inc_ips="$2"
+    local exc_ips="$3"
+    local mess_inc_ips="$4"
+    local mess_exc_ips="$5"
+    local ip
+    local dup_in_ips1=""
+    local dup_in_ips2=""
+    local dedup_input_ips=""
+    for ip in $input_ips; do
+        if echo "$inc_ips" | grep -qw "$ip"; then
+            dup_in_ips1="$dup_in_ips1 $ip"
+        elif echo "$exc_ips" | grep -qw "$ip"; then
+            dup_in_ips2="$dup_in_ips2 $ip"
         else
-            exc_input="$orig_exc_input"
+            dedup_input_ips="${dedup_input_ips:+$dedup_input_ips }$ip"
         fi
-        if [ -z "$(echo "$exc_input" | tr -d '[[:space:]]')" ]; then
-            echo "$MESSAGE52"
-        elif [ "$exc_input" = "0" ]; then
-            sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
-            echo "$MESSAGE64"
-        elif echo "$exc_input" | grep -q "^0[[:space:]][^[:space:]]"; then
-            EXC_DEVICE_IPS=$(echo "$exc_input" | sed 's/^0[[:space:]]*//')
-            sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
-            echo "$MESSAGE65:
- $EXC_DEVICE_IPS"
-        else
-            m_exc_device_ips=""
-            p_exc_device_ips=""
-            for ip in $exc_input; do
-                if echo "$EXC_DEVICE_IPS" | grep -qw "$ip"; then
-                    EXC_DEVICE_IPS=$(echo "$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -Fvx "$ip" | tr '\n' ' ' | xargs)
-                    m_exc_device_ips="$m_exc_device_ips $ip"
-                else
-                    EXC_DEVICE_IPS="${EXC_DEVICE_IPS:+$EXC_DEVICE_IPS }$ip"
-                    p_exc_device_ips="$p_exc_device_ips $ip"
-                fi
-            done
-            sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
-            [ -n "$m_exc_device_ips" ] && { m_exc_device_ips=$(echo "$m_exc_device_ips" | xargs); echo "$MESSAGE62
- $m_exc_device_ips"; }
-            [ -n "$p_exc_device_ips" ] && { p_exc_device_ips=$(echo "$p_exc_device_ips" | xargs); echo "$MESSAGE63
- $p_exc_device_ips"; }
-        fi
-    else
-        sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
-    fi
+    done
+    [ -n "$dup_in_ips1" ] && { echo "$mess_inc_ips" >&2; echo "$dup_in_ips1" >&2; }
+    [ -n "$dup_in_ips2" ] && { echo "$mess_exc_ips" >&2; echo "$dup_in_ips2" >&2; }
+    [ -n "$dup_in_ips1$dup_in_ips2" ] && echo "$MESSAGE252" >&2
+    echo "$dedup_input_ips"
 }
 
-configure_finterface() {
-    source "$SBS_CONF"
-    fcidrs=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep / | xargs)
-    echo
-    [ -n "$DEVICE_FIPS" ] && [ -n "$fcidrs" ] && echo "$MESSAGE68
- $DEVICE_FIPS
-
-$MESSAGE40"
-    [ -n "$DEVICE_FIPS" ] && [ -z "$fcidrs" ] && echo "$MESSAGE68
- $DEVICE_FIPS
-
-$MESSAGE67"
-    [ -z "$DEVICE_FIPS" ] && echo "$MESSAGE44"
-    read -p ": " finput
-    if [ -z "$(echo "$finput" | tr -d '[[:space:]]')" ]; then
-        echo "$MESSAGE52"
-    elif [ "$finput" = "0" ]; then
-        sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"\"|" "$SBS_CONF"
-        sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
-        echo "$MESSAGE71" && return
-    elif echo "$finput" | grep -q "^0[[:space:]][^[:space:]]"; then
-        DEVICE_FIPS=$(echo "$finput" | sed 's/^0[[:space:]]*//')
-        sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
-        echo "$MESSAGE72:
- $DEVICE_FIPS"
-    else
-        m_device_fips=""
-        p_device_fips=""
-        for fip in $finput; do
-            if echo "$DEVICE_FIPS" | grep -qw "$fip"; then
-                DEVICE_FIPS=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep -Fvx "$fip" | tr '\n' ' ' | xargs)
-                m_device_fips="$m_device_fips $fip"
-            else
-                DEVICE_FIPS="${DEVICE_FIPS:+$DEVICE_FIPS }$fip"
-                p_device_fips="$p_device_fips $fip"
-            fi
-        done
-        sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
-        [ -n "$m_device_fips" ] && { m_device_fips=$(echo "$m_device_fips" | xargs); echo "$MESSAGE69
- $m_device_fips"; }
-        [ -n "$p_device_fips" ] && { p_device_fips=$(echo "$p_device_fips" | xargs); echo "$MESSAGE70
- $p_device_fips"; }
-    fi
-
-    fcidrs=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep / | xargs)
-
-    if [ -n "$fcidrs" ]; then
-        EXC_DEVICE_FIPS=$(for fexc in $EXC_DEVICE_FIPS; do
-            for fsubnet in $fcidrs; do
-                cidr_in_cidr "$fexc" "$fsubnet" && echo "$fexc" && break
-            done
-        done | xargs)
-        sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
-        echo
-        echo "$MESSAGE73
- $fcidrs"
-        [ -n "$EXC_DEVICE_FIPS" ] && echo "$MESSAGE77
- $EXC_DEVICE_FIPS
-
-$MESSAGE45"
-        [ -z "$EXC_DEVICE_FIPS" ] && echo "$MESSAGE74"
-        read -p ": " exc_finput
-        orig_exc_finput="$exc_finput"
-        fips_part=$(echo "$exc_finput" | sed 's/^0[[:space:]]*//')
-        if [ -n "$fips_part" ]; then
-            exc_finput=$(for fexci in $fips_part; do
-                for fsubnet in $fcidrs; do
-                    cidr_in_cidr "$fexci" "$fsubnet" && echo "$fexci" && break
-                done
-            done | xargs)
-            fprefix=$(echo "$orig_exc_finput" | sed -n 's/^\(0[[:space:]]*\).*/\1/p')
-            exc_finput="$fprefix$exc_finput"
-        else
-            exc_finput="$orig_exc_finput"
+validate_ips_input() {
+    local ips="$1"
+    local ip oct1 oct2 oct3 oct4 mask normalized_ips="" invalid_ips="" seen=""
+    for ip in $ips; do
+        if ! echo "$ip" | grep -E -q '^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$'; then
+            invalid_ips="${invalid_ips:+$invalid_ips }$ip"
+            continue
         fi
-        if [ -z "$(echo "$exc_finput" | tr -d '[[:space:]]')" ]; then
-            echo "$MESSAGE52"
-        elif [ "$exc_finput" = "0" ]; then
-            sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
-            echo "$MESSAGE81"
-        elif echo "$exc_finput" | grep -q "^0[[:space:]][^[:space:]]"; then
-            EXC_DEVICE_FIPS=$(echo "$exc_finput" | sed 's/^0[[:space:]]*//')
-            sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
-            echo "$MESSAGE82:
- $EXC_DEVICE_FIPS"
+        if echo "$ip" | grep -q '/'; then
+            mask=${ip##*/}
+            ip=${ip%/*}
         else
-            m_exc_device_fips=""
-            p_exc_device_fips=""
-            for fip in $exc_finput; do
-                if echo "$EXC_DEVICE_FIPS" | grep -qw "$fip"; then
-                    EXC_DEVICE_FIPS=$(echo "$EXC_DEVICE_FIPS" | tr ' ' '\n' | grep -Fvx "$fip" | tr '\n' ' ' | xargs)
-                    m_exc_device_fips="$m_exc_device_fips $fip"
+            mask=""
+        fi
+        if echo "$mask" | grep -Eq '^0[0-9]'; then
+            invalid_ips="${invalid_ips:+$invalid_ips }${ip}/${mask}"
+            continue
+        fi
+        IFS='.' read -r oct1 oct2 oct3 oct4 <<EOF
+$ip
+EOF
+        valid_ip=1
+        for oct in "$oct1" "$oct2" "$oct3" "$oct4"; do
+            case "$oct" in
+                ''|*[!0-9]*)
+                    valid_ip=0 ;;
+            esac
+            if [ "$valid_ip" -eq 1 ]; then
+                if [ "$oct" -lt 0 ] || [ "$oct" -gt 255 ] || echo "$oct" | grep -q '^0[0-9]'; then
+                    valid_ip=0
+                fi
+            fi
+            [ "$valid_ip" -eq 0 ] && break
+        done
+        if [ -n "$mask" ] && { [ "$mask" -lt 0 ] || [ "$mask" -gt 32 ]; }; then
+            valid_ip=0
+        fi
+        if [ "$valid_ip" -eq 0 ]; then
+            invalid_ips="${invalid_ips:+$invalid_ips }${ip}${mask:+/$mask}"
+            continue
+        fi
+        [ "$mask" = "32" ] && mask=""
+        ip="${ip}${mask:+/$mask}"
+        case " $seen " in
+            *" $ip "*)
+                continue ;;
+        esac
+        seen="$seen $ip"
+        normalized_ips="${normalized_ips:+$normalized_ips }$ip"
+    done
+    [ -n "$invalid_ips" ] && echo "$MESSAGE255
+$invalid_ips" >&2
+    echo "$normalized_ips"
+}
+
+configure_interface_inc() {
+    while true; do
+        source "$SBS_CONF"
+        if [ -n "$DEVICE_IPS" ]; then
+            echo "$MESSAGE43:
+ $DEVICE_IPS"
+            cidrs=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep / | xargs)
+            echo "
+$MESSAGE38"
+        else
+            echo "$MESSAGE39"
+        fi
+        read -p ": " input
+        if [ -z "$(echo "$input" | tr -d '[[:space:]]')" ]; then
+            echo "$MESSAGE52" && return
+        elif echo "$input" | grep -Eq '^[[:space:]]*0[[:space:]]*$'; then
+            sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"\"|" "$SBS_CONF"
+            sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE53" && return
+        fi
+        in_ips_part=$(echo "$input" | sed 's/^[[:space:]]*0[[:space:]][[:space:]]*//')
+        if [ -n "$in_ips_part" ]; then
+            orig_input="$input"
+            in_ips_part=$(validate_ips_input "$in_ips_part")
+            in_ips_part=$(check_ips_duplicates "$in_ips_part" "$DEVICE_FIPS" "$EXC_DEVICE_FIPS" "$MESSAGE250" "$MESSAGE251")
+            if [ -n "$in_ips_part" ]; then
+                prefixi=$(echo "$orig_input" | sed -n 's/^\([[:space:]]*0[[:space:]][[:space:]]*\).*/\1/p')
+                input="$prefixi$in_ips_part"
+            else
+                input=""
+            fi
+        fi
+        if [ -z "$input" ]; then
+            echo "$MESSAGE259" && continue
+        elif echo "$input" | grep -q "^[[:space:]]*0[[:space:]][[:space:]]*[^[:space:]]"; then
+            DEVICE_IPS=$(echo "$input" | sed 's/^[[:space:]]*0[[:space:]][[:space:]]*//')
+            sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
+            echo "$MESSAGE54:
+ $DEVICE_IPS"
+        else
+            m_device_ips=""
+            p_device_ips=""
+            for ip in $input; do
+                if echo "$DEVICE_IPS" | grep -qw "$ip"; then
+                    DEVICE_IPS=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep -Fvx "$ip" | tr '\n' ' ' | xargs)
+                    m_device_ips="$m_device_ips $ip"
                 else
-                    EXC_DEVICE_FIPS="${EXC_DEVICE_FIPS:+$EXC_DEVICE_FIPS }$fip"
-                    p_exc_device_fips="$p_exc_device_fips $fip"
+                    DEVICE_IPS="${DEVICE_IPS:+$DEVICE_IPS }$ip"
+                    p_device_ips="$p_device_ips $ip"
                 fi
             done
-            sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
-            [ -n "$m_exc_device_fips" ] && { m_exc_device_fips=$(echo "$m_exc_device_fips" | xargs); echo "$MESSAGE79
- $m_exc_device_fips"; }
-            [ -n "$p_exc_device_fips" ] && { p_exc_device_fips=$(echo "$p_exc_device_fips" | xargs); echo "$MESSAGE80
- $p_exc_device_fips"; }
+            sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
+            [ -n "$m_device_ips" ] && { m_device_ips=$(echo "$m_device_ips" | xargs); echo "$MESSAGE50
+ $m_device_ips"; }
+            [ -n "$p_device_ips" ] && { p_device_ips=$(echo "$p_device_ips" | xargs); echo "$MESSAGE51
+ $p_device_ips"; }
         fi
-    else
-        sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
-    fi
+        cidrs=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep / | xargs)
+        if [ -n "$cidrs" ]; then
+            invalid_exc_ips=""
+            valid_exc_ips=""
+            for exc in $EXC_DEVICE_IPS; do
+                matched=0
+                for subnet in $cidrs; do
+                    if cidr_in_cidr "$exc" "$subnet"; then
+                        valid_exc_ips="$valid_exc_ips $exc"
+                        matched=1
+                        break
+                    fi
+                done
+                [ $matched -eq 0 ] && invalid_exc_ips="$invalid_exc_ips $exc"
+            done
+            EXC_DEVICE_IPS=$(echo "$valid_exc_ips" | xargs)
+            [ -n "$invalid_exc_ips" ] && printf "$MESSAGE256\n" "$invalid_exc_ips" "$cidrs" >&2
+            sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
+            DEVICE_IPS=$(remove_duplicates "$DEVICE_IPS" "$EXC_DEVICE_IPS" "$MESSAGE96")
+            sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
+        fi; return
+    done
+}
+
+configure_interface_exc() {
+    while true; do
+        cidrs=$(echo "$DEVICE_IPS" | tr ' ' '\n' | grep / | xargs)
+        if [ -n "$cidrs" ]; then
+            echo "$MESSAGE56
+ $cidrs"
+            [ -n "$EXC_DEVICE_IPS" ] && echo "$MESSAGE60
+ $EXC_DEVICE_IPS
+
+$MESSAGE57" || echo "$MESSAGE58"
+            read -p ": " exc_input
+            if [ -z "$(echo "$exc_input" | tr -d '[[:space:]]')" ]; then
+                echo "$MESSAGE52" && return
+            elif echo "$exc_input" | grep -Eq '^[[:space:]]*0[[:space:]]*$'; then
+                sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
+                echo "$MESSAGE64" && return
+            fi
+            ips_part=$(echo "$exc_input" | sed 's/^[[:space:]]*0[[:space:]][[:space:]]*//')
+            if [ -n "$ips_part" ]; then
+                orig_exc_input="$exc_input"
+                ips_part=$(validate_ips_input "$ips_part")
+                ips_part=$(check_ips_duplicates "$ips_part" "$DEVICE_FIPS" "$EXC_DEVICE_FIPS" "$MESSAGE250" "$MESSAGE251")
+                valid_exc_ipsi=""
+                invalid_exc_ipsi=""
+                for exci in $ips_part; do
+                    found=0
+                    for subnet in $cidrs; do
+                        if cidr_in_cidr "$exci" "$subnet"; then
+                            valid_exc_ipsi="$valid_exc_ipsi $exci"
+                            found=1
+                            break
+                        fi
+                    done
+                    [ $found -eq 0 ] && invalid_exc_ipsi="$invalid_exc_ipsi $exci"
+                done
+                ips_part=$(echo "$valid_exc_ipsi" | xargs)
+                [ -n "$invalid_exc_ipsi" ] && printf "$MESSAGE257\n" "$invalid_exc_ipsi" "$cidrs" >&2
+                if [ -n "$ips_part" ]; then
+                    prefixi=$(echo "$orig_exc_input" | sed -n 's/^\([[:space:]]*0[[:space:]][[:space:]]*\).*/\1/p')
+                    exc_input="$prefixi$ips_part"
+                else
+                    exc_input=""
+                fi
+            fi
+            if [ -z "$exc_input" ]; then
+                echo "$MESSAGE259" && continue
+            elif echo "$exc_input" | grep -q "^[[:space:]]*0[[:space:]][[:space:]]*[^[:space:]]"; then
+                EXC_DEVICE_IPS=$(echo "$exc_input" | sed 's/^[[:space:]]*0[[:space:]][[:space:]]*//')
+                sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
+                echo "$MESSAGE65:
+ $EXC_DEVICE_IPS"
+            else
+                m_exc_device_ips=""
+                p_exc_device_ips=""
+                for ip in $exc_input; do
+                    if echo "$EXC_DEVICE_IPS" | grep -qw "$ip"; then
+                        EXC_DEVICE_IPS=$(echo "$EXC_DEVICE_IPS" | tr ' ' '\n' | grep -Fvx "$ip" | tr '\n' ' ' | xargs)
+                        m_exc_device_ips="$m_exc_device_ips $ip"
+                    else
+                        EXC_DEVICE_IPS="${EXC_DEVICE_IPS:+$EXC_DEVICE_IPS }$ip"
+                        p_exc_device_ips="$p_exc_device_ips $ip"
+                    fi
+                done
+                sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"$EXC_DEVICE_IPS\"|" "$SBS_CONF"
+                [ -n "$m_exc_device_ips" ] && { m_exc_device_ips=$(echo "$m_exc_device_ips" | xargs); echo "$MESSAGE62
+ $m_exc_device_ips"; }
+                [ -n "$p_exc_device_ips" ] && { p_exc_device_ips=$(echo "$p_exc_device_ips" | xargs); echo "$MESSAGE63
+ $p_exc_device_ips"; }
+            fi
+        else
+            sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE262"
+        fi
+        DEVICE_IPS=$(remove_duplicates "$DEVICE_IPS" "$EXC_DEVICE_IPS" "$MESSAGE96")
+        sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"$DEVICE_IPS\"|" "$SBS_CONF"
+        return
+    done
+}
+
+configure_finterface_inc() {
+    while true; do
+        source "$SBS_CONF"
+        if [ -n "$DEVICE_FIPS" ]; then
+            echo "$MESSAGE68:
+ $DEVICE_FIPS"
+            fcidrs=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep / | xargs)
+            echo "
+$MESSAGE67"
+        else
+            echo "$MESSAGE44"
+        fi
+        read -p ": " finput
+        if [ -z "$(echo "$finput" | tr -d '[[:space:]]')" ]; then
+            echo "$MESSAGE52" && return
+        elif echo "$finput" | grep -Eq '^[[:space:]]*0[[:space:]]*$'; then
+            sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"\"|" "$SBS_CONF"
+            sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE71" && return
+        fi
+        in_fips_part=$(echo "$finput" | sed 's/^[[:space:]]*0[[:space:]][[:space:]]*//')
+        if [ -n "$in_fips_part" ]; then
+            orig_finput="$finput"
+            in_fips_part=$(validate_ips_input "$in_fips_part")
+            in_fips_part=$(check_ips_duplicates "$in_fips_part" "$DEVICE_IPS" "$EXC_DEVICE_IPS" "$MESSAGE253" "$MESSAGE254")
+            if [ -n "$in_fips_part" ]; then
+                prefixfi=$(echo "$orig_finput" | sed -n 's/^\([[:space:]]*0[[:space:]][[:space:]]*\).*/\1/p')
+                finput="$prefixfi$in_fips_part"
+            else
+                finput=""
+            fi
+        fi
+        if [ -z "$finput" ]; then
+            echo "$MESSAGE259" && continue
+        elif echo "$finput" | grep -q "^[[:space:]]*0[[:space:]][[:space:]]*[^[:space:]]"; then
+            DEVICE_FIPS=$(echo "$finput" | sed 's/^[[:space:]]*0[[:space:]][[:space:]]*//')
+            sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
+            echo "$MESSAGE72:
+ $DEVICE_FIPS"
+        else
+            m_device_fips=""
+            p_device_fips=""
+            for fip in $finput; do
+                if echo "$DEVICE_FIPS" | grep -qw "$fip"; then
+                    DEVICE_FIPS=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep -Fvx "$fip" | tr '\n' ' ' | xargs)
+                    m_device_fips="$m_device_fips $fip"
+                else
+                    DEVICE_FIPS="${DEVICE_FIPS:+$DEVICE_FIPS }$fip"
+                    p_device_fips="$p_device_fips $fip"
+                fi
+            done
+            sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
+            [ -n "$m_device_fips" ] && { m_device_fips=$(echo "$m_device_fips" | xargs); echo "$MESSAGE69
+ $m_device_fips"; }
+            [ -n "$p_device_fips" ] && { p_device_fips=$(echo "$p_device_fips" | xargs); echo "$MESSAGE70
+ $p_device_fips"; }
+        fi
+        fcidrs=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep / | xargs)
+        if [ -n "$fcidrs" ]; then
+            invalid_exc_fips=""
+            valid_exc_fips=""
+            for fexc in $EXC_DEVICE_FIPS; do
+                fmatched=0
+                for fsubnet in $fcidrs; do
+                    if cidr_in_cidr "$fexc" "$fsubnet"; then
+                        valid_exc_fips="$valid_exc_fips $fexc"
+                        fmatched=1
+                        break
+                    fi
+                done
+                [ $fmatched -eq 0 ] && invalid_exc_fips="$invalid_exc_fips $fexc"
+            done
+            EXC_DEVICE_FIPS=$(echo "$valid_exc_fips" | xargs)
+            [ -n "$invalid_exc_fips" ] && printf "$MESSAGE256\n" "$invalid_exc_fips" "$fcidrs" >&2
+            sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
+            DEVICE_FIPS=$(remove_duplicates "$DEVICE_FIPS" "$EXC_DEVICE_FIPS" "$MESSAGE246")
+            sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
+        fi; return
+    done
+}
+configure_finterface_exc() {
+    while true; do
+        fcidrs=$(echo "$DEVICE_FIPS" | tr ' ' '\n' | grep / | xargs)
+        if [ -n "$fcidrs" ]; then
+            echo "$MESSAGE73
+ $fcidrs"
+            [ -n "$EXC_DEVICE_FIPS" ] && echo "$MESSAGE77
+ $EXC_DEVICE_FIPS
+
+$MESSAGE45" || echo "$MESSAGE74"
+            read -p ": " exc_finput
+            if [ -z "$(echo "$exc_finput" | tr -d '[[:space:]]')" ]; then
+                echo "$MESSAGE52" && return
+            elif echo "$exc_finput" | grep -Eq '^[[:space:]]*0[[:space:]]*$'; then
+                sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
+                echo "$MESSAGE81" && return
+            fi
+            fips_part=$(echo "$exc_finput" | sed 's/^[[:space:]]*0[[:space:]][[:space:]]*//')
+            if [ -n "$fips_part" ]; then
+                orig_exc_finput="$exc_finput"
+                fips_part=$(validate_ips_input "$fips_part")
+                fips_part=$(check_ips_duplicates "$fips_part" "$DEVICE_IPS" "$EXC_DEVICE_IPS" "$MESSAGE253" "$MESSAGE254")
+                valid_exc_fipsi=""
+                invalid_exc_fipsi=""
+                for excfi in $fips_part; do
+                    ffound=0
+                    for fsubnet in $fcidrs; do
+                        if cidr_in_cidr "$excfi" "$fsubnet"; then
+                            valid_exc_fipsi="$valid_exc_fipsi $excfi"
+                            ffound=1
+                            break
+                        fi
+                    done
+                    [ $ffound -eq 0 ] && invalid_exc_fipsi="$invalid_exc_fipsi $excfi"
+                done
+                fips_part=$(echo "$valid_exc_fipsi" | xargs)
+                [ -n "$invalid_exc_fipsi" ] && printf "$MESSAGE257\n" "$invalid_exc_fipsi" "$fcidrs" >&2
+                if [ -n "$fips_part" ]; then
+                    prefixfi=$(echo "$orig_exc_finput" | sed -n 's/^\([[:space:]]*0[[:space:]][[:space:]]*\).*/\1/p')
+                    exc_finput="$prefixfi$fips_part"
+                else
+                    exc_finput=""
+                fi
+            fi
+            if [ -z "$exc_finput" ]; then
+                echo "$MESSAGE259" && continue
+            elif echo "$exc_finput" | grep -q "^[[:space:]]*0[[:space:]][[:space:]]*[^[:space:]]"; then
+                EXC_DEVICE_FIPS=$(echo "$exc_finput" | sed 's/^[[:space:]]*0[[:space:]][[:space:]]*//')
+                sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
+                echo "$MESSAGE82:
+ $EXC_DEVICE_FIPS"
+            else
+                m_exc_device_fips=""
+                p_exc_device_fips=""
+                for fip in $exc_finput; do
+                    if echo "$EXC_DEVICE_FIPS" | grep -qw "$fip"; then
+                        EXC_DEVICE_FIPS=$(echo "$EXC_DEVICE_FIPS" | tr ' ' '\n' | grep -Fvx "$fip" | tr '\n' ' ' | xargs)
+                        m_exc_device_fips="$m_exc_device_fips $fip"
+                    else
+                        EXC_DEVICE_FIPS="${EXC_DEVICE_FIPS:+$EXC_DEVICE_FIPS }$fip"
+                        p_exc_device_fips="$p_exc_device_fips $fip"
+                    fi
+                done
+                sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"$EXC_DEVICE_FIPS\"|" "$SBS_CONF"
+                [ -n "$m_exc_device_fips" ] && { m_exc_device_fips=$(echo "$m_exc_device_fips" | xargs); echo "$MESSAGE79
+ $m_exc_device_fips"; }
+                [ -n "$p_exc_device_fips" ] && { p_exc_device_fips=$(echo "$p_exc_device_fips" | xargs); echo "$MESSAGE80
+ $p_exc_device_fips"; }
+            fi
+        else
+            sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE262"
+        fi
+        DEVICE_FIPS=$(remove_duplicates "$DEVICE_FIPS" "$EXC_DEVICE_FIPS" "$MESSAGE246")
+        sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"$DEVICE_FIPS\"|" "$SBS_CONF"
+        echo; return
+    done
+}
+
+set_interface() {
+    while true; do
+        echo "$MESSAGE40"
+        echo
+        is_running && echo "$MESSAGE103"
+        echo "1. $MESSAGE260"
+        [ -n "$DEVICE_IPS" ] && echo "   $MESSAGE263: $DEVICE_IPS" || echo "   $MESSAGE263 $MESSAGE264"
+        echo "2. $MESSAGE261"
+        [ -n "$EXC_DEVICE_IPS" ] && echo "   $MESSAGE263: $EXC_DEVICE_IPS" || echo "   $MESSAGE263 $MESSAGE264"
+        read -p "$MESSAGE196
+: " si_choice
+        if [ -z "$(echo "$si_choice" | tr -d '[[:space:]]')" ]; then
+            echo "$MESSAGE199"; echo; return
+        fi
+        case "$si_choice" in
+            1) is_running && stop_sing_box || configure_interface_inc; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box || configure_interface_exc; source "$SBS_CONF" ;;
+            *) echo "$MESSAGE6"; echo ;;
+        esac
+    done
+}
+
+set_finterface() {
+    while true; do
+        echo "$MESSAGE84"
+        echo
+        [ -z "$FAKEIP_SUBNET" ] && echo "$MESSAGE245" && echo
+        is_running && echo "$MESSAGE103"
+        echo "1. $MESSAGE260"
+        [ -n "$DEVICE_FIPS" ] && echo "   $MESSAGE263: $DEVICE_FIPS" || echo "   $MESSAGE263 $MESSAGE264"
+        echo "2. $MESSAGE261"
+        [ -n "$EXC_DEVICE_FIPS" ] && echo "   $MESSAGE263: $EXC_DEVICE_FIPS" || echo "   $MESSAGE263 $MESSAGE264"
+        read -p "$MESSAGE196
+: " sif_choice
+        if [ -z "$(echo "$sif_choice" | tr -d '[[:space:]]')" ]; then
+            echo "$MESSAGE199"; echo; return
+        fi
+        case "$sif_choice" in
+            1) is_running && stop_sing_box || configure_finterface_inc; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box || configure_finterface_exc; source "$SBS_CONF" ;;
+            *) echo "$MESSAGE6"; echo ;;
+        esac
+    done
 }
 
 configure_table() {
     source "$SBS_CONF"
-    echo
     echo "$MESSAGE83 $ROUTE_TABLE"
     while true; do
         read -p "$MESSAGE86" new_table
         [ -z "$new_table" ] && echo "$MESSAGE52" && break
+        echo "$new_table" | grep -Eq '^[1-9][0-9]*$' || { echo "$MESSAGE6"; echo; continue; }
         ROUTE_TABLE="$new_table"
         sed -i "s|^ROUTE_TABLE=\".*\"$|ROUTE_TABLE=\"$new_table\"|" "$SBS_CONF"
         echo "$MESSAGE87 $ROUTE_TABLE"; break
@@ -1342,11 +1581,13 @@ configure_table() {
 
 configure_fwmark() {
     source "$SBS_CONF"
-    echo
     echo "$MESSAGE197 $FW_MARK"
     while true; do
         read -p "$MESSAGE198" new_fwmark
         [ -z "$new_fwmark" ] && echo "$MESSAGE52" && break
+        if ! echo "$new_fwmark" | grep -Eq '^0x[0-9a-f]{1,8}(/0x[0-9a-f]{1,8})?$'; then
+            echo "$MESSAGE6"; echo; continue
+        fi
         FW_MARK="$new_fwmark"
         sed -i "s|^FW_MARK=\".*\"$|FW_MARK=\"$new_fwmark\"|" "$SBS_CONF"
         echo "$MESSAGE147 $FW_MARK"; break
@@ -1357,55 +1598,37 @@ setup_sing_box() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
-
+    echo
     echo "$MESSAGE200"
     update_tun_interface
     extract_listen_port TPROXY_PORT tproxy
     fakeip_check
     source "$SBS_CONF"
-
     if [ -z "$TUN_INTERFACE" ] && [ -z "$TPROXY_PORT" ]; then
         echo
         echo "$MESSAGE88"
         exit 0
     fi
-    if [ -z "$FAKEIP_SUBNET" ]; then
-        while true; do
-            echo
-            echo "$MESSAGE91"
-            echo
-            [ -z "$DEVICE_IPS" ] && echo "$MESSAGE92"
-            is_running && echo "$MESSAGE125"
-            echo "$MESSAGE93"
-            echo "2. $MESSAGE94"
-            read -p "$MESSAGE99" if_choice
-            [ -z "$if_choice" ] && echo "$MESSAGE95" && break
-            case "$if_choice" in
-                1) is_running && stop_sing_box; configure_interface; source "$SBS_CONF" ;;
-                2) setup_pro ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
-    else
-        while true; do
-            echo
-            echo "$MESSAGE91"
-            echo
-            [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && echo "$MESSAGE96"
-            is_running && echo "$MESSAGE41"
-            echo "$MESSAGE93"
-            echo "$MESSAGE97"
-            echo "3. $MESSAGE94"
-            read -p "$MESSAGE99" if_choice
-            [ -z "$if_choice" ] && echo "$MESSAGE95" && break
-            case "$if_choice" in
-                1) is_running && stop_sing_box; configure_interface; source "$SBS_CONF" ;;
-                2) is_running && stop_sing_box; configure_finterface; source "$SBS_CONF" ;;
-                3) setup_pro ;;
-                *) echo "$MESSAGE6" ;;
-            esac
-        done
-    fi
+    echo
+    while true; do
+        echo "$MESSAGE91"
+        echo
+        all_entries=$(printf "%s\n" $DEVICE_IPS $EXC_DEVICE_IPS $DEVICE_FIPS $EXC_DEVICE_FIPS)
+        duplicates=$(echo "$all_entries" | sort | uniq -d)
+        [ -n "$duplicates" ] && printf "$MESSAGE258\n" "$duplicates" && echo
+        [ -z "$DEVICE_IPS" ] && [ -z "$DEVICE_FIPS" ] && echo "$MESSAGE92"
+        echo "$MESSAGE93"
+        echo "$MESSAGE97"
+        echo "3. $MESSAGE94"
+        read -p "$MESSAGE99" if_choice
+        [ -z "$if_choice" ] && echo "$MESSAGE95" && break
+        case "$if_choice" in
+            1) echo; set_interface ;;
+            2) echo; set_finterface ;;
+            3) setup_pro ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
     echo
     is_running || sing_box_start
 }
@@ -1417,13 +1640,15 @@ setup_pro() {
         echo
         is_running && echo "$MESSAGE103"
         echo "$MESSAGE98"
+        echo "   $MESSAGE49: $ROUTE_TABLE"
         echo "$MESSAGE195"
+        echo "   $MESSAGE49: $FW_MARK"
         read -p "$MESSAGE196
-: " if_choice
-        [ -z "$if_choice" ] && echo "$MESSAGE199" && break
-        case "$if_choice" in
-            1) is_running && stop_sing_box; configure_table; source "$SBS_CONF" ;;
-            2) is_running && stop_sing_box; configure_fwmark; source "$SBS_CONF" ;;
+: " pif_choice
+        [ -z "$pif_choice" ] && echo "$MESSAGE199" && echo && break
+        case "$pif_choice" in
+            1) is_running && stop_sing_box || echo; configure_table; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box || echo; configure_fwmark; source "$SBS_CONF" ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1458,7 +1683,7 @@ download_updates() {
     echo
     echo "$MESSAGE100"
     rm -rf "$SB_DOWNLOAD_DIR"
-    silent_create_dir "$SB_DOWNLOAD_DIR"
+    create_dir "$SB_DOWNLOAD_DIR"
     wget -q -O $TEMP_SCRIPT_PATH "$SCRIPT_URL"
 
     MAX_RELEASES=${NUM_RELEASES:-30}
@@ -1908,7 +2133,7 @@ server_sing_box() {
             sed -i "s|^WAN_PORTS=\".*\"$|WAN_PORTS=\"\"|" "$SBS_CONF"
             echo "$MESSAGE144"
         elif echo "$input_combinations" | grep -q "^0[[:space:]]"; then
-            input_combinations=$(echo "$input_combinations" | sed 's/^0[[:space:]]*//')
+            input_combinations=$(echo "$input_combinations" | sed 's/^0[[:space:]][[:space:]]*//')
             combinations=$(echo "$input_combinations" | tr ' ' '\n')
             new_ports=""
             for combination in $combinations; do
@@ -2071,7 +2296,7 @@ set_h_memlim() {
                 continue ;;
         esac
         sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
-        echo "$MESSAGE249: $new_h_memlim MiB"
+        echo "$MESSAGE59: $new_h_memlim MiB"
         return
     done
 }
@@ -2094,7 +2319,7 @@ set_s_memlim() {
                 continue ;;
         esac
         sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
-        echo "$MESSAGE249: $new_s_memlim MiB"
+        echo "$MESSAGE59: $new_s_memlim MiB"
         return
     done
 }
@@ -2117,7 +2342,7 @@ set_gogc() {
                 continue ;;
         esac
         sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"$new_k_gogc\"|" "$SBS_CONF"
-        echo "$MESSAGE249: $new_k_gogc"
+        echo "$MESSAGE59: $new_k_gogc"
         return
     done
 }
@@ -2164,7 +2389,7 @@ install_sing_box() {
     done
 
     create_or_use_existing "$SB_DIR"
-    create_dir "$SB_DOWNLOAD_DIR"
+    create_dir "$SB_DOWNLOAD_DIR" "$MESSAGE1"
     handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
     [ -f "$TEMP_LANG_RU" ] && sed -i "s|^LANG=\".*\"$|LANG=\"ru\"|" "$TEMP_SBS_CONF"
     [ -f "$TEMP_LANG_EN" ] && sed -i "s|^LANG=\".*\"$|LANG=\"en\"|" "$TEMP_SBS_CONF"
