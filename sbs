@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.18
+# Version 2.3.20
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -48,7 +48,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.18
+# Создан в SBS 2.3.20
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -97,7 +97,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.18
+# Создан в SBS 2.3.20
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -489,6 +489,13 @@ get_sb_version() {
 self_copy() {
     local destination="$1"
     cp "$0" "$destination"
+}
+
+validate_num() {
+    local value="$1"
+    case "$value" in
+        *[!0-9]*|0[0-9]*) echo "$MESSAGE66"; return 1 ;;
+    esac
 }
 
 sing_box_start() {
@@ -1215,7 +1222,7 @@ $MESSAGE38"
             echo "$MESSAGE39"
         fi
         read -p ": " input
-        if [ -z "$(echo "$input" | tr -d '[[:space:]]')" ]; then
+        if [ -z "$input" ]; then
             echo "$MESSAGE52" && return
         elif echo "$input" | grep -Eq '^[[:space:]]*0[[:space:]]*$'; then
             sed -i "s|^DEVICE_IPS=\".*\"$|DEVICE_IPS=\"\"|" "$SBS_CONF"
@@ -1294,7 +1301,7 @@ configure_interface_exc() {
 
 $MESSAGE57" || echo "$MESSAGE58"
             read -p ": " exc_input
-            if [ -z "$(echo "$exc_input" | tr -d '[[:space:]]')" ]; then
+            if [ -z "$exc_input" ]; then
                 echo "$MESSAGE52" && return
             elif echo "$exc_input" | grep -Eq '^[[:space:]]*0[[:space:]]*$'; then
                 sed -i "s|^EXC_DEVICE_IPS=\".*\"$|EXC_DEVICE_IPS=\"\"|" "$SBS_CONF"
@@ -1375,7 +1382,7 @@ $MESSAGE67"
             echo "$MESSAGE44"
         fi
         read -p ": " finput
-        if [ -z "$(echo "$finput" | tr -d '[[:space:]]')" ]; then
+        if [ -z "$finput" ]; then
             echo "$MESSAGE52" && return
         elif echo "$finput" | grep -Eq '^[[:space:]]*0[[:space:]]*$'; then
             sed -i "s|^DEVICE_FIPS=\".*\"$|DEVICE_FIPS=\"\"|" "$SBS_CONF"
@@ -1453,7 +1460,7 @@ configure_finterface_exc() {
 
 $MESSAGE45" || echo "$MESSAGE74"
             read -p ": " exc_finput
-            if [ -z "$(echo "$exc_finput" | tr -d '[[:space:]]')" ]; then
+            if [ -z "$exc_finput" ]; then
                 echo "$MESSAGE52" && return
             elif echo "$exc_finput" | grep -Eq '^[[:space:]]*0[[:space:]]*$'; then
                 sed -i "s|^EXC_DEVICE_FIPS=\".*\"$|EXC_DEVICE_FIPS=\"\"|" "$SBS_CONF"
@@ -1532,7 +1539,7 @@ set_interface() {
         [ -n "$EXC_DEVICE_IPS" ] && echo "   $MESSAGE263: $EXC_DEVICE_IPS" || echo "   $MESSAGE263 $MESSAGE264"
         read -p "$MESSAGE196
 : " si_choice
-        if [ -z "$(echo "$si_choice" | tr -d '[[:space:]]')" ]; then
+        if [ -z "$si_choice" ]; then
             echo "$MESSAGE199"; echo; return
         fi
         case "$si_choice" in
@@ -1555,7 +1562,7 @@ set_finterface() {
         [ -n "$EXC_DEVICE_FIPS" ] && echo "   $MESSAGE263: $EXC_DEVICE_FIPS" || echo "   $MESSAGE263 $MESSAGE264"
         read -p "$MESSAGE196
 : " sif_choice
-        if [ -z "$(echo "$sif_choice" | tr -d '[[:space:]]')" ]; then
+        if [ -z "$sif_choice" ]; then
             echo "$MESSAGE199"; echo; return
         fi
         case "$sif_choice" in
@@ -1827,6 +1834,32 @@ change_repo_vers() {
     done
 }
 
+change_custom_repo() {
+    echo
+    echo "$MESSAGE210"
+    while true; do
+        local message_repo_ab="$1" custom_repo_ab="$2"
+        echo
+        read -p "$MESSAGE212 $message_repo_ab,
+$MESSAGE42
+: " newrepo_ab
+        if [ -z "$newrepo_ab" ]; then
+            echo "$MESSAGE52"
+        else
+            if [ "$newrepo_ab" = "0" ]; then
+                sed -i "s|^$custom_repo_ab=\"[^\"]*\"|$custom_repo_ab=\"\"|" "$SBS_CONF"
+                printf "$MESSAGE106\n" "$message_repo_ab"
+            elif echo "$newrepo_ab" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
+                echo "$MESSAGE217"; continue
+            else
+                sed -i "s|^$custom_repo_ab=\"[^\"]*\"|$custom_repo_ab=\"$newrepo_ab\"|" "$SBS_CONF"
+                printf "$MESSAGE90\n" "$message_repo_ab" "$newrepo_ab"
+            fi
+        fi
+        break
+    done
+}
+
 change_sing_box_repo() {
     while true; do
         source "$SBS_CONF"
@@ -1844,53 +1877,17 @@ change_sing_box_repo() {
         printf "2. $MESSAGE205\n" "A"
         printf "3. $MESSAGE205\n" "B"
         echo "4. $MESSAGE211 A."
-        [ -n "$CUSTOM_REPO_A" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A"
+        [ -n "$CUSTOM_REPO_A" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A" || echo "   $MESSAGE265"
         echo "5. $MESSAGE211 B."
-        [ -n "$CUSTOM_REPO_B" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B"
+        [ -n "$CUSTOM_REPO_B" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B" || echo "   $MESSAGE265"
         read -p "$MESSAGE196: " choice_repo
         [ -z "$choice_repo" ] && echo "$MESSAGE199" && return
         case "$choice_repo" in
             1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" ;;
             2) [ -n "$CUSTOM_REPO_A" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customa"|' "$SBS_CONF" || printf "$MESSAGE216\n" "A" ;;
             3) [ -n "$CUSTOM_REPO_B" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customb"|' "$SBS_CONF" || printf "$MESSAGE216\n" "B" ;;
-            4) echo
-               echo "$MESSAGE210"
-               echo
-               read -p "$MESSAGE212 A,
-$MESSAGE42
-: " newrepoa
-               if [ -z "$newrepoa" ]; then
-                   echo "$MESSAGE52"
-               else
-                   if [ "$newrepoa" = "0" ]; then
-                       sed -i 's|^CUSTOM_REPO_A="[^"]*"|CUSTOM_REPO_A=""|' "$SBS_CONF"
-                       printf "$MESSAGE106\n" "A"
-                   elif echo "$newrepoa" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
-                       echo "$MESSAGE217"
-                   else
-                       sed -i "s|^CUSTOM_REPO_A=\"[^\"]*\"|CUSTOM_REPO_A=\"$newrepoa\"|" "$SBS_CONF"
-                       printf "$MESSAGE90\n" "A" "$newrepoa"
-                   fi
-               fi ;;
-            5) echo
-               echo "$MESSAGE210"
-               echo
-               read -p "$MESSAGE212 B,
-$MESSAGE42
-: " newrepob
-               if [ -z "$newrepob" ]; then
-                   echo "$MESSAGE52"
-               else
-                   if [ "$newrepob" = "0" ]; then
-                       sed -i 's|^CUSTOM_REPO_B="[^"]*"|CUSTOM_REPO_B=""|' "$SBS_CONF"
-                       printf "$MESSAGE106\n" "B"
-                   elif echo "$newrepob" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
-                       echo "$MESSAGE217"
-                   else
-                       sed -i "s|^CUSTOM_REPO_B=\"[^\"]*\"|CUSTOM_REPO_B=\"$newrepob\"|" "$SBS_CONF"
-                       printf "$MESSAGE90\n" "B" "$newrepob"
-                   fi
-               fi ;;
+            4) change_custom_repo  "A" "CUSTOM_REPO_A" ;;
+            5) change_custom_repo  "B" "CUSTOM_REPO_B" ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1927,29 +1924,26 @@ $MESSAGE42
 : " new_given_vers
                if [ -z "$new_given_vers" ]; then
                    echo "$MESSAGE52"
+               elif [ "$new_given_vers" = "0" ]; then
+                   sed -i 's|^GIVEN_VERS="[^"]*"|GIVEN_VERS=""|' "$SBS_CONF"
+                   echo "$MESSAGE230"
                else
-                   if [ "$new_given_vers" = "0" ]; then
-                       sed -i 's|^GIVEN_VERS="[^"]*"|GIVEN_VERS=""|' "$SBS_CONF"
-                       echo "$MESSAGE230"
-                   else
-                       sed -i "s|^GIVEN_VERS=\"[^\"]*\"|GIVEN_VERS=\"$new_given_vers\"|" "$SBS_CONF"
-                       echo "$MESSAGE46 $new_given_vers"
-                   fi
+                   sed -i "s|^GIVEN_VERS=\"[^\"]*\"|GIVEN_VERS=\"$new_given_vers\"|" "$SBS_CONF"
+                   echo "$MESSAGE46 $new_given_vers"
                fi ;;
-            5) echo
-               read -p "$MESSAGE208,
+            5) while true; do
+                   echo
+                   read -p "$MESSAGE208,
 $MESSAGE42
 : " new_num_releases
-               if [ -z "$new_num_releases" ]; then
-                   echo "$MESSAGE52"
-               else
-                   if [ "$new_num_releases" = "0" ]; then
+                   if [ -z "$new_num_releases" ]; then
+                       echo "$MESSAGE52"
+                   elif [ "$new_num_releases" = "0" ]; then
                        sed -i 's|^NUM_RELEASES="[^"]*"|NUM_RELEASES=""|' "$SBS_CONF"
                    else
-                       sed -i "s|^NUM_RELEASES=\"[^\"]*\"|NUM_RELEASES=\"$new_num_releases\"|" "$SBS_CONF"
-                       printf "$MESSAGE47\n" "$new_num_releases"
-                   fi
-               fi ;;
+                       validate_num "$new_num_releases" && { sed -i "s|^NUM_RELEASES=\"[^\"]*\"|NUM_RELEASES=\"$new_num_releases\"|" "$SBS_CONF"; printf "$MESSAGE47\n" "$new_num_releases"; } || continue
+                   fi; break
+               done ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -2228,29 +2222,22 @@ set_easy_memlim() {
         [ -n "$H_MEMLIM" ] && echo "$MESSAGE49: $H_MEMLIM MiB" || echo "$MESSAGE49 $MESSAGE76"
         echo
         read -p "$MESSAGE55" new_h_memlim
-        [ -z "$new_h_memlim" ] && { echo "$MESSAGE52"; return; }
-        if [ "$new_h_memlim" = "0" ]; then
+        if [ -z "$new_h_memlim" ]; then
+            echo "$MESSAGE52"
+        elif [ "$new_h_memlim" = "0" ]; then
             sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"\"|" "$SBS_CONF"
             sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"\"|" "$SBS_CONF"
             sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
             echo "$MESSAGE243"
-            return
-        fi
-        case "$new_h_memlim" in
-            *[!0-9]*|0[0-9]*)
-                echo "$MESSAGE66"
-                continue ;;
-        esac
-        if [ "$new_h_memlim" -lt 50 ] || [ "$new_h_memlim" -gt 500 ]; then
-            echo "$MESSAGE75"
-            continue
-        fi
-        new_s_memlim=$(awk "BEGIN {print int($new_h_memlim/0.9)}")
-        sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
-        sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
-        sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
-        echo "$MESSAGE59: $new_h_memlim MiB"
-        return
+        else
+            validate_num "$new_h_memlim" || continue
+            { [ "$new_h_memlim" -lt 50 ] || [ "$new_h_memlim" -gt 500 ]; } && { echo "$MESSAGE75"; continue; }
+            new_s_memlim=$(awk "BEGIN {print int($new_h_memlim/0.9)}")
+            sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
+            sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
+            sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE59: $new_h_memlim MiB"
+        fi; return
     done
 }
 
@@ -2284,20 +2271,16 @@ set_h_memlim() {
         echo
         [ -n "$H_MEMLIM" ] && echo "$MESSAGE49: $H_MEMLIM MiB" || echo "$MESSAGE49 $MESSAGE76"
         read -p "$MESSAGE156" new_h_memlim
-        [ -z "$new_h_memlim" ] && { echo "$MESSAGE52"; return; }
-        if [ "$new_h_memlim" = "0" ]; then
+        if [ -z "$new_h_memlim" ]; then
+            echo "$MESSAGE52"
+        elif [ "$new_h_memlim" = "0" ]; then
             sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"\"|" "$SBS_CONF"
             echo "$MESSAGE243"
-            return
-        fi
-        case "$new_h_memlim" in
-            *[!0-9]*|0[0-9]*)
-                echo "$MESSAGE66"
-                continue ;;
-        esac
-        sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
-        echo "$MESSAGE59: $new_h_memlim MiB"
-        return
+        else
+            validate_num "$new_h_memlim" || continue
+            sed -i "s|^H_MEMLIM=\".*\"$|H_MEMLIM=\"$new_h_memlim\"|" "$SBS_CONF"
+            echo "$MESSAGE59: $new_h_memlim MiB"
+        fi; return
     done
 }
 
@@ -2307,20 +2290,16 @@ set_s_memlim() {
         echo
         [ -n "$S_MEMLIM" ] && echo "$MESSAGE49: $S_MEMLIM MiB" || echo "$MESSAGE49 $MESSAGE76"
         read -p "$MESSAGE156" new_s_memlim
-        [ -z "$new_s_memlim" ] && { echo "$MESSAGE52"; return; }
-        if [ "$new_s_memlim" = "0" ]; then
+        if [ -z "$new_s_memlim" ]; then
+            echo "$MESSAGE52"
+        elif [ "$new_s_memlim" = "0" ]; then
             sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"\"|" "$SBS_CONF"
             echo "$MESSAGE243"
-            return
-        fi
-        case "$new_s_memlim" in
-            *[!0-9]*|0[0-9]*)
-                echo "$MESSAGE66"
-                continue ;;
-        esac
-        sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
-        echo "$MESSAGE59: $new_s_memlim MiB"
-        return
+        else
+            validate_num "$new_s_memlim" || continue
+            sed -i "s|^S_MEMLIM=\".*\"$|S_MEMLIM=\"$new_s_memlim\"|" "$SBS_CONF"
+            echo "$MESSAGE59: $new_s_memlim MiB"
+        fi; return
     done
 }
 
@@ -2330,20 +2309,16 @@ set_gogc() {
         echo
         [ -n "$K_GOGC" ] && echo "$MESSAGE49: $K_GOGC" || echo "$MESSAGE49 $MESSAGE76"
         read -p "$MESSAGE218" new_k_gogc
-        [ -z "$new_k_gogc" ] && { echo "$MESSAGE52"; return; }
-        if [ "$new_k_gogc" = "0" ]; then
+        if [ -z "$new_k_gogc" ]; then
+            echo "$MESSAGE52"
+        elif [ "$new_k_gogc" = "0" ]; then
             sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"\"|" "$SBS_CONF"
             echo "$MESSAGE243"
-            return
-        fi
-        case "$new_k_gogc" in
-            *[!0-9]*|0[0-9]*)
-                echo "$MESSAGE66"
-                continue ;;
-        esac
-        sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"$new_k_gogc\"|" "$SBS_CONF"
-        echo "$MESSAGE59: $new_k_gogc"
-        return
+        else
+            validate_num "$new_k_gogc" || continue
+            sed -i "s|^K_GOGC=\".*\"$|K_GOGC=\"$new_k_gogc\"|" "$SBS_CONF"
+            echo "$MESSAGE59: $new_k_gogc"
+        fi; return
     done
 }
 
