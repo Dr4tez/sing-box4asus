@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.21
+# Version 2.3.22
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -48,7 +48,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.21
+# Создан в SBS 2.3.22
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -97,7 +97,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.21
+# Создан в SBS 2.3.22
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -806,7 +806,7 @@ start_sing_box() {
     $SB_PATH run -c $SB_CONFIG &
     sleep 5
     is_running || { log_msg "$MESSAGE201"; exit 1; }
-    log_msg "$MESSAGE30"
+    log_msg "$MESSAGE30."
     if [ -n "$TUN_INTERFACE" ]; then
         echo 2 > /proc/sys/net/ipv4/conf/$TUN_INTERFACE/rp_filter
     fi
@@ -1126,7 +1126,6 @@ stop_sing_box() {
     { [ -n "$H_MEMLIM" ] || [ -n "$S_MEMLIM" ] || [ -n "$K_GOGC" ]; } && log_msg "$MESSAGE148"
     [ -n "$S_MEMLIM" ] && unset GOMEMLIMIT
     [ -n "$K_GOGC" ] && unset GOGC
-    echo
 }
 
 check_ips_duplicates() {
@@ -2073,7 +2072,24 @@ status_sing_box() {
     [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
     if is_running; then
-        echo "$MESSAGE30"
+        pid=$(ps | grep "[s]ing-box run" | awk '{print $1}')
+        HZ=100
+        start_ticks=$(awk '{print $22}' /proc/$pid/stat)
+        now=$(date +%s)
+        since_boot=$(awk '{print int($1)}' /proc/uptime)
+        start_time=$((now - since_boot + start_ticks / HZ))
+        echo "$MESSAGE30 $(date -d "@$start_time" "+%H:%M:%S %d-%m-%Y")"
+        mem=$(awk '{printf "%.1f", ($2-$3)*4096/1024/1024}' /proc/$pid/statm)
+        ut0=$(awk '{print $14}' /proc/$pid/stat)
+        st0=$(awk '{print $15}' /proc/$pid/stat)
+        sleep 5
+        ut1=$(awk '{print $14}' /proc/$pid/stat)
+        st1=$(awk '{print $15}' /proc/$pid/stat)
+        cpu=$(awk -v u0=$ut0 -v s0=$st0 -v u1=$ut1 -v s1=$st1 -v hz=$HZ \
+                  'BEGIN{printf "%.1f", 100*((u1+s1)-(u0+s0))/hz/5}')
+        printf "$MESSAGE265\n" "$mem" "$cpu"
+        [ -n "$TUN_INTERFACE" ] && echo "$MESSAGE263 $TUN_INTERFACE"
+        [ -z "$TUN_INTERFACE" ] && [ -n "$TPROXY_PORT" ] && echo "$MESSAGE264 $TPROXY_PORT"
     else
         echo "$MESSAGE37"
     fi
