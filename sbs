@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.20
+# Version 2.3.21
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -48,7 +48,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.20
+# Создан в SBS 2.3.21
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -97,7 +97,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.20
+# Создан в SBS 2.3.21
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -1534,9 +1534,9 @@ set_interface() {
         echo
         is_running && echo "$MESSAGE103"
         echo "1. $MESSAGE260"
-        [ -n "$DEVICE_IPS" ] && echo "   $MESSAGE263: $DEVICE_IPS" || echo "   $MESSAGE263 $MESSAGE264"
+        [ -n "$DEVICE_IPS" ] && echo "   $MESSAGE247: $DEVICE_IPS" || echo "   $MESSAGE247 $MESSAGE248"
         echo "2. $MESSAGE261"
-        [ -n "$EXC_DEVICE_IPS" ] && echo "   $MESSAGE263: $EXC_DEVICE_IPS" || echo "   $MESSAGE263 $MESSAGE264"
+        [ -n "$EXC_DEVICE_IPS" ] && echo "   $MESSAGE247: $EXC_DEVICE_IPS" || echo "   $MESSAGE247 $MESSAGE248"
         read -p "$MESSAGE196
 : " si_choice
         if [ -z "$si_choice" ]; then
@@ -1557,9 +1557,9 @@ set_finterface() {
         [ -z "$FAKEIP_SUBNET" ] && echo "$MESSAGE245" && echo
         is_running && echo "$MESSAGE103"
         echo "1. $MESSAGE260"
-        [ -n "$DEVICE_FIPS" ] && echo "   $MESSAGE263: $DEVICE_FIPS" || echo "   $MESSAGE263 $MESSAGE264"
+        [ -n "$DEVICE_FIPS" ] && echo "   $MESSAGE247: $DEVICE_FIPS" || echo "   $MESSAGE247 $MESSAGE248"
         echo "2. $MESSAGE261"
-        [ -n "$EXC_DEVICE_FIPS" ] && echo "   $MESSAGE263: $EXC_DEVICE_FIPS" || echo "   $MESSAGE263 $MESSAGE264"
+        [ -n "$EXC_DEVICE_FIPS" ] && echo "   $MESSAGE247: $EXC_DEVICE_FIPS" || echo "   $MESSAGE247 $MESSAGE248"
         read -p "$MESSAGE196
 : " sif_choice
         if [ -z "$sif_choice" ]; then
@@ -1877,9 +1877,9 @@ change_sing_box_repo() {
         printf "2. $MESSAGE205\n" "A"
         printf "3. $MESSAGE205\n" "B"
         echo "4. $MESSAGE211 A."
-        [ -n "$CUSTOM_REPO_A" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A" || echo "   $MESSAGE265"
+        [ -n "$CUSTOM_REPO_A" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A" || echo "   $MESSAGE249"
         echo "5. $MESSAGE211 B."
-        [ -n "$CUSTOM_REPO_B" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B" || echo "   $MESSAGE265"
+        [ -n "$CUSTOM_REPO_B" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B" || echo "   $MESSAGE249"
         read -p "$MESSAGE196: " choice_repo
         [ -z "$choice_repo" ] && echo "$MESSAGE199" && return
         case "$choice_repo" in
