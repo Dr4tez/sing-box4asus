@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.22
+# Version 2.3.23
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -48,7 +48,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.22
+# Создан в SBS 2.3.23
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -97,7 +97,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.22
+# Создан в SBS 2.3.23
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 
@@ -312,8 +312,8 @@ if [ -n "$H_MEMLIM" ]; then
             hard_memlim=$(awk "{printf \"%.0f\n\", (\$2-\$3)*4096/1024/1024}" /proc/$(ps w | grep "[s]ing-box run" | awk "{print \$1}")/statm)
             if [ "$(printf "%.0f" "$hard_memlim")" -ge $H_MEMLIM ]; then
                 kill $(ps | grep "[s]ing-box run" | awk "{print \$1}") 2>/dev/null
-                [ "$LANG" = "ru" ] && m_log_msg "Процесс sing-box перезапущен из-за достижения жёсткого лимита памяти."
-                [ "$LANG" = "en" ] && m_log_msg "The sing-box process was restarted because it reached its hard memory limit."
+                [ "$LANG" = "ru" ] && m_log_msg "! Процесс sing-box перезапущен из-за достижения жёсткого лимита памяти."
+                [ "$LANG" = "en" ] && m_log_msg "! The sing-box process was restarted because it reached its hard memory limit."
             fi
             sleep 5
         done
@@ -1542,8 +1542,8 @@ set_interface() {
             echo "$MESSAGE199"; echo; return
         fi
         case "$si_choice" in
-            1) is_running && stop_sing_box || configure_interface_inc; source "$SBS_CONF" ;;
-            2) is_running && stop_sing_box || configure_interface_exc; source "$SBS_CONF" ;;
+            1) is_running && stop_sing_box; echo; configure_interface_inc; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box; echo; configure_interface_exc; source "$SBS_CONF" ;;
             *) echo "$MESSAGE6"; echo ;;
         esac
     done
@@ -1565,8 +1565,8 @@ set_finterface() {
             echo "$MESSAGE199"; echo; return
         fi
         case "$sif_choice" in
-            1) is_running && stop_sing_box || configure_finterface_inc; source "$SBS_CONF" ;;
-            2) is_running && stop_sing_box || configure_finterface_exc; source "$SBS_CONF" ;;
+            1) is_running && stop_sing_box; echo; configure_finterface_inc; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box; echo; configure_finterface_exc; source "$SBS_CONF" ;;
             *) echo "$MESSAGE6"; echo ;;
         esac
     done
@@ -1653,8 +1653,8 @@ setup_pro() {
 : " pif_choice
         [ -z "$pif_choice" ] && echo "$MESSAGE199" && echo && break
         case "$pif_choice" in
-            1) is_running && stop_sing_box || echo; configure_table; source "$SBS_CONF" ;;
-            2) is_running && stop_sing_box || echo; configure_fwmark; source "$SBS_CONF" ;;
+            1) is_running && stop_sing_box; echo; configure_table; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box; echo; configure_fwmark; source "$SBS_CONF" ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -1803,8 +1803,8 @@ update_sing_box_menu() {
         read -p "$MESSAGE99" choice
         [ -z "$choice" ] && { rm -rf "$SB_DOWNLOAD_DIR"; echo "$MESSAGE95"; is_running || sing_box_start; exit 0; }
         case "$choice" in
-            1) is_running && stop_sing_box || echo; update_sbs; break ;;
-            2) [ -n "$sb_vers_new" ] && { is_running && stop_sing_box || echo; updcore_sing_box; source "$SBS_CONF"; download_updates; continue; } || echo "$MESSAGE219" ;;
+            1) is_running && stop_sing_box; echo; update_sbs; break ;;
+            2) [ -n "$sb_vers_new" ] && { is_running && stop_sing_box; echo; updcore_sing_box; source "$SBS_CONF"; download_updates; continue; } || echo "$MESSAGE219" ;;
             3) change_repo_vers; source "$SBS_CONF"; download_updates; continue ;;
             *) echo "$MESSAGE6" ;;
         esac
@@ -2012,7 +2012,7 @@ check_sing_box() {
                 read -p "$MESSAGE18" choice
                 [ -z "$choice" ] && echo "$MESSAGE115" && break
                 case "$choice" in
-                    1) echo; is_running && stop_sing_box; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE117"; break ;;
+                    1) echo; is_running && stop_sing_box && echo; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE117"; break ;;
                     *) echo "$MESSAGE6" ;;
                 esac
             done
@@ -2057,7 +2057,7 @@ config_sing_box() {
         read -p "$MESSAGE99" choice
         [ -z "$choice" ] && echo "$MESSAGE95" && break
         case "$choice" in
-            1) is_running && stop_sing_box; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE129" ;;
+            1) is_running && stop_sing_box && echo; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE129" ;;
             2) check_sing_box ;;
             3) format_sing_box ;;
             *) echo "$MESSAGE6" ;;
@@ -2138,7 +2138,7 @@ server_sing_box() {
             is_running || sing_box_start
             return 0
         fi
-        is_running && stop_sing_box || echo
+        is_running && stop_sing_box; echo
         if [ "$input_combinations" = "0" ]; then
             sed -i "s|^WAN_PORTS=\".*\"$|WAN_PORTS=\"\"|" "$SBS_CONF"
             echo "$MESSAGE144"
@@ -2221,7 +2221,7 @@ memlim_sing_box() {
         read -p "$MESSAGE99" lim_choice
         [ -z "$lim_choice" ] && break
         case "$lim_choice" in
-            1) is_running && stop_sing_box || echo; set_easy_memlim; source "$SBS_CONF" ;;
+            1) is_running && stop_sing_box; echo; set_easy_memlim; source "$SBS_CONF" ;;
             2) expert_memlim ;;
             *) echo "$MESSAGE6" ;;
         esac
@@ -2273,9 +2273,9 @@ expert_memlim() {
 : " if_choice
         [ -z "$if_choice" ] && break
         case "$if_choice" in
-            1) is_running && stop_sing_box || echo; set_h_memlim; source "$SBS_CONF" ;;
-            2) is_running && stop_sing_box || echo; set_s_memlim; source "$SBS_CONF" ;;
-            3) is_running && stop_sing_box || echo; set_gogc; source "$SBS_CONF" ;;
+            1) is_running && stop_sing_box; echo; set_h_memlim; source "$SBS_CONF" ;;
+            2) is_running && stop_sing_box; echo; set_s_memlim; source "$SBS_CONF" ;;
+            3) is_running && stop_sing_box; echo; set_gogc; source "$SBS_CONF" ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -2368,7 +2368,7 @@ install_sing_box() {
                    read -p "$MESSAGE18" continue_choice
                    [ -z "$continue_choice" ] && { del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
                    case "$continue_choice" in
-                       1) stop_sing_box; break 2 ;;
+                       1) stop_sing_box; echo; break 2 ;;
                        *) echo "$MESSAGE6" ;;
                    esac
                 done
@@ -2454,7 +2454,7 @@ remove_sing_box() {
         read -p "$MESSAGE18" choice
         [ -z "$choice" ] && echo "$MESSAGE173" && exit 0
         case $choice in
-            1) is_running && stop_sing_box; echo "$MESSAGE174"; rm -rf $SB_DIR $JFFS_SB_DIR $LN_PATH; echo "$MESSAGE175"; exit 0 ;;
+            1) is_running && stop_sing_box && echo; echo "$MESSAGE174"; rm -rf $SB_DIR $JFFS_SB_DIR $LN_PATH; echo "$MESSAGE175"; exit 0 ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
