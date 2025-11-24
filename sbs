@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.24
+# Version 2.3.25
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -9,6 +9,7 @@ SB_CONFIG="$JFFS_SB_DIR/config.json"
 SCRIPT_PATH="$JFFS_SB_DIR/sbs"
 SBS_CONF="$JFFS_SB_DIR/sbs-conf"
 SBS_MON="$JFFS_SB_DIR/sbs-monitor"
+SBS_MON_NAME="sbs-monitor"
 LANG_RU="$JFFS_SB_DIR/sbs-lang-ru"
 LANG_EN="$JFFS_SB_DIR/sbs-lang-en"
 SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/sbs"
@@ -18,6 +19,7 @@ LANG_EN_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/sbs-lan
 ROOT_DIR="/opt/root"
 SB_DIR="$ROOT_DIR/sing-box"
 SB_PATH="$SB_DIR/sing-box"
+SB_NAME="sing-box run"
 SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
 SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
 TEMP_UPDATE="$SB_DOWNLOAD_DIR/temp-update"
@@ -48,7 +50,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.24
+# Создан в SBS 2.3.25
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -97,8 +99,9 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.24
+# Создан в SBS 2.3.25
 
+SB_NAME="sing-box run"
 source "/jffs/addons/sing-box-script/sbs-conf"
 [ "$LANG" = "ru" ] && source "/jffs/addons/sing-box-script/sbs-lang-ru"
 [ "$LANG" = "en" ] && source "/jffs/addons/sing-box-script/sbs-lang-en"
@@ -313,7 +316,7 @@ if [ -n "$H_MEMLIM" ]; then
         while true; do
             hard_memlim=$(awk "{printf \"%.0f\n\", (\$2-\$3)*4096/1024/1024}" /proc/$(ps w | grep "[s]ing-box run" | awk "{print \$1}")/statm)
             if [ "$(printf "%.0f" "$hard_memlim")" -ge $H_MEMLIM ]; then
-                kill $(ps | grep "[s]ing-box run" | awk "{print \$1}") 2>/dev/null
+                kill $(ps | grep -v grep | grep "$SB_NAME" | awk '{print $1}') 2>/dev/null
                 m_log_msg "$MESSAGE266"
             fi
             sleep 5
@@ -465,7 +468,7 @@ manage_iptables() {
 }
 
 is_running() {
-    ps | grep -v grep | grep -q "$SB_PATH"
+    ps | grep -v grep | grep -q "$SB_NAME"
 }
 
 get_sbs_version() {
@@ -1069,7 +1072,7 @@ stop_sing_box() {
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
-    kill $(ps | grep "[s]bs-monitor" | awk '{print $1}') 2>/dev/null
+    kill $(ps | grep -v grep | grep "$SBS_MON_NAME" | awk '{print $1}') 2>/dev/null
     log_msg "$MESSAGE268"
     if [ -n "$TUN_INTERFACE" ]; then
         FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
@@ -1123,7 +1126,7 @@ stop_sing_box() {
         iptables -t nat -X SBS-NAT 2>/dev/null
     fi
     log_msg "$MESSAGE31"
-    kill $(ps | grep "[s]ing-box" | awk '{print $1}') 2>/dev/null
+    kill $(ps | grep -v grep | grep "$SB_NAME" | awk '{print $1}') 2>/dev/null
     log_msg "$MESSAGE37"
     { [ -n "$H_MEMLIM" ] || [ -n "$S_MEMLIM" ] || [ -n "$K_GOGC" ]; } && log_msg "$MESSAGE148"
     [ -n "$S_MEMLIM" ] && unset GOMEMLIMIT
@@ -2074,7 +2077,7 @@ status_sing_box() {
     [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
     if is_running; then
-        pid=$(ps | grep "[s]ing-box run" | awk '{print $1}')
+        pid=$(ps | grep -v grep | grep "$SB_NAME" | awk '{print $1}')
         HZ=100
         start_ticks=$(awk '{print $22}' /proc/$pid/stat)
         now=$(date +%s)
@@ -2095,8 +2098,8 @@ status_sing_box() {
     else
         echo "$MESSAGE37"
     fi
-    if (ps | grep -v grep | grep -q "$SBS_MON"); then
-        pid_m=$(ps | grep "[s]bs-monitor" | awk '{print $1}')
+    if ps | grep -v grep | grep -q "$SBS_MON_NAME"; then
+        pid_m=$(ps | grep -v grep | grep "$SBS_MON_NAME" | head -n 1 | awk '{print $1}')
         HZ=100
         start_ticks_m=$(awk '{print $22}' /proc/$pid_m/stat)
         now_m=$(date +%s)
