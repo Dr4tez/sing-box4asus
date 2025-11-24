@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.23
+# Version 2.3.24
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -48,7 +48,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.23
+# Создан в SBS 2.3.24
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -97,9 +97,11 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.23
+# Создан в SBS 2.3.24
 
 source "/jffs/addons/sing-box-script/sbs-conf"
+[ "$LANG" = "ru" ] && source "/jffs/addons/sing-box-script/sbs-lang-ru"
+[ "$LANG" = "en" ] && source "/jffs/addons/sing-box-script/sbs-lang-en"
 
 if [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; then
     m_sorted_subnets=$(echo "$DEVICE_IPS $EXC_DEVICE_IPS ${FAKEIP_SUBNET:+$DEVICE_FIPS $EXC_DEVICE_FIPS}" | tr " " "\n" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+" | sort -t "/" -k2,2n)
@@ -312,8 +314,7 @@ if [ -n "$H_MEMLIM" ]; then
             hard_memlim=$(awk "{printf \"%.0f\n\", (\$2-\$3)*4096/1024/1024}" /proc/$(ps w | grep "[s]ing-box run" | awk "{print \$1}")/statm)
             if [ "$(printf "%.0f" "$hard_memlim")" -ge $H_MEMLIM ]; then
                 kill $(ps | grep "[s]ing-box run" | awk "{print \$1}") 2>/dev/null
-                [ "$LANG" = "ru" ] && m_log_msg "! Процесс sing-box перезапущен из-за достижения жёсткого лимита памяти."
-                [ "$LANG" = "en" ] && m_log_msg "! The sing-box process was restarted because it reached its hard memory limit."
+                m_log_msg "$MESSAGE266"
             fi
             sleep 5
         done
@@ -1058,7 +1059,7 @@ iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
         done
     fi
     $SBS_MON &
-    log_msg "$MESSAGE29"
+    log_msg "$MESSAGE267."; log_msg "$MESSAGE29"
     update_script "$SS_SCRIPT" "$SS_LINES # sing-box-script"
     echo
 }
@@ -1069,6 +1070,7 @@ stop_sing_box() {
     [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
     kill $(ps | grep "[s]bs-monitor" | awk '{print $1}') 2>/dev/null
+    log_msg "$MESSAGE268"
     if [ -n "$TUN_INTERFACE" ]; then
         FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
         FORWARD -o $TUN_INTERFACE -j ACCEPT
@@ -2092,6 +2094,17 @@ status_sing_box() {
         [ -z "$TUN_INTERFACE" ] && [ -n "$TPROXY_PORT" ] && echo "$MESSAGE264 $TPROXY_PORT"
     else
         echo "$MESSAGE37"
+    fi
+    if (ps | grep -v grep | grep -q "$SBS_MON"); then
+        pid_m=$(ps | grep "[s]bs-monitor" | awk '{print $1}')
+        HZ=100
+        start_ticks_m=$(awk '{print $22}' /proc/$pid_m/stat)
+        now_m=$(date +%s)
+        since_boot_m=$(awk '{print int($1)}' /proc/uptime)
+        start_time_m=$((now_m - since_boot_m + start_ticks_m / HZ))
+        echo "$MESSAGE267 $(date -d "@$start_time_m" "+%H:%M:%S %d-%m-%Y")"
+    else
+        echo "$MESSAGE268"
     fi
     sbs_version=$(get_sbs_version $SCRIPT_PATH)
     if [ -n "$sbs_version" ]; then
