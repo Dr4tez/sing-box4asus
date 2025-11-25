@@ -2023,7 +2023,7 @@ check_sing_box() {
             is_running && echo "$MESSAGE114"
             while true; do
                 read -p "$MESSAGE18" choice
-                [ -z "$choice" ] && echo "$MESSAGE115" && break
+                [ -z "$choice" ] && echo "$MESSAGE115" && break 2
                 case "$choice" in
                     1) echo; is_running && stop_sing_box && echo; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE117"; break ;;
                     *) echo "$MESSAGE6" ;;
