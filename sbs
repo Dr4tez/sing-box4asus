@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.26
+# Version 2.3.27
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -50,7 +50,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.26
+# Создан в SBS 2.3.27
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -99,7 +99,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.26
+# Создан в SBS 2.3.27
 
 SB_PATH="/opt/root/sing-box/sing-box"
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
@@ -2091,15 +2091,21 @@ status_sing_box() {
         now=$(date +%s)
         since_boot=$(awk '{print int($1)}' /proc/uptime)
         start_time=$((now - since_boot + start_ticks / HZ))
-        echo "$MESSAGE30 $(date -d "@$start_time" "+%H:%M:%S %d-%m-%Y")"
-        mem=$(awk '{printf "%.1f", ($2-$3)*4096/1024/1024}' /proc/$pid/statm)
         ut0=$(awk '{print $14}' /proc/$pid/stat)
         st0=$(awk '{print $15}' /proc/$pid/stat)
-        sleep 5
+        i=5
+        while [ $i -gt 0 ]; do
+            printf "\r%s %d " "$MESSAGE269" "$i"
+            sleep 1
+            i=$((i-1))
+        done
+        printf "\r                     \r"
         ut1=$(awk '{print $14}' /proc/$pid/stat)
         st1=$(awk '{print $15}' /proc/$pid/stat)
         cpu=$(awk -v u0=$ut0 -v s0=$st0 -v u1=$ut1 -v s1=$st1 -v hz=$HZ \
                   'BEGIN{printf "%.1f", 100*((u1+s1)-(u0+s0))/hz/5}')
+        mem=$(awk '{printf "%.1f", ($2-$3)*4096/1024/1024}' /proc/$pid/statm)
+        echo "$MESSAGE30 $(date -d "@$start_time" "+%H:%M:%S %d-%m-%Y")"
         printf "$MESSAGE265\n" "$mem" "$cpu"
         [ -n "$TUN_INTERFACE" ] && echo "$MESSAGE263 $TUN_INTERFACE"
         [ -z "$TUN_INTERFACE" ] && [ -n "$TPROXY_PORT" ] && echo "$MESSAGE264 $TPROXY_PORT"
