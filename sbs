@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.3.27
+# Version 2.3.28
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -50,7 +50,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.3.27
+# Создан в SBS 2.3.28
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -62,8 +62,8 @@ create_sbs_conf() {
 # Строка FW_MARK - если указанный в ней по умолчанию fwmark 0x4d3c2b1a уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значение задаётся в меню 'sbs setup' в подменю необязательных экспертных настроек, только если в файле конфигурации config.json присутствует tproxy inbound.
 # Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети. Значения задаются в меню 'sbs server', но будут приняты, только если в файле конфигурации config.json действительно присутствуют указанные типы inbound proxy с указанными портами.
 # Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском. Значение задаётся в меню 'sbs lang'.
-# Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Возможные значения "original", "customa" и "customb" соответствуют официальному и двум кастомным репозиториям. Значение задаётся при выборе одного из первых трёх пунктов в подменю 3-1 меню 'sbs update'.
-# Строки CUSTOM_REPO_A и CUSTOM_REPO_B - в них указываются кастомные репозитории ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "shtorm-7/sing-box-extended". Значения задаются в первых двух пунктах подменю 3-1-4 меню 'sbs update'.
+# Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Возможные значения "original" и "custom" соответствуют официальному и кастомному репозиториям. Значение задаётся при выборе одного из первых двух пунктов в подменю 3-1 меню 'sbs update'.
+# Строка CUSTOM_REPO - тут указывается кастомный репозиторий ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "shtorm-7/sing-box-extended". Значение задаётся в третьем пункте подменю 3-1 меню 'sbs update'.
 # Строка CORE_VERS - тут указывается какое ядро sing-box будет установлено. Значения "release", "pre_release" или "given" - соответствуют новейшему стабильному релизу, новейшему пре-релизу и заданной версии. Значение задаётся при выборе одного из первых трёх пунктов в подменю 3-2 меню 'sbs update'.
 # Строка GIVEN_VERS - тут указывается какая конкретно версия ядра sing-box может быть установлена, если значение строки CORE_VERS будет "given". Значение задаётся в пункте 3-2-4 меню 'sbs update'. Например "1.11.14" или "1.12.0-beta.32".
 # Строка NUM_RELEASES - тут указывается глубина поиска, т.е. количество последних релизов, среди которого будут искаться заданная версия ядра, новейший стабильный релиз или новейший пре-релиз ядра. Значение задаётся в пункте 3-2-5 меню 'sbs update'. Например "90".
@@ -81,8 +81,7 @@ FW_MARK="0x4d3c2b1a"
 WAN_PORTS=""
 LANG=""
 SB_REPO="original"
-CUSTOM_REPO_A=""
-CUSTOM_REPO_B=""
+CUSTOM_REPO=""
 CORE_VERS="release"
 GIVEN_VERS=""
 NUM_RELEASES=""
@@ -99,7 +98,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.3.27
+# Создан в SBS 2.3.28
 
 SB_PATH="/opt/root/sing-box/sing-box"
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
@@ -1682,10 +1681,7 @@ download_updates() {
         SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
         ARCHIVE_SUFFIX="linux-armv7.tar.gz"
     fi
-    if [ "$SB_REPO" = "customa" ] && [ -z "$CUSTOM_REPO_A" ]; then
-        sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
-        SB_REPO="original"
-    elif [ "$SB_REPO" = "customb" ] && [ -z "$CUSTOM_REPO_B" ]; then
+    if [ "$SB_REPO" = "custom" ] && [ -z "$CUSTOM_REPO" ]; then
         sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
         SB_REPO="original"
     fi
@@ -1694,11 +1690,7 @@ download_updates() {
         CORE_VERS="release"
     fi
     UPD_SB_URL=$SB_URL
-    if [ "$SB_REPO" = "customa" ]; then
-        UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO_A|")
-    elif [ "$SB_REPO" = "customb" ]; then
-        UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO_B|")
-    fi
+    [ "$SB_REPO" = "custom" ] && UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO|")
     echo
     echo "$MESSAGE100"
     rm -rf "$SB_DOWNLOAD_DIR"
@@ -1780,8 +1772,7 @@ update_sing_box_menu() {
     while true; do
         case "$SB_REPO" in
           original) additionally="$MESSAGE207" ;;
-          customa) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
-          customb) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
+          custom) additionally="$MESSAGE213: $CUSTOM_REPO" ;;
         esac
         case "$CORE_VERS" in
           release) given_value="$MESSAGE226" ;;
@@ -1850,22 +1841,21 @@ change_custom_repo() {
     echo
     echo "$MESSAGE210"
     while true; do
-        local message_repo_ab="$1" custom_repo_ab="$2"
         echo
-        read -p "$MESSAGE212 $message_repo_ab,
+        read -p "$MESSAGE212,
 $MESSAGE42
-: " newrepo_ab
-        if [ -z "$newrepo_ab" ]; then
+: " newrepo
+        if [ -z "$newrepo" ]; then
             echo "$MESSAGE52"
         else
-            if [ "$newrepo_ab" = "0" ]; then
-                sed -i "s|^$custom_repo_ab=\"[^\"]*\"|$custom_repo_ab=\"\"|" "$SBS_CONF"
-                printf "$MESSAGE106\n" "$message_repo_ab"
-            elif echo "$newrepo_ab" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
+            if [ "$newrepo" = "0" ]; then
+                sed -i "s|^$CUSTOM_REPO=\"[^\"]*\"|$CUSTOM_REPO=\"\"|" "$SBS_CONF"
+                echo "$MESSAGE106"
+            elif echo "$newrepo" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
                 echo "$MESSAGE217"; continue
             else
-                sed -i "s|^$custom_repo_ab=\"[^\"]*\"|$custom_repo_ab=\"$newrepo_ab\"|" "$SBS_CONF"
-                printf "$MESSAGE90\n" "$message_repo_ab" "$newrepo_ab"
+                sed -i "s|^$CUSTOM_REPO=\"[^\"]*\"|$CUSTOM_REPO=\"$newrepo\"|" "$SBS_CONF"
+                echo "$MESSAGE90 $newrepo"
             fi
         fi
         break
@@ -1875,31 +1865,24 @@ $MESSAGE42
 change_sing_box_repo() {
     while true; do
         source "$SBS_CONF"
-        [ "$SB_REPO" = "customa" ] && [ -z "$CUSTOM_REPO_A" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" && SB_REPO="original"
-        [ "$SB_REPO" = "customb" ] && [ -z "$CUSTOM_REPO_B" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" && SB_REPO="original"
+        [ "$SB_REPO" = "custom" ] && [ -z "$CUSTOM_REPO" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" && SB_REPO="original"
         case "$SB_REPO" in
           original) additionally="$MESSAGE207" ;;
-          customa) additionally="$MESSAGE213 A: $CUSTOM_REPO_A" ;;
-          customb) additionally="$MESSAGE213 B: $CUSTOM_REPO_B" ;;
+          custom) additionally="$MESSAGE213 $CUSTOM_REPO" ;;
         esac
         echo
         echo "$MESSAGE203"
         echo "$additionally"
         echo "1. $MESSAGE204"
-        printf "2. $MESSAGE205\n" "A"
-        printf "3. $MESSAGE205\n" "B"
-        echo "4. $MESSAGE211 A."
-        [ -n "$CUSTOM_REPO_A" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_A" || echo "   $MESSAGE249"
-        echo "5. $MESSAGE211 B."
-        [ -n "$CUSTOM_REPO_B" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO_B" || echo "   $MESSAGE249"
+        echo "2. $MESSAGE205"
+        echo "3. $MESSAGE211"
+        [ -n "$CUSTOM_REPO" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO" || echo "   $MESSAGE249"
         read -p "$MESSAGE196: " choice_repo
         [ -z "$choice_repo" ] && echo "$MESSAGE199" && return
         case "$choice_repo" in
             1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" ;;
-            2) [ -n "$CUSTOM_REPO_A" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customa"|' "$SBS_CONF" || printf "$MESSAGE216\n" "A" ;;
-            3) [ -n "$CUSTOM_REPO_B" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="customb"|' "$SBS_CONF" || printf "$MESSAGE216\n" "B" ;;
-            4) change_custom_repo  "A" "CUSTOM_REPO_A" ;;
-            5) change_custom_repo  "B" "CUSTOM_REPO_B" ;;
+            2) [ -n "$CUSTOM_REPO" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="custom"|' "$SBS_CONF" || echo "$MESSAGE216" ;;
+            3) change_custom_repo ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
