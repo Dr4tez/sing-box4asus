@@ -1849,12 +1849,12 @@ $MESSAGE42
             echo "$MESSAGE52"
         else
             if [ "$newrepo" = "0" ]; then
-                sed -i "s|^$CUSTOM_REPO=\"[^\"]*\"|$CUSTOM_REPO=\"\"|" "$SBS_CONF"
+                sed -i "s|^CUSTOM_REPO=\"[^\"]*\"|CUSTOM_REPO=\"\"|" "$SBS_CONF"
                 echo "$MESSAGE106"
             elif echo "$newrepo" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
                 echo "$MESSAGE217"; continue
             else
-                sed -i "s|^$CUSTOM_REPO=\"[^\"]*\"|$CUSTOM_REPO=\"$newrepo\"|" "$SBS_CONF"
+                sed -i "s|^CUSTOM_REPO=\"[^\"]*\"|CUSTOM_REPO=\"$newrepo\"|" "$SBS_CONF"
                 echo "$MESSAGE90 $newrepo"
             fi
         fi
@@ -1868,7 +1868,7 @@ change_sing_box_repo() {
         [ "$SB_REPO" = "custom" ] && [ -z "$CUSTOM_REPO" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" && SB_REPO="original"
         case "$SB_REPO" in
           original) additionally="$MESSAGE207" ;;
-          custom) additionally="$MESSAGE213 $CUSTOM_REPO" ;;
+          custom) additionally="$MESSAGE213: $CUSTOM_REPO" ;;
         esac
         echo
         echo "$MESSAGE203"
@@ -1876,7 +1876,7 @@ change_sing_box_repo() {
         echo "1. $MESSAGE204"
         echo "2. $MESSAGE205"
         echo "3. $MESSAGE211"
-        [ -n "$CUSTOM_REPO" ] && printf "   $MESSAGE214\n" ": $CUSTOM_REPO" || echo "   $MESSAGE249"
+        [ -n "$CUSTOM_REPO" ] && echo "   $MESSAGE214: $CUSTOM_REPO" || echo "   $MESSAGE249"
         read -p "$MESSAGE196: " choice_repo
         [ -z "$choice_repo" ] && echo "$MESSAGE199" && return
         case "$choice_repo" in
@@ -1904,9 +1904,9 @@ change_core_vers() {
         echo "2. $MESSAGE223"
         echo "3. $MESSAGE224"
         echo "4. $MESSAGE225"
-        [ -n "$GIVEN_VERS" ] && printf "   $MESSAGE214\n" ": $GIVEN_VERS"
+        [ -n "$GIVEN_VERS" ] && echo "   $MESSAGE214: $GIVEN_VERS"
         echo "5. $MESSAGE233"
-        [ -n "$NUM_RELEASES" ] && { printf "   $MESSAGE214" "$NUM_RELEASES"; echo " $MESSAGE215"; } || { printf "   $MESSAGE214" "30"; echo " $MESSAGE215"; }
+        [ -n "$NUM_RELEASES" ] && { echo "   $MESSAGE214: $NUM_RELEASES $MESSAGE215"; } || { echo "   $MESSAGE214: 30 $MESSAGE215"; }
         read -p "$MESSAGE196: " choice_vers
         [ -z "$choice_vers" ] && echo "$MESSAGE199" && return
         case "$choice_vers" in
