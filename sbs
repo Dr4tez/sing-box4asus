@@ -830,7 +830,7 @@ start_sing_box() {
         fi
     elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
         if lsmod | grep -q xt_TPROXY; then
-            log_msg "$MESSAGE238"
+            log_msg "$(printf "$MESSAGE238" "$TPROXY_PORT")"
         else
             log_msg "$MESSAGE239"
         fi
