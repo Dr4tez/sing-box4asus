@@ -1,4 +1,4 @@
-# For SBS version 2.4.0
+# For SBS version 2.4.1
 # English localization file.
 
 MESSAGE1="✓ Directory %s created."
@@ -36,7 +36,7 @@ MESSAGE26="Adding firewall rules."
 MESSAGE27="Adding routes and routing rules."
 MESSAGE28="Opening ports from WAN to router: %s"
 MESSAGE29="Adding the script to autostart."
-MESSAGE30="sing-box is started."
+MESSAGE30="sing-box is started"
 MESSAGE31="Stopping sing-box..."
 MESSAGE32="Removing the script from autostart."
 MESSAGE33="Closing ports from WAN to router: %s"
@@ -324,6 +324,6 @@ MESSAGE263="TUN interface is used"
 MESSAGE264="TPROXY interface is used on port"
 MESSAGE265="and uses: unique memory- %s MiB | CPU- %s%%"
 MESSAGE266="! The sing-box process was restarted because it reached its hard memory limit."
-MESSAGE267="The sbs-monitor script has started."
+MESSAGE267="The sbs-monitor script has started"
 MESSAGE268="The sbs-monitor script has stopped."
 MESSAGE269="Collecting and processing data"
