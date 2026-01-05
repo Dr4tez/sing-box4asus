@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.4.0
+# Version 2.4.1
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -50,7 +50,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.0
+# Создан в SBS 2.4.1
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -98,7 +98,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.0
+# Создан в SBS 2.4.1
 
 SB_PATH="/opt/root/sing-box/sing-box"
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
@@ -2496,7 +2496,7 @@ show_menu() {
 case "$1" in
     install) install_sing_box ;;
     start) start_sing_box ;;
-    stop) stop_sing_box ;;
+    stop) stop_sing_box; echo ;;
     restart) stop_sing_box; sleep 3; start_sing_box ;;
     status) status_sing_box ;;
     config) config_sing_box ;;
@@ -2514,7 +2514,7 @@ case "$1" in
         [ -z "$choice" ] && echo "$MESSAGE95" && exit 0
         case $choice in
             1) start_sing_box; break ;;
-            2) stop_sing_box; break ;;
+            2) stop_sing_box; echo; break ;;
             3) stop_sing_box; sleep 3; start_sing_box; break ;;
             4) status_sing_box; break ;;
             5) config_sing_box; break ;;
