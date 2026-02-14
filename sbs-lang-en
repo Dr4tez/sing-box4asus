@@ -358,8 +358,8 @@ MESSAGE288="Enter the address of the second subscription,
 or simply press Enter to return to the previous menu
 : "
 MESSAGE289="Select a configuration file to save the second subscription to."
-MESSAGE290="Update a first subscription."
-MESSAGE291="Update a second subscription."
+MESSAGE290="3. Update a first subscription."
+MESSAGE291="4. Update a second subscription."
 MESSAGE292="(⛔ The point is not active because the subscription is not configured.)"
 MESSAGE293="! sing-box is running with the %s configuration file.\nSelecting the %s point will stop sing-box."
 MESSAGE294="! sing-box is running with the %s configuration file.\nSince this configuration file is used for the first subscription, selecting point 3 will stop sing-box."
