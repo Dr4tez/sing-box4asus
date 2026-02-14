@@ -2207,7 +2207,6 @@ check_choice() {
         echo "2. config-2.json"
         echo "3. config-3.json"
         echo "4. config-4.json"
-        echo "$MESSAGE196
         read -p "$MESSAGE196" checkchoice
         [ -z "$checkchoice" ] && break
         case "$checkchoice" in
