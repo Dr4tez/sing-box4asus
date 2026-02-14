@@ -2137,7 +2137,8 @@ config_sub() {
 conf_set_sub() {
     local sub_addr="$1" sub_conf="$2" msg_newaddr="$3" msg_addr="$4" msg_choose="$5"
     echo
-    if [ -n "${!sub_addr}" ]; then
+    eval "current_value=\$$sub_addr"
+    if [ -n "$current_value" ]; then
         read -p "$msg_newaddr" newsub
         if [ -z "$newsub" ]; then
             echo "$MESSAGE52"; return
