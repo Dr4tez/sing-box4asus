@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.4.2
+# Version 2.4.3
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -59,7 +59,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.2
+# Создан в SBS 2.4.3
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -117,9 +117,9 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.2
+# Создан в SBS 2.4.3
 
-source "$SBS_CONF"
+source "/jffs/addons/sing-box-script/sbs-conf"
 SB_PATH="/opt/root/sing-box/sing-box"
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
 SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
@@ -2070,7 +2070,7 @@ config_sing_box() {
         echo "$MESSAGE124"
         echo
         echo "$MESSAGE129"
-        echo "  $MESSAGE271 $USED_CONF"
+        echo "   $MESSAGE271 $USED_CONF"
         echo "$MESSAGE276"
         echo "$MESSAGE272"
         read -p "$MESSAGE99" choice
@@ -2090,7 +2090,6 @@ config_choice() {
         source "$SBS_CONF"
         echo
         echo "$MESSAGE270"
-        echo "$MESSAGE271 $USED_CONF"
         is_running && echo "$MESSAGE103"
         echo "1. config-1.json"
         echo "2. config-2.json"
@@ -2099,10 +2098,10 @@ config_choice() {
         read -p "$MESSAGE196" conchoice
         [ -z "$conchoice" ] && break
         case "$conchoice" in
-            1) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-1.json"/' "$SBS_CONF" ;;
-            2) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-2.json"/' "$SBS_CONF" ;;
-            3) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-3.json"/' "$SBS_CONF" ;;
-            4) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-4.json"/' "$SBS_CONF" ;;
+            1) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-1.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            2) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-2.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            3) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-3.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            4) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-4.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -2182,6 +2181,7 @@ conf_set_sub() {
 
 config_check() {
     while true; do
+        echo
         is_running && [ "$CHECKED_CONF" = "$USED_CONF" ] && echo "$MESSAGE273"
         echo "$MESSAGE274"
         echo "$MESSAGE271 $CHECKED_CONF"
@@ -2210,10 +2210,10 @@ check_choice() {
         read -p "$MESSAGE196" checkchoice
         [ -z "$checkchoice" ] && break
         case "$checkchoice" in
-            1) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-1.json"/' "$SBS_CONF"; break ;;
-            2) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-2.json"/' "$SBS_CONF"; break ;;
-            3) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-3.json"/' "$SBS_CONF"; break ;;
-            4) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-4.json"/' "$SBS_CONF"; break ;;
+            1) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-1.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            2) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-2.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            3) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-3.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            4) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-4.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
