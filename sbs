@@ -1,14 +1,12 @@
 #!/bin/sh
 
-# Version 2.4.3
+# Version 2.4.4
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
 SBS_CONF="$JFFS_SB_DIR/sbs-conf"
 [ -f "$SBS_CONF" ] && source "$SBS_CONF"
-[ -f "$SBS_CONF" ] && SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
-[ -f "$SBS_CONF" ] && CHECKED_SB_CONFIG="$JFFS_SB_DIR/$CHECKED_CONF"
 SB_CONFIG1="$JFFS_SB_DIR/config-1.json"
 SB_CONFIG2="$JFFS_SB_DIR/config-2.json"
 SB_CONFIG3="$JFFS_SB_DIR/config-3.json"
@@ -59,7 +57,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.3
+# Создан в SBS 2.4.4
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -83,7 +81,7 @@ create_sbs_conf() {
 # Строка USED_CONF - тут указывается имя конфига, который будет использоваться при запуске sing-box. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
 # Строка CHECKED_CONF - тут указывается имя конфига, который будет использоваться для редактирования, проверки и формата в меню 'sbs config'. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
 # Строки SUB1_ADDR и SUB2_ADDR - тут указываются адреса подписок.
-# Строка CONF_FOR_SUB1 и CONF_FOR_SUB2 - тут указывается имена конфигов, в которых будут сохраняться конфиги из подписок. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
+# Строки CONF_FOR_SUB1 и CONF_FOR_SUB2 - тут указывается имена конфигов, в которых будут сохраняться конфиги из подписок. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
 
 DEVICE_IPS=""
 EXC_DEVICE_IPS=""
@@ -117,7 +115,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.3
+# Создан в SBS 2.4.4
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 SB_PATH="/opt/root/sing-box/sing-box"
@@ -767,6 +765,8 @@ is_valid_combs() {
 }
 
 check_wan_ports() {
+    source "$SBS_CONF"
+    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
     updated_ports=""
     for combination in $(echo "$WAN_PORTS" | tr ' ' '\n'); do
         if ! is_valid_combs "$combination"; then
@@ -801,6 +801,7 @@ remove_duplicates() {
 
 start_sing_box() {
     source "$SBS_CONF"
+    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
@@ -813,7 +814,7 @@ start_sing_box() {
         exit 1
     fi
 
-    log_msg "$MESSAGE200"
+    log_msg "$(printf "$MESSAGE200\n" "$USED_CONF")"
     update_tun_interface
     extract_listen_port TPROXY_PORT tproxy
     check_wan_ports
@@ -1567,8 +1568,7 @@ set_interface() {
         [ -n "$DEVICE_IPS" ] && echo "   $MESSAGE247: $DEVICE_IPS" || echo "   $MESSAGE247 $MESSAGE248"
         echo "2. $MESSAGE261"
         [ -n "$EXC_DEVICE_IPS" ] && echo "   $MESSAGE247: $EXC_DEVICE_IPS" || echo "   $MESSAGE247 $MESSAGE248"
-        read -p "$MESSAGE196
-: " si_choice
+        read -p "$MESSAGE196" si_choice
         if [ -z "$si_choice" ]; then
             echo "$MESSAGE199"; echo; return
         fi
@@ -1590,8 +1590,7 @@ set_finterface() {
         [ -n "$DEVICE_FIPS" ] && echo "   $MESSAGE247: $DEVICE_FIPS" || echo "   $MESSAGE247 $MESSAGE248"
         echo "2. $MESSAGE261"
         [ -n "$EXC_DEVICE_FIPS" ] && echo "   $MESSAGE247: $EXC_DEVICE_FIPS" || echo "   $MESSAGE247 $MESSAGE248"
-        read -p "$MESSAGE196
-: " sif_choice
+        read -p "$MESSAGE196" sif_choice
         if [ -z "$sif_choice" ]; then
             echo "$MESSAGE199"; echo; return
         fi
@@ -1633,10 +1632,11 @@ configure_fwmark() {
 
 setup_sing_box() {
     source "$SBS_CONF"
+    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
-    echo "$MESSAGE200"
+    printf "$MESSAGE200\n" "$USED_CONF"
     update_tun_interface
     extract_listen_port TPROXY_PORT tproxy
     fakeip_check
@@ -1680,8 +1680,7 @@ setup_pro() {
         echo "   $MESSAGE49: $ROUTE_TABLE"
         echo "$MESSAGE195"
         echo "   $MESSAGE49: $FW_MARK"
-        read -p "$MESSAGE196
-: " pif_choice
+        read -p "$MESSAGE196" pif_choice
         [ -z "$pif_choice" ] && echo "$MESSAGE199" && echo && break
         case "$pif_choice" in
             1) is_running && stop_sing_box; echo; configure_table; source "$SBS_CONF" ;;
@@ -1846,7 +1845,7 @@ change_repo_vers() {
         else
             printf "   $MESSAGE209\n" "30"
         fi
-        read -p "$MESSAGE196: " choice_repo_vers
+        read -p "$MESSAGE196" choice_repo_vers
         [ -z "$choice_repo_vers" ] && echo "$MESSAGE199" && return
         case "$choice_repo_vers" in
             1) change_sing_box_repo; source "$SBS_CONF"; continue ;;
@@ -1896,7 +1895,7 @@ change_sing_box_repo() {
         echo "2. $MESSAGE205"
         echo "3. $MESSAGE211"
         [ -n "$CUSTOM_REPO" ] && echo "   $MESSAGE214: $CUSTOM_REPO" || echo "   $MESSAGE249"
-        read -p "$MESSAGE196: " choice_repo
+        read -p "$MESSAGE196" choice_repo
         [ -z "$choice_repo" ] && echo "$MESSAGE199" && return
         case "$choice_repo" in
             1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" ;;
@@ -1926,7 +1925,7 @@ change_core_vers() {
         [ -n "$GIVEN_VERS" ] && echo "   $MESSAGE214: $GIVEN_VERS"
         echo "5. $MESSAGE233"
         [ -n "$NUM_RELEASES" ] && { echo "   $MESSAGE214: $NUM_RELEASES $MESSAGE215"; } || { echo "   $MESSAGE214: 30 $MESSAGE215"; }
-        read -p "$MESSAGE196: " choice_vers
+        read -p "$MESSAGE196" choice_vers
         [ -z "$choice_vers" ] && echo "$MESSAGE199" && return
         case "$choice_vers" in
             1) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF" ;;
@@ -2063,6 +2062,8 @@ format_sing_box() {
 
 config_sing_box() {
     source "$SBS_CONF"
+    CHECKED_SB_CONFIG="$JFFS_SB_DIR/$CHECKED_CONF"
+    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
     while true; do
@@ -2119,15 +2120,15 @@ config_sub() {
         echo "$MESSAGE284"
         [ -n "$SUB2_ADDR" ] && echo "  MESSAGE285: $SUB2_ADDR"
         [ -n "$CONF_FOR_SUB2" ] && echo "  MESSAGE286 $CONF_FOR_SUB2"
-        echo -n "$MESSAGE290" && { [ -z "$SUB1_ADDR" ] || [ -z "$CONF_FOR_SUB1" ]; } && echo " $MESSAGE292"
-        echo -n "$MESSAGE291" && { [ -z "$SUB2_ADDR" ] || [ -z "$CONF_FOR_SUB2" ]; } && echo " $MESSAGE292"
+        echo "$MESSAGE290"
+        echo "$MESSAGE291"
         read -p "$MESSAGE196" consub
         [ -z "$consub" ] && break
         case "$consub" in
             1) conf_set_sub "SUB1_ADDR" "CONF_FOR_SUB1" "$MESSAGE279" "$MESSAGE280" "$MESSAGE281" ;;
             2) conf_set_sub "SUB2_ADDR" "CONF_FOR_SUB2" "$MESSAGE287" "$MESSAGE288" "$MESSAGE289" ;;
-            3) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && stop_sing_box; [ -n "$SUB1_ADDR" ] && [ -n "$CONF_FOR_SUB1" ] && { wget -q --spider "$SUB1_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB1" "$SUB1_ADDR" || echo "$MESSAGE298"; } ;;
-            4) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && stop_sing_box; [ -n "$SUB2_ADDR" ] && [ -n "$CONF_FOR_SUB2" ] && { wget -q --spider "$SUB2_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB2" "$SUB2_ADDR" || echo "$MESSAGE298"; } ;;
+            3) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && stop_sing_box; { [ -n "$SUB1_ADDR" ] && [ -n "$CONF_FOR_SUB1" ]; } && { wget -q --spider "$SUB1_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB1" "$SUB1_ADDR" || echo "$MESSAGE298"; } || echo "$MESSAGE292" ;;
+            4) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && stop_sing_box; { [ -n "$SUB2_ADDR" ] && [ -n "$CONF_FOR_SUB2" ]; } && { wget -q --spider "$SUB2_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB2" "$SUB2_ADDR" || echo "$MESSAGE298"; } || echo "$MESSAGE292" ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -2181,10 +2182,12 @@ conf_set_sub() {
 
 config_check() {
     while true; do
+        source "$SBS_CONF"
+        CHECKED_SB_CONFIG="$JFFS_SB_DIR/$CHECKED_CONF"
         echo
-        is_running && [ "$CHECKED_CONF" = "$USED_CONF" ] && echo "$MESSAGE273"
+        is_running && [ "$CHECKED_CONF" = "$USED_CONF" ] && printf "$MESSAGE273\n" "$USED_CONF" "$CHECKED_CONF"
         echo "$MESSAGE274"
-        echo "$MESSAGE271 $CHECKED_CONF"
+        echo "   $MESSAGE271 $CHECKED_CONF"
         echo "$MESSAGE126"
         echo "$MESSAGE127"
         echo "$MESSAGE128"
@@ -2283,6 +2286,7 @@ status_sing_box() {
 
 server_sing_box() {
     source "$SBS_CONF"
+    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
     check_wan_ports
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
@@ -2439,8 +2443,7 @@ expert_memlim() {
         [ -n "$S_MEMLIM" ] && echo "   $MESSAGE49: $S_MEMLIM MiB" || echo "   $MESSAGE49 $MESSAGE76"
         echo "3. $MESSAGE137"
         [ -n "$K_GOGC" ] && echo "   $MESSAGE49: $K_GOGC" || echo "   $MESSAGE49 $MESSAGE76"
-        read -p "$MESSAGE196
-: " if_choice
+        read -p "$MESSAGE196" if_choice
         [ -z "$if_choice" ] && break
         case "$if_choice" in
             1) is_running && stop_sing_box; echo; set_h_memlim; source "$SBS_CONF" ;;
