@@ -1,4 +1,4 @@
-# For SBS version 2.4.3
+# For SBS version 2.4.4
 # English localization file.
 
 MESSAGE1="✓ Directory %s created."
@@ -252,7 +252,7 @@ MESSAGE198="Enter a new fw-mark in hex format to change it,
 or simply press Enter to return to the menu
 : "
 MESSAGE199="Returning to the previous menu."
-MESSAGE200="Parsing config.json configuration file..."
+MESSAGE200="Parsing %s configuration file..."
 MESSAGE201="! Launch failed."
 MESSAGE202="1. Select repository to download sing-box core.
    %s"
@@ -270,7 +270,7 @@ MESSAGE212="Enter a custom repository."
 MESSAGE213="Custom repository selected"
 MESSAGE214="Specified"
 MESSAGE215="latest releases."
-MESSAGE216="⛔ Item is not selectable. Custom repository %s is not specified."
+MESSAGE216="⛔ Point is not selectable. Custom repository %s is not specified."
 MESSAGE217="⛔ Invalid format. Please try again."
 MESSAGE218="Enter a value, for example '80',
 to delete a value, enter '0',
@@ -289,7 +289,7 @@ MESSAGE227="Selected latest pre-release."
 MESSAGE228="Selected specified version:"
 MESSAGE229="Select core version."
 MESSAGE230="No version specified."
-MESSAGE231="⛔ Item not selectable. No version specified."
+MESSAGE231="⛔ Point is not selectable. No version specified."
 MESSAGE232="Enter the desired version of the sing-box core, for example '1.11.14' or '1.12.0-beta.5'"
 MESSAGE233="Set search depth."
 MESSAGE234="Menu for settings and selecting the sing-box core repository and version."
@@ -331,7 +331,7 @@ MESSAGE269="Collecting and processing data"
 MESSAGE270="Select a configuration file to run sing-box."
 MESSAGE271="Currently selected"
 MESSAGE272="3. Editing, checking and formatting configuration files."
-MESSAGE273="! sing-box is running with the %s configuration file.\nSince the same configuration file was selected in point 1, selecting point 2 will stop sing-box."
+MESSAGE273="! sing-box is running with the %s configuration file. Since %s is also selected in point 1 of this menu, selecting point 2 will stop the sing-box."
 MESSAGE274="1. Selecting a configuration file for editing, checking, and formatting."
 MESSAGE275="Select a configuration file to editing, checking, and formatting."
 MESSAGE276="2. Subscriptions settings."
@@ -360,10 +360,10 @@ or simply press Enter to return to the previous menu
 MESSAGE289="Select a configuration file to save the second subscription to."
 MESSAGE290="3. Update a first subscription."
 MESSAGE291="4. Update a second subscription."
-MESSAGE292="(⛔ The point is not active because the subscription is not configured.)"
-MESSAGE293="! sing-box is running with the %s configuration file.\nSelecting the %s point will stop sing-box."
-MESSAGE294="! sing-box is running with the %s configuration file.\nSince this configuration file is used for the first subscription, selecting point 3 will stop sing-box."
-MESSAGE295="! sing-box is running with the %s configuration file.\nSince this configuration file is used for the second subscription, selecting point 4 will stop sing-box."
+MESSAGE292="⛔ Point is not selectable. The subscription is not configured."
+MESSAGE293="! sing-box is running with the %s configuration file. Selecting the %s point will stop sing-box."
+MESSAGE294="! sing-box is running with the %s configuration file. Since this configuration file is used for the first subscription, selecting point 3 will stop sing-box."
+MESSAGE295="! sing-box is running with the %s configuration file. Since this configuration file is used for the second subscription, selecting point 4 will stop sing-box."
 MESSAGE296="❌ Subscription address removed."
 MESSAGE297="✓ Subscription address changed to"
 MESSAGE298="⛔ Subscription is not available at this address."
