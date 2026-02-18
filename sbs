@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.4.4
+# Version 2.4.5
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -57,7 +57,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.4
+# Создан в SBS 2.4.5
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -115,7 +115,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.4
+# Создан в SBS 2.4.5
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 SB_PATH="/opt/root/sing-box/sing-box"
@@ -451,10 +451,14 @@ check_copy_file() {
     fi
 }
 
-change_language() {
+load_conf_and_lang() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
+}
+
+change_language() {
+    load_conf_and_lang
     while true; do
         if [ "$LANG" = "ru" ]; then
             echo "Перейти на английский?"
@@ -800,10 +804,8 @@ remove_duplicates() {
 }
 
 start_sing_box() {
-    source "$SBS_CONF"
+    load_conf_and_lang
     SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
     is_running && { log_msg "$MESSAGE21"; exit 1; }
 
@@ -1079,13 +1081,13 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
         for entry in $WAN_PORTS; do
             wan_port=$(echo "$entry" | cut -d ':' -f 2)
             if ! iptables-save | grep -q -- "-A INPUT -p tcp -m tcp --dport $wan_port -j ACCEPT"; then
-                iptables -I INPUT -p tcp --dport "$wan_port" -j ACCEPT
+                iptables -I INPUT -p tcp --dport $wan_port -j ACCEPT
             fi
             if ! iptables-save | grep -q -- "-A INPUT -p udp -m udp --dport $wan_port -j ACCEPT"; then
-                iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT
+                iptables -I INPUT -p udp --dport $wan_port -j ACCEPT
             fi
-            update_script "$FW_SCRIPT" "iptables -I INPUT -p tcp --dport "$wan_port" -j ACCEPT # sing-box-script
-iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
+            update_script "$FW_SCRIPT" "iptables -I INPUT -p tcp --dport $wan_port -j ACCEPT # sing-box-script
+iptables -I INPUT -p udp --dport $wan_port -j ACCEPT # sing-box-script"
         done
     fi
     $SBS_MON &
@@ -1095,9 +1097,7 @@ iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
 }
 
 stop_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     echo
     kill $(ps | grep -v grep | grep "$SBS_MON_NAME" | awk '{print $1}') 2>/dev/null
     log_msg "$MESSAGE268"
@@ -1631,10 +1631,8 @@ configure_fwmark() {
 }
 
 setup_sing_box() {
-    source "$SBS_CONF"
+    load_conf_and_lang
     SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
     printf "$MESSAGE200\n" "$USED_CONF"
     update_tun_interface
@@ -1779,9 +1777,7 @@ EOF
 }
 
 update_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     download_updates
     update_sing_box_menu
 }
@@ -1985,9 +1981,7 @@ EOF
 }
 
 updmonandconf_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     create_sbs_conf "$TEMP_SBS_CONF"
     comments=$(grep '^#' "$TEMP_SBS_CONF")
     vars_in_tmp=$(grep '^[A-Za-z0-9_]\+=' "$TEMP_SBS_CONF")
@@ -2061,11 +2055,9 @@ format_sing_box() {
 }
 
 config_sing_box() {
-    source "$SBS_CONF"
+    load_conf_and_lang
     CHECKED_SB_CONFIG="$JFFS_SB_DIR/$CHECKED_CONF"
     SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
     while true; do
         echo
         echo "$MESSAGE124"
@@ -2099,10 +2091,7 @@ config_choice() {
         read -p "$MESSAGE196" conchoice
         [ -z "$conchoice" ] && break
         case "$conchoice" in
-            1) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-1.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
-            2) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-2.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
-            3) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-3.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
-            4) is_running && stop_sing_box; sed -i 's/^USED_CONF=.*/USED_CONF="config-4.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            1|2|3|4) is_running && stop_sing_box; sed -i "s/^USED_CONF=.*/USED_CONF=\"config-${conchoice}.json\"/" "$SBS_CONF"; source "$SBS_CONF"; break ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -2118,8 +2107,8 @@ config_sub() {
         [ -n "$SUB1_ADDR" ] && echo "  $MESSAGE277: $SUB1_ADDR"
         [ -n "$CONF_FOR_SUB1" ] && echo "  $MESSAGE278 $CONF_FOR_SUB1"
         echo "$MESSAGE284"
-        [ -n "$SUB2_ADDR" ] && echo "  MESSAGE285: $SUB2_ADDR"
-        [ -n "$CONF_FOR_SUB2" ] && echo "  MESSAGE286 $CONF_FOR_SUB2"
+        [ -n "$SUB2_ADDR" ] && echo "  $MESSAGE285: $SUB2_ADDR"
+        [ -n "$CONF_FOR_SUB2" ] && echo "  $MESSAGE286 $CONF_FOR_SUB2"
         echo "$MESSAGE290"
         echo "$MESSAGE291"
         read -p "$MESSAGE196" consub
@@ -2213,19 +2202,14 @@ check_choice() {
         read -p "$MESSAGE196" checkchoice
         [ -z "$checkchoice" ] && break
         case "$checkchoice" in
-            1) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-1.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
-            2) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-2.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
-            3) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-3.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
-            4) sed -i 's/^CHECKED_CONF=.*/CHECKED_CONF="config-4.json"/' "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            1|2|3|4) sed -i "s/^CHECKED_CONF=.*/CHECKED_CONF=\"config-${checkchoice}.json\"/" "$SBS_CONF"; source "$SBS_CONF"; break ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
 }
 
 status_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     echo
     if is_running; then
         pid=$(ps | grep -v grep | grep "$SB_NAME" | awk '{print $1}')
@@ -2285,11 +2269,9 @@ status_sing_box() {
 }
 
 server_sing_box() {
-    source "$SBS_CONF"
+    load_conf_and_lang
     SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
     check_wan_ports
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
     echo "$MESSAGE149"; echo
     echo "$MESSAGE150"
@@ -2377,9 +2359,7 @@ server_sing_box() {
 }
 
 memlim_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     while true; do
         echo
         echo "$MESSAGE241"
@@ -2621,9 +2601,7 @@ install_sing_box() {
 }
 
 remove_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     echo "$MESSAGE172"
     while true; do
         read -p "$MESSAGE18" choice
@@ -2636,9 +2614,7 @@ remove_sing_box() {
 }
 
 show_menu() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     echo
     echo "$MESSAGE176"
     echo

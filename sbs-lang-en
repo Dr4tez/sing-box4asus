@@ -1,8 +1,8 @@
-# For SBS version 2.4.4
+# For SBS version 2.4.5
 # English localization file.
 
 MESSAGE1="✓ Directory %s created."
-MESSAGE2="! ФFile %s already exists."
+MESSAGE2="! File %s already exists."
 MESSAGE3="Enter 1 to download and replace this file,
 or just press Enter to leave the existing file
 : "
@@ -270,7 +270,7 @@ MESSAGE212="Enter a custom repository."
 MESSAGE213="Custom repository selected"
 MESSAGE214="Specified"
 MESSAGE215="latest releases."
-MESSAGE216="⛔ Point is not selectable. Custom repository %s is not specified."
+MESSAGE216="⛔ Point is not selectable. Custom repository is not specified."
 MESSAGE217="⛔ Invalid format. Please try again."
 MESSAGE218="Enter a value, for example '80',
 to delete a value, enter '0',
