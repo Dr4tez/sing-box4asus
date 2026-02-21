@@ -366,3 +366,6 @@ MESSAGE294="! sing-box is running with the %s configuration file. Since this con
 MESSAGE295="! sing-box is running with the %s configuration file. Since this configuration file is used for the second subscription, selecting point 4 will stop sing-box."
 MESSAGE296="❌ Subscription address removed."
 MESSAGE297="✓ Subscription address changed to"
+MESSAGE298="Enter the point number
+or simply press Enter to return to the menu
+: "
