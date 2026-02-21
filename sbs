@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.4.5
+# Version 2.4.6
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -57,7 +57,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.5
+# Создан в SBS 2.4.6
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -115,7 +115,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.5
+# Создан в SBS 2.4.6
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 SB_PATH="/opt/root/sing-box/sing-box"
@@ -2043,7 +2043,7 @@ format_sing_box() {
         echo; echo "$MESSAGE120"
         echo "$output"
         while true; do
-            echo "$MESSAGE121"
+            printf "$MESSAGE121\n" "$CHECKED_CONF"
             read -p "$MESSAGE18" save_choice
             [ -z "$save_choice" ] && echo "$MESSAGE122" && break
             case "$save_choice" in
@@ -2059,13 +2059,11 @@ config_sing_box() {
     CHECKED_SB_CONFIG="$JFFS_SB_DIR/$CHECKED_CONF"
     SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
     while true; do
-        echo
-        echo "$MESSAGE124"
-        echo
-        echo "$MESSAGE129"
+        echo; echo "$MESSAGE124"
+        echo; echo "1. $MESSAGE129"
         echo "   $MESSAGE271 $USED_CONF"
-        echo "$MESSAGE276"
-        echo "$MESSAGE272"
+        echo "2. $MESSAGE276"
+        echo "3. $MESSAGE272"
         read -p "$MESSAGE99" choice
         [ -z "$choice" ] && echo "$MESSAGE95" && break
         case "$choice" in
@@ -2081,8 +2079,7 @@ config_sing_box() {
 config_choice() {
     while true; do
         source "$SBS_CONF"
-        echo
-        echo "$MESSAGE270"
+        echo; echo "$MESSAGE129"
         is_running && echo "$MESSAGE103"
         echo "1. config-1.json"
         echo "2. config-2.json"
@@ -2100,15 +2097,15 @@ config_choice() {
 config_sub() {
     while true; do
         source "$SBS_CONF"
-        echo
+        echo; echo "$MESSAGE276"
         is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && printf "$MESSAGE294\n" "$USED_CONF"
         is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && printf "$MESSAGE295\n" "$USED_CONF"
         echo "$MESSAGE283"
         [ -n "$SUB1_ADDR" ] && echo "  $MESSAGE277: $SUB1_ADDR"
-        [ -n "$CONF_FOR_SUB1" ] && echo "  $MESSAGE278 $CONF_FOR_SUB1"
+        [ -n "$CONF_FOR_SUB1" ] && printf "$MESSAGE278\n" "$CONF_FOR_SUB1"
         echo "$MESSAGE284"
-        [ -n "$SUB2_ADDR" ] && echo "  $MESSAGE285: $SUB2_ADDR"
-        [ -n "$CONF_FOR_SUB2" ] && echo "  $MESSAGE286 $CONF_FOR_SUB2"
+        [ -n "$SUB2_ADDR" ] && echo "  $MESSAGE277: $SUB2_ADDR"
+        [ -n "$CONF_FOR_SUB2" ] && printf "$MESSAGE278\n" "$CONF_FOR_SUB2"
         echo "$MESSAGE290"
         echo "$MESSAGE291"
         read -p "$MESSAGE196" consub
@@ -2116,8 +2113,26 @@ config_sub() {
         case "$consub" in
             1) conf_set_sub "SUB1_ADDR" "CONF_FOR_SUB1" "$MESSAGE279" "$MESSAGE280" "$MESSAGE281" ;;
             2) conf_set_sub "SUB2_ADDR" "CONF_FOR_SUB2" "$MESSAGE287" "$MESSAGE288" "$MESSAGE289" ;;
-            3) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && stop_sing_box; { [ -n "$SUB1_ADDR" ] && [ -n "$CONF_FOR_SUB1" ]; } && { wget -q --spider "$SUB1_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB1" "$SUB1_ADDR" || echo "$MESSAGE298"; } || echo "$MESSAGE292" ;;
-            4) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && stop_sing_box; { [ -n "$SUB2_ADDR" ] && [ -n "$CONF_FOR_SUB2" ]; } && { wget -q --spider "$SUB2_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB2" "$SUB2_ADDR" || echo "$MESSAGE298"; } || echo "$MESSAGE292" ;;
+            3) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && stop_sing_box
+               if [ -n "$SUB1_ADDR" ] && [ -n "$CONF_FOR_SUB1" ]; then
+                   if wget -q --spider "$SUB1_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB1" "$SUB1_ADDR"; then
+                       echo "$MESSAGE270"
+                   else
+                       echo "$MESSAGE285"
+                   fi
+               else
+                   echo "$MESSAGE292"
+               fi ;;
+            4) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && stop_sing_box
+               if [ -n "$SUB2_ADDR" ] && [ -n "$CONF_FOR_SUB2" ]; then
+                   if wget -q --spider "$SUB2_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB2" "$SUB2_ADDR"; then
+                       echo "$MESSAGE270"
+                   else
+                       echo "$MESSAGE285"
+                   fi
+               else
+                   echo "$MESSAGE292"
+               fi ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -2136,7 +2151,7 @@ conf_set_sub() {
             sed -i "s|^$sub_conf=\"[^\"]*\"|$sub_conf=\"\"|" "$SBS_CONF"
             echo "$MESSAGE296"; return
         else
-            wget -q --spider "$newsub" || { echo "$MESSAGE298"; return; }
+            wget -q --spider "$newsub" || { echo "$MESSAGE286"; return; }
             sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"$newsub\"|" "$SBS_CONF"
             echo "$MESSAGE297 $newsub"
         fi
@@ -2145,20 +2160,19 @@ conf_set_sub() {
         if [ -z "$newsub" ]; then
             echo "$MESSAGE52"; return
         else
-            wget -q --spider "$newsub" || { echo "$MESSAGE298"; return; }
+            wget -q --spider "$newsub" || { echo "$MESSAGE286"; return; }
             sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"$newsub\"|" "$SBS_CONF"
             echo "$MESSAGE297 $newsub"
         fi
     fi
-    echo
-    echo "$msg_choose"
+    echo; echo "$msg_choose"
     while true; do
         is_running && printf "$MESSAGE293\n" "$USED_CONF" "$USED_CONF"
         echo "1. config-1.json"
         echo "2. config-2.json"
         echo "3. config-3.json"
         echo "4. config-4.json"
-        read -p "$MESSAGE282" confsub
+        read -p "$MESSAGE282: " confsub
         case "$confsub" in
             1) is_running && [ "$USED_CONF" = "config-1.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG1" "$newsub"; sed -i "s|^$sub_conf=.*|$sub_conf=\"config-1.json\"|" "$SBS_CONF"; break ;;
             2) is_running && [ "$USED_CONF" = "config-2.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG2" "$newsub"; sed -i "s|^$sub_conf=.*|$sub_conf=\"config-2.json\"|" "$SBS_CONF"; break ;;
@@ -2173,13 +2187,13 @@ config_check() {
     while true; do
         source "$SBS_CONF"
         CHECKED_SB_CONFIG="$JFFS_SB_DIR/$CHECKED_CONF"
-        echo
+        echo; echo "$MESSAGE272"
         is_running && [ "$CHECKED_CONF" = "$USED_CONF" ] && printf "$MESSAGE273\n" "$USED_CONF" "$CHECKED_CONF"
         echo "$MESSAGE274"
         echo "   $MESSAGE271 $CHECKED_CONF"
-        echo "$MESSAGE126"
-        echo "$MESSAGE127"
-        echo "$MESSAGE128"
+        printf "$MESSAGE126\n" "$CHECKED_CONF"
+        printf "$MESSAGE127\n" "$CHECKED_CONF"
+        printf "$MESSAGE128\n" "$CHECKED_CONF"
         read -p "$MESSAGE196" confcheck
         [ -z "$confcheck" ] && break
         case "$confcheck" in

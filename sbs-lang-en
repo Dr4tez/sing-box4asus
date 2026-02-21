@@ -1,4 +1,4 @@
-# For SBS version 2.4.5
+# For SBS version 2.4.6
 # English localization file.
 
 MESSAGE1="✓ Directory %s created."
@@ -154,15 +154,15 @@ MESSAGE117="✓ Editing is complete."
 MESSAGE118="✓ No errors found in the configuration file."
 MESSAGE119="! First, perform an error check and correction by selecting point 2 in the sing-box configuration file setup menu."
 MESSAGE120="The result of the 'format' function:"
-MESSAGE121="Save the result of the 'format' function to the sing-box configuration file?"
+MESSAGE121="Save the output of the 'format' function to the %s configuration file?"
 MESSAGE122="! You chose not to save the result."
 MESSAGE123="✓ The result has been saved."
 MESSAGE124="Menu for settings of sing-box configuration files."
 MESSAGE125="! sing-box is running, if you select point 1 it will be stopped."
-MESSAGE126="2. Open the configuration file in the 'nano' editor."
-MESSAGE127="3. Check the configuration file for errors."
-MESSAGE128="4. Format the configuration file structure."
-MESSAGE129="1. Selecting a configuration file to run sing-box."
+MESSAGE126="2. Open the %s configuration file in the 'nano' editor."
+MESSAGE127="3. Check the %s configuration file for errors."
+MESSAGE128="4. Format the %s configuration file structure."
+MESSAGE129="Selecting a configuration file for sing-box run."
 MESSAGE130="Main script version: %s"
 MESSAGE131="! Main script version not found."
 MESSAGE132="sing-box core version: %s"
@@ -328,15 +328,15 @@ MESSAGE266="! The sing-box process was restarted because it reached its hard mem
 MESSAGE267="The sbs-monitor script has started"
 MESSAGE268="The sbs-monitor script has stopped."
 MESSAGE269="Collecting and processing data"
-MESSAGE270="Select a configuration file to run sing-box."
+MESSAGE270="✓ Subscription updated."
 MESSAGE271="Currently selected"
-MESSAGE272="3. Editing, checking and formatting configuration files."
+MESSAGE272="Editing, checking and formatting configuration files."
 MESSAGE273="! sing-box is running with the %s configuration file. Since %s is also selected in point 1 of this menu, selecting point 2 will stop the sing-box."
 MESSAGE274="1. Selecting a configuration file for editing, checking, and formatting."
 MESSAGE275="Select a configuration file to editing, checking, and formatting."
-MESSAGE276="2. Subscriptions settings."
-MESSAGE277="Current address of the first subscription:"
-MESSAGE278="The first subscription is saved in the configuration file"
+MESSAGE276="Subscriptions settings."
+MESSAGE277="Current subscription address"
+MESSAGE278="  The subscription is saved to the %s configuration file."
 MESSAGE279="Enter a new address of the first subscription to replace the current one,
 enter '0' to delete the current address,
 or simply press Enter to return to the previous menu
@@ -348,8 +348,8 @@ MESSAGE281="Select a configuration file to save the first subscription to."
 MESSAGE282="Enter the point number"
 MESSAGE283="1. First subscription settings."
 MESSAGE284="2. Second subscription settings."
-MESSAGE285="Current address of the second subscription:"
-MESSAGE286="The second subscription is saved in the configuration file"
+MESSAGE285="⛔ The subscription address is currently unavailable."
+MESSAGE286="⛔ Subscription is not available at this address."
 MESSAGE287="Enter a new address of the second subscription to replace the current one,
 enter '0' to delete the current address,
 or simply press Enter to return to the previous menu
@@ -366,4 +366,3 @@ MESSAGE294="! sing-box is running with the %s configuration file. Since this con
 MESSAGE295="! sing-box is running with the %s configuration file. Since this configuration file is used for the second subscription, selecting point 4 will stop sing-box."
 MESSAGE296="❌ Subscription address removed."
 MESSAGE297="✓ Subscription address changed to"
-MESSAGE298="⛔ Subscription is not available at this address."
