@@ -2097,9 +2097,10 @@ config_choice() {
 config_sub() {
     while true; do
         source "$SBS_CONF"
-        echo; echo "$MESSAGE276"; echo
+        echo; echo "$MESSAGE276"
         is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && printf "$MESSAGE294\n" "$USED_CONF"
         is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && printf "$MESSAGE295\n" "$USED_CONF"
+        echo
         echo "$MESSAGE283"
         [ -n "$SUB1_ADDR" ] && echo "   $MESSAGE277: $SUB1_ADDR"
         [ -n "$CONF_FOR_SUB1" ] && printf "$MESSAGE278\n" "$CONF_FOR_SUB1"
