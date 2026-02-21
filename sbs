@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.4.6
+# Version 2.4.7
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -57,7 +57,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.6
+# Создан в SBS 2.4.7
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -115,7 +115,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.6
+# Создан в SBS 2.4.7
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 SB_PATH="/opt/root/sing-box/sing-box"
@@ -2081,7 +2081,7 @@ config_choice() {
         source "$SBS_CONF"
         echo; echo "$MESSAGE129"
         is_running && echo "$MESSAGE103"
-        echo "1. config-1.json"
+        echo; echo "1. config-1.json"
         echo "2. config-2.json"
         echo "3. config-3.json"
         echo "4. config-4.json"
@@ -2097,14 +2097,14 @@ config_choice() {
 config_sub() {
     while true; do
         source "$SBS_CONF"
-        echo; echo "$MESSAGE276"
+        echo; echo "$MESSAGE276"; echo
         is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && printf "$MESSAGE294\n" "$USED_CONF"
         is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && printf "$MESSAGE295\n" "$USED_CONF"
         echo "$MESSAGE283"
-        [ -n "$SUB1_ADDR" ] && echo "  $MESSAGE277: $SUB1_ADDR"
+        [ -n "$SUB1_ADDR" ] && echo "   $MESSAGE277: $SUB1_ADDR"
         [ -n "$CONF_FOR_SUB1" ] && printf "$MESSAGE278\n" "$CONF_FOR_SUB1"
         echo "$MESSAGE284"
-        [ -n "$SUB2_ADDR" ] && echo "  $MESSAGE277: $SUB2_ADDR"
+        [ -n "$SUB2_ADDR" ] && echo "   $MESSAGE277: $SUB2_ADDR"
         [ -n "$CONF_FOR_SUB2" ] && printf "$MESSAGE278\n" "$CONF_FOR_SUB2"
         echo "$MESSAGE290"
         echo "$MESSAGE291"
@@ -2145,7 +2145,7 @@ conf_set_sub() {
     if [ -n "$current_value" ]; then
         read -p "$msg_newaddr" newsub
         if [ -z "$newsub" ]; then
-            echo "$MESSAGE52"; return
+            echo "$MESSAGE52"
         elif [ "$newsub" = "0" ]; then
             sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"\"|" "$SBS_CONF"
             sed -i "s|^$sub_conf=\"[^\"]*\"|$sub_conf=\"\"|" "$SBS_CONF"

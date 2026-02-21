@@ -1,4 +1,4 @@
-# For SBS version 2.4.6
+# For SBS version 2.4.7
 # English localization file.
 
 MESSAGE1="✓ Directory %s created."
@@ -336,13 +336,13 @@ MESSAGE274="1. Selecting a configuration file for editing, checking, and formatt
 MESSAGE275="Select a configuration file to editing, checking, and formatting."
 MESSAGE276="Subscriptions settings."
 MESSAGE277="Current subscription address"
-MESSAGE278="  The subscription is saved to the %s configuration file."
+MESSAGE278="   The subscription is saved to the %s configuration file."
 MESSAGE279="Enter a new address of the first subscription to replace the current one,
 enter '0' to delete the current address,
-or simply press Enter to return to the previous menu
+or simply press Enter to continue
 : "
 MESSAGE280="Enter the address of the first subscription,
-or simply press Enter to return to the previous menu
+or simply press Enter to return to the menu
 : "
 MESSAGE281="Select a configuration file to save the first subscription to."
 MESSAGE282="Enter the point number"
@@ -352,10 +352,10 @@ MESSAGE285="⛔ The subscription address is currently unavailable."
 MESSAGE286="⛔ Subscription is not available at this address."
 MESSAGE287="Enter a new address of the second subscription to replace the current one,
 enter '0' to delete the current address,
-or simply press Enter to return to the previous menu
+or simply press Enter to continue
 : "
 MESSAGE288="Enter the address of the second subscription,
-or simply press Enter to return to the previous menu
+or simply press Enter to return to the menu
 : "
 MESSAGE289="Select a configuration file to save the second subscription to."
 MESSAGE290="3. Update a first subscription."
