@@ -2146,7 +2146,8 @@ conf_set_sub() {
     if [ -n "$current_sub_addr" ]; then
         read -p "$msg_newaddr" newsub
         if [ -z "$newsub" ]; then
-            wget -q --spider "$current_sub_addr" && echo "$MESSAGE52" || { echo "$MESSAGE286"; return; }
+            newsub="$current_sub_addr"
+            wget -q --spider "$newsub" && echo "$MESSAGE52" || { echo "$MESSAGE286"; return; }
         elif [ "$newsub" = "0" ]; then
             sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"\"|" "$SBS_CONF"
             sed -i "s|^$sub_conf=\"[^\"]*\"|$sub_conf=\"\"|" "$SBS_CONF"
