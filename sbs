@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.4.7
+# Version 2.4.8
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -57,7 +57,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.7
+# Создан в SBS 2.4.8
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -115,7 +115,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.7
+# Создан в SBS 2.4.8
 
 source "/jffs/addons/sing-box-script/sbs-conf"
 SB_PATH="/opt/root/sing-box/sing-box"
@@ -2142,11 +2142,11 @@ config_sub() {
 conf_set_sub() {
     local sub_addr="$1" sub_conf="$2" msg_newaddr="$3" msg_addr="$4" msg_choose="$5"
     echo
-    eval "current_value=\$$sub_addr"
-    if [ -n "$current_value" ]; then
+    eval "current_sub_addr=\$$sub_addr"
+    if [ -n "$current_sub_addr" ]; then
         read -p "$msg_newaddr" newsub
         if [ -z "$newsub" ]; then
-            echo "$MESSAGE52"
+            wget -q --spider "$current_sub_addr" && echo "$MESSAGE52" || { echo "$MESSAGE286"; return; }
         elif [ "$newsub" = "0" ]; then
             sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"\"|" "$SBS_CONF"
             sed -i "s|^$sub_conf=\"[^\"]*\"|$sub_conf=\"\"|" "$SBS_CONF"
@@ -2168,17 +2168,23 @@ conf_set_sub() {
     fi
     echo; echo "$msg_choose"
     while true; do
+        eval "current_sub_conf=\$$sub_conf"
         is_running && printf "$MESSAGE293\n" "$USED_CONF" "$USED_CONF"
         echo "1. config-1.json"
         echo "2. config-2.json"
         echo "3. config-3.json"
         echo "4. config-4.json"
-        read -p "$MESSAGE282: " confsub
+        if [ -n "$current_sub_conf" ]; then
+            read -p "$MESSAGE298: " confsub
+            [ -z "$confsub" ] && echo "$MESSAGE52" && break
+        else
+            read -p "$MESSAGE282: " confsub
+        fi
         case "$confsub" in
-            1) is_running && [ "$USED_CONF" = "config-1.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG1" "$newsub"; sed -i "s|^$sub_conf=.*|$sub_conf=\"config-1.json\"|" "$SBS_CONF"; break ;;
-            2) is_running && [ "$USED_CONF" = "config-2.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG2" "$newsub"; sed -i "s|^$sub_conf=.*|$sub_conf=\"config-2.json\"|" "$SBS_CONF"; break ;;
-            3) is_running && [ "$USED_CONF" = "config-3.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG3" "$newsub"; sed -i "s|^$sub_conf=.*|$sub_conf=\"config-3.json\"|" "$SBS_CONF"; break ;;
-            4) is_running && [ "$USED_CONF" = "config-4.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG4" "$newsub"; sed -i "s|^$sub_conf=.*|$sub_conf=\"config-4.json\"|" "$SBS_CONF"; break ;;
+            1) is_running && [ "$USED_CONF" = "config-1.json" ] && stop_sing_box; { wget -q --spider "$newsub" && wget -q -O "$SB_CONFIG1" "$newsub"; } && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-1.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            2) is_running && [ "$USED_CONF" = "config-2.json" ] && stop_sing_box; { wget -q --spider "$newsub" && wget -q -O "$SB_CONFIG2" "$newsub"; } && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-2.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            3) is_running && [ "$USED_CONF" = "config-3.json" ] && stop_sing_box; { wget -q --spider "$newsub" && wget -q -O "$SB_CONFIG3" "$newsub"; } && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-3.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            4) is_running && [ "$USED_CONF" = "config-4.json" ] && stop_sing_box; { wget -q --spider "$newsub" && wget -q -O "$SB_CONFIG4" "$newsub"; } && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-4.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
