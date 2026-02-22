@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.4.10
+# Version 2.4.11
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -58,7 +58,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.10
+# Создан в SBS 2.4.11
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -116,7 +116,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.10
+# Создан в SBS 2.4.11
 
 SB_PATH="/opt/root/sing-box/sing-box"
 NAT_SCRIPT="/jffs/scripts/nat-start"
@@ -1977,10 +1977,10 @@ updmonandconf_sing_box() {
     # С версии 2.5.0 заменяем имя config.json на config-1.json и перемещаем его и SBS_CONF в директорию SB_DIR, туда же добавляем ещё 3 конфига, если их нет
     [ -f "$JFFS_SB_DIR/sbs-conf" ] && mv "$JFFS_SB_DIR/sbs-conf" "$SBS_CONF"
     [ -f "$JFFS_SB_DIR/config.json" ] && mv "$JFFS_SB_DIR/config.json" "$SB_CONFIG1"
-    [ ! -f "$SB_CONFIG2" ] && check_file_existence_and_download "$SB_CONFIG2" "$SB_CONFIG2_URL" && chmod 664 "$SB_CONFIG2" 2>/dev/null
-    [ ! -f "$SB_CONFIG3" ] && check_file_existence_and_download "$SB_CONFIG3" "$SB_CONFIG3_URL" && chmod 664 "$SB_CONFIG3" 2>/dev/null
-    [ ! -f "$SB_CONFIG4" ] && check_file_existence_and_download "$SB_CONFIG4" "$SB_CONFIG4_URL" && chmod 664 "$SB_CONFIG4" 2>/dev/null
     load_conf_and_lang
+    [ ! -f "$SB_CONFIG2" ] && check_file_existence_and_download "$SB_CONFIG2" "$SB_CONFIG2_URL" && chmod 664 "$SB_CONFIG2"
+    [ ! -f "$SB_CONFIG3" ] && check_file_existence_and_download "$SB_CONFIG3" "$SB_CONFIG3_URL" && chmod 664 "$SB_CONFIG3"
+    [ ! -f "$SB_CONFIG4" ] && check_file_existence_and_download "$SB_CONFIG4" "$SB_CONFIG4_URL" && chmod 664 "$SB_CONFIG4"
     create_sbs_conf "$TEMP_SBS_CONF"
     comments=$(grep '^#' "$TEMP_SBS_CONF")
     vars_in_tmp=$(grep '^[A-Za-z0-9_]\+=' "$TEMP_SBS_CONF")
