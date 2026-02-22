@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.4.13
+# Version 2.4.14
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -59,7 +59,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.13
+# Создан в SBS 2.4.14
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -117,7 +117,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.13
+# Создан в SBS 2.4.14
 
 SB_PATH="/opt/root/sing-box/sing-box"
 NAT_SCRIPT="/jffs/scripts/nat-start"
@@ -1975,7 +1975,8 @@ EOF
 }
 
 updmonandconf_sing_box() {
-    # С версии 2.5.0 заменяем имя config.json на config-1.json и перемещаем его и SBS_CONF в директорию CONFIGS_DIR, туда же добавляем ещё 3 конфига, если их нет
+    # С версии 2.5.0 создаём директорию CONFIGS_DIR, заменяем имя config.json на config-1.json и перемещаем его и SBS_CONF в директорию CONFIGS_DIR, туда же добавляем ещё 3 конфига, если их нет
+    [ ! -d "$CONFIGS_DIR" ] && mkdir -p $CONFIGS_DIR && chmod 775 $CONFIGS_DIR
     [ -f "$JFFS_SB_DIR/sbs-conf" ] && mv "$JFFS_SB_DIR/sbs-conf" "$SBS_CONF"
     [ -f "$JFFS_SB_DIR/config.json" ] && mv "$JFFS_SB_DIR/config.json" "$SB_CONFIG1"
     [ ! -f "$SB_CONFIG2" ] && wget -q -O "$SB_CONFIG2" "$SB_CONFIG2_URL" && chmod 664 "$SB_CONFIG2"
