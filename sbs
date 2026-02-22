@@ -1,30 +1,31 @@
 #!/bin/sh
 
-# Version 2.4.9
+# Version 2.4.10
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
-SBS_CONF="$JFFS_SB_DIR/sbs-conf"
-[ -f "$SBS_CONF" ] && source "$SBS_CONF"
-SB_CONFIG1="$JFFS_SB_DIR/config-1.json"
-SB_CONFIG2="$JFFS_SB_DIR/config-2.json"
-SB_CONFIG3="$JFFS_SB_DIR/config-3.json"
-SB_CONFIG4="$JFFS_SB_DIR/config-4.json"
 SCRIPT_PATH="$JFFS_SB_DIR/sbs"
-SBS_MON="$JFFS_SB_DIR/sbs-monitor"
-SBS_MON_NAME="sbs-monitor"
 LANG_RU="$JFFS_SB_DIR/sbs-lang-ru"
 LANG_EN="$JFFS_SB_DIR/sbs-lang-en"
-SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/sbs"
-SB_CONFIG1_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/config-1.json"
-SB_CONFIG2_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/config-2.json"
-SB_CONFIG3_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/config-3.json"
-SB_CONFIG4_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/config-4.json"
-LANG_RU_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/sbs-lang-ru"
-LANG_EN_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test/sbs-lang-en"
+SBS_MON="$JFFS_SB_DIR/sbs-monitor"
+SBS_MON_NAME="sbs-monitor"
+BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test"
+SCRIPT_URL="$BRANCH_URL/sbs"
+SB_CONFIG1_URL="$BRANCH_URL/config-1.json"
+SB_CONFIG2_URL="$BRANCH_URL/config-2.json"
+SB_CONFIG3_URL="$BRANCH_URL/config-3.json"
+SB_CONFIG4_URL="$BRANCH_URL/config-4.json"
+LANG_RU_URL="$BRANCH_URL/sbs-lang-ru"
+LANG_EN_URL="$BRANCH_URL/sbs-lang-en"
 ROOT_DIR="/opt/root"
 SB_DIR="$ROOT_DIR/sing-box"
+SBS_CONF="$SB_DIR/sbs-conf"
+[ -f "$SBS_CONF" ] && source "$SBS_CONF"
+SB_CONFIG1="$SB_DIR/config-1.json"
+SB_CONFIG2="$SB_DIR/config-2.json"
+SB_CONFIG3="$SB_DIR/config-3.json"
+SB_CONFIG4="$SB_DIR/config-4.json"
 SB_PATH="$SB_DIR/sing-box"
 SB_NAME="sing-box run"
 SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
@@ -32,15 +33,15 @@ SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
 TEMP_UPDATE="$SB_DOWNLOAD_DIR/temp-update"
 TEMP_SCRIPT_PATH="$SB_DOWNLOAD_DIR/sbs"
 TEMP_SBS_CONF="$SB_DOWNLOAD_DIR/sbs-conf"
-TEMP_LANG_RU="/jffs/scripts/sbs-lang-ru"
-TEMP_LANG_EN="/jffs/scripts/sbs-lang-en"
+TEMP_LANG_RU="$ROOT_DIR/sbs-lang-ru"
+TEMP_LANG_EN="$ROOT_DIR/sbs-lang-en"
 FW_SCRIPT="/jffs/scripts/firewall-start"
 NAT_SCRIPT="/jffs/scripts/nat-start"
 SS_SCRIPT="/jffs/scripts/services-start"
 SS_LINES="(sleep 45 && $SCRIPT_PATH start) &"
 LN_PATH="/opt/bin/sbs"
 BR0_ADDRESS=$(ip -4 addr show dev br0 | awk "/inet /{print \$2}" | cut -d/ -f1)
-DNAT_DNS="1.1.1.1:53535"
+DNAT_DNS="1.1.1.1:53"
 
 # Функции
 log_msg() {
@@ -57,7 +58,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.9
+# Создан в SBS 2.4.10
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -115,17 +116,14 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.9
+# Создан в SBS 2.4.10
 
-source "/jffs/addons/sing-box-script/sbs-conf"
 SB_PATH="/opt/root/sing-box/sing-box"
-JFFS_SB_DIR="/jffs/addons/sing-box-script"
-SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
 NAT_SCRIPT="/jffs/scripts/nat-start"
-SBS_CONF="$JFFS_SB_DIR/sbs-conf"
-LANG_RU="$JFFS_SB_DIR/sbs-lang-ru"
-LANG_EN="$JFFS_SB_DIR/sbs-lang-en"
-SB_NAME="sing-box run"
+LANG_RU="/jffs/addons/sing-box-script/sbs-lang-ru"
+LANG_EN="/jffs/addons/sing-box-script/sbs-lang-en"
+source "/opt/root/sing-box/sbs-conf"
+SB_CONFIG="/opt/root/sing-box/$USED_CONF"
 
 [ "$LANG" = "ru" ] && source "$LANG_RU"
 [ "$LANG" = "en" ] && source "$LANG_EN"
@@ -340,7 +338,7 @@ if [ -n "$H_MEMLIM" ]; then
         while true; do
             hard_memlim=$(awk "{printf \"%.0f\n\", (\$2-\$3)*4096/1024/1024}" /proc/$(ps w | grep "[s]ing-box run" | awk "{print \$1}")/statm)
             if [ "$(printf "%.0f" "$hard_memlim")" -ge $H_MEMLIM ]; then
-                kill $(ps | grep -v grep | grep "$SB_NAME" | awk "{print \$1}") 2>/dev/null
+                kill $(ps | grep -v grep | grep "sing-box run" | awk "{print \$1}") 2>/dev/null
                 m_log_msg "$MESSAGE266"
             fi
             sleep 5
@@ -770,7 +768,7 @@ is_valid_combs() {
 
 check_wan_ports() {
     source "$SBS_CONF"
-    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
+    SB_CONFIG="$SB_DIR/$USED_CONF"
     updated_ports=""
     for combination in $(echo "$WAN_PORTS" | tr ' ' '\n'); do
         if ! is_valid_combs "$combination"; then
@@ -805,7 +803,7 @@ remove_duplicates() {
 
 start_sing_box() {
     load_conf_and_lang
-    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
+    SB_CONFIG="$SB_DIR/$USED_CONF"
     echo
     is_running && { log_msg "$MESSAGE21"; exit 1; }
 
@@ -1632,7 +1630,7 @@ configure_fwmark() {
 
 setup_sing_box() {
     load_conf_and_lang
-    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
+    SB_CONFIG="$SB_DIR/$USED_CONF"
     echo
     printf "$MESSAGE200\n" "$USED_CONF"
     update_tun_interface
@@ -2056,8 +2054,8 @@ format_sing_box() {
 
 config_sing_box() {
     load_conf_and_lang
-    CHECKED_SB_CONFIG="$JFFS_SB_DIR/$CHECKED_CONF"
-    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
+    CHECKED_SB_CONFIG="$SB_DIR/$CHECKED_CONF"
+    SB_CONFIG="$SB_DIR/$USED_CONF"
     while true; do
         echo; echo "$MESSAGE124"
         echo; echo "1. $MESSAGE129"
@@ -2116,7 +2114,7 @@ config_sub() {
             2) conf_set_sub "SUB2_ADDR" "CONF_FOR_SUB2" "$MESSAGE287" "$MESSAGE288" "$MESSAGE289" ;;
             3) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && stop_sing_box
                if [ -n "$SUB1_ADDR" ] && [ -n "$CONF_FOR_SUB1" ]; then
-                   if wget -q --spider "$SUB1_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB1" "$SUB1_ADDR"; then
+                   if wget -q --spider "$SUB1_ADDR" && wget -q -O "$SB_DIR/$CONF_FOR_SUB1" "$SUB1_ADDR"; then
                        echo "$MESSAGE270"
                    else
                        echo "$MESSAGE285"
@@ -2126,7 +2124,7 @@ config_sub() {
                fi ;;
             4) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && stop_sing_box
                if [ -n "$SUB2_ADDR" ] && [ -n "$CONF_FOR_SUB2" ]; then
-                   if wget -q --spider "$SUB2_ADDR" && wget -q -O "$JFFS_SB_DIR/$CONF_FOR_SUB2" "$SUB2_ADDR"; then
+                   if wget -q --spider "$SUB2_ADDR" && wget -q -O "$SB_DIR/$CONF_FOR_SUB2" "$SUB2_ADDR"; then
                        echo "$MESSAGE270"
                    else
                        echo "$MESSAGE285"
@@ -2183,10 +2181,10 @@ conf_set_sub() {
             read -p "$MESSAGE282: " confsub
         fi
         case "$confsub" in
-            1) is_running && [ "$USED_CONF" = "config-1.json" ] && stop_sing_box; { wget -q --spider "$newsub" && wget -q -O "$SB_CONFIG1" "$newsub"; } && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-1.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
-            2) is_running && [ "$USED_CONF" = "config-2.json" ] && stop_sing_box; { wget -q --spider "$newsub" && wget -q -O "$SB_CONFIG2" "$newsub"; } && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-2.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
-            3) is_running && [ "$USED_CONF" = "config-3.json" ] && stop_sing_box; { wget -q --spider "$newsub" && wget -q -O "$SB_CONFIG3" "$newsub"; } && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-3.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
-            4) is_running && [ "$USED_CONF" = "config-4.json" ] && stop_sing_box; { wget -q --spider "$newsub" && wget -q -O "$SB_CONFIG4" "$newsub"; } && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-4.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            1) is_running && [ "$USED_CONF" = "config-1.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG1" "$newsub" && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-1.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            2) is_running && [ "$USED_CONF" = "config-2.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG2" "$newsub" && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-2.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            3) is_running && [ "$USED_CONF" = "config-3.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG3" "$newsub" && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-3.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            4) is_running && [ "$USED_CONF" = "config-4.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG4" "$newsub" && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-4.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
@@ -2195,7 +2193,7 @@ conf_set_sub() {
 config_check() {
     while true; do
         source "$SBS_CONF"
-        CHECKED_SB_CONFIG="$JFFS_SB_DIR/$CHECKED_CONF"
+        CHECKED_SB_CONFIG="$SB_DIR/$CHECKED_CONF"
         echo; echo "$MESSAGE272"
         is_running && [ "$CHECKED_CONF" = "$USED_CONF" ] && printf "$MESSAGE273\n" "$USED_CONF" "$CHECKED_CONF"
         echo
@@ -2294,7 +2292,7 @@ status_sing_box() {
 
 server_sing_box() {
     load_conf_and_lang
-    SB_CONFIG="$JFFS_SB_DIR/$USED_CONF"
+    SB_CONFIG="$SB_DIR/$USED_CONF"
     check_wan_ports
     echo
     echo "$MESSAGE149"; echo
