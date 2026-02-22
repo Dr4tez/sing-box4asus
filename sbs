@@ -1970,8 +1970,7 @@ EOF
     chmod 775 $TEMP_UPDATE
     # Удаляем файл, созданный при обновлении с версии 2.2.1 и ниже, не используемый с версии 2.2.2
     rm -f $JFFS_SB_DIR/sbs-tmp
-    # С версии 2.5.0 заменяем имя config.json на config-1.json и перемещаем его и SBS_CONF в директорию SB_DIR, добавляем ещё 3 конфига если их нет
-    [ -f "$JFFS_SB_DIR/sbs-conf" ] && mv "$JFFS_SB_DIR/sbs-conf" "$SBS_CONF"
+    # С версии 2.5.0 заменяем имя config.json на config-1.json и перемещаем его в директорию SB_DIR, туда же добавляем ещё 3 конфига если их нет
     [ -f "$JFFS_SB_DIR/config.json" ] && mv "$JFFS_SB_DIR/config.json" "$SB_CONFIG1"
     [ ! -f "$SB_CONFIG2" ] && check_file_existence_and_download "$SB_CONFIG2" "$SB_CONFIG2_URL" && chmod 664 "$SB_CONFIG2"
     [ ! -f "$SB_CONFIG3" ] && check_file_existence_and_download "$SB_CONFIG3" "$SB_CONFIG3_URL" && chmod 664 "$SB_CONFIG3"
@@ -1980,6 +1979,8 @@ EOF
 }
 
 updmonandconf_sing_box() {
+    # С версии 2.5.0 перемещаем SBS_CONF в директорию SB_DIR
+    [ -f "$JFFS_SB_DIR/sbs-conf" ] && mv "$JFFS_SB_DIR/sbs-conf" "$SBS_CONF"
     load_conf_and_lang
     create_sbs_conf "$TEMP_SBS_CONF"
     comments=$(grep '^#' "$TEMP_SBS_CONF")
