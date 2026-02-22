@@ -1,23 +1,32 @@
 #!/bin/sh
 
-# Version 2.4.1
+# Version 2.5.0
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
 JFFS_SB_DIR="/jffs/addons/sing-box-script"
-SB_CONFIG="$JFFS_SB_DIR/config.json"
 SCRIPT_PATH="$JFFS_SB_DIR/sbs"
-SBS_CONF="$JFFS_SB_DIR/sbs-conf"
-SBS_MON="$JFFS_SB_DIR/sbs-monitor"
-SBS_MON_NAME="sbs-monitor"
 LANG_RU="$JFFS_SB_DIR/sbs-lang-ru"
 LANG_EN="$JFFS_SB_DIR/sbs-lang-en"
-SCRIPT_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs"
-SB_CONFIG_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/config.json"
-LANG_RU_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-lang-ru"
-LANG_EN_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main/sbs-lang-en"
+SBS_MON="$JFFS_SB_DIR/sbs-monitor"
+SBS_MON_NAME="sbs-monitor"
+BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main"
+SCRIPT_URL="$BRANCH_URL/sbs"
+SB_CONFIG1_URL="$BRANCH_URL/config-1.json"
+SB_CONFIG2_URL="$BRANCH_URL/config-2.json"
+SB_CONFIG3_URL="$BRANCH_URL/config-3.json"
+SB_CONFIG4_URL="$BRANCH_URL/config-4.json"
+LANG_RU_URL="$BRANCH_URL/sbs-lang-ru"
+LANG_EN_URL="$BRANCH_URL/sbs-lang-en"
 ROOT_DIR="/opt/root"
 SB_DIR="$ROOT_DIR/sing-box"
+CONFIGS_DIR="$SB_DIR/configs"
+SBS_CONF="$CONFIGS_DIR/sbs-conf"
+[ -f "$SBS_CONF" ] && source "$SBS_CONF"
+SB_CONFIG1="$CONFIGS_DIR/config-1.json"
+SB_CONFIG2="$CONFIGS_DIR/config-2.json"
+SB_CONFIG3="$CONFIGS_DIR/config-3.json"
+SB_CONFIG4="$CONFIGS_DIR/config-4.json"
 SB_PATH="$SB_DIR/sing-box"
 SB_NAME="sing-box run"
 SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
@@ -25,15 +34,15 @@ SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
 TEMP_UPDATE="$SB_DOWNLOAD_DIR/temp-update"
 TEMP_SCRIPT_PATH="$SB_DOWNLOAD_DIR/sbs"
 TEMP_SBS_CONF="$SB_DOWNLOAD_DIR/sbs-conf"
-TEMP_LANG_RU="/jffs/scripts/sbs-lang-ru"
-TEMP_LANG_EN="/jffs/scripts/sbs-lang-en"
+TEMP_LANG_RU="$ROOT_DIR/sbs-lang-ru"
+TEMP_LANG_EN="$ROOT_DIR/sbs-lang-en"
 FW_SCRIPT="/jffs/scripts/firewall-start"
 NAT_SCRIPT="/jffs/scripts/nat-start"
 SS_SCRIPT="/jffs/scripts/services-start"
 SS_LINES="(sleep 45 && $SCRIPT_PATH start) &"
 LN_PATH="/opt/bin/sbs"
 BR0_ADDRESS=$(ip -4 addr show dev br0 | awk "/inet /{print \$2}" | cut -d/ -f1)
-DNAT_DNS="1.1.1.1:53535"
+DNAT_DNS="1.1.1.1:53"
 
 # Функции
 log_msg() {
@@ -50,27 +59,31 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.4.1
+# Создан в SBS 2.5.0
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
 # Строка DEVICE_IPS - тут между кавычками указываются IP-адреса устройств, трафик которых вы хотите направить через sing-box. IP-адреса должны быть в одну строку и между ними должно быть только по одному пробелу. Так же тут можно указать и подсеть в формате CIDR, например 192.168.50.0/24. Значения задаются в первом пункте меню 'sbs setup'.
 # Строка EXC_DEVICE_IPS - если в строке DEVICE_IPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, трафик которых вы хотите исключить из направления через sing-box. Так же тут можно указать подсеть меньшего размера, которая входит в указанную в DEVICE_IPS, если это соответствует вашим целям. Значения задаются в первом пункте меню 'sbs setup', только если в DEVICE_IPS указать подсеть.
-# Строка DEVICE_FIPS - тут указываются IP-адреса устройств, которые вы хотите заставить работать через fakeip. В остальном аналогично строке DEVICE_IPS. Значения задаются в меню 'sbs setup', только если в файле конфигурации config.json присутствуют настройки fakeip.
-# Строка EXC_DEVICE_FIPS - если в строке DEVICE_FIPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, которые вы хотите исключить из работы через fakeip. В остальном аналогично строке EXC_DEVICE_IPS. Значения задаются в меню 'sbs setup', только если в файле конфигурации config.json присутствуют настройки fakeip и в DEVICE_FIPS указать подсеть.
+# Строка DEVICE_FIPS - тут указываются IP-адреса устройств, которые вы хотите заставить работать через fakeip. В остальном аналогично строке DEVICE_IPS. Значения задаются в меню 'sbs setup', только если в файле конфигурации sing-box присутствуют настройки fakeip.
+# Строка EXC_DEVICE_FIPS - если в строке DEVICE_FIPS указана подсеть, то тут можно указать IP-адреса устройств из этой подсети, которые вы хотите исключить из работы через fakeip. В остальном аналогично строке EXC_DEVICE_IPS. Значения задаются в меню 'sbs setup', только если в файле конфигурации sing-box присутствуют настройки fakeip и в DEVICE_FIPS указать подсеть.
 # Строка ROUTE_TABLE - если указанный в ней по умолчанию номер таблицы маршрутизации 5553 уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значение задаётся в меню 'sbs setup' в подменю необязательных экспертных настроек.
-# Строка FW_MARK - если указанный в ней по умолчанию fwmark 0x4d3c2b1a уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значение задаётся в меню 'sbs setup' в подменю необязательных экспертных настроек, только если в файле конфигурации config.json присутствует tproxy inbound.
-# Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети. Значения задаются в меню 'sbs server', но будут приняты, только если в файле конфигурации config.json действительно присутствуют указанные типы inbound proxy с указанными портами.
+# Строка FW_MARK - если указанный в ней по умолчанию fwmark 0x4d3c2b1a уже занят в вашем роутере, что маловероятно, можете заменить его на другой, который не занят. Значение задаётся в меню 'sbs setup' в подменю необязательных экспертных настроек, только если в файле конфигурации sing-box присутствует tproxy inbound.
+# Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети. Значения задаются в меню 'sbs server', но будут приняты, только если в файле конфигурации sing-box действительно присутствуют указанные типы inbound proxy с указанными портами.
 # Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском. Значение задаётся в меню 'sbs lang'.
 # Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Возможные значения "original" и "custom" соответствуют официальному и кастомному репозиториям. Значение задаётся при выборе одного из первых двух пунктов в подменю 3-1 меню 'sbs update'.
 # Строка CUSTOM_REPO - тут указывается кастомный репозиторий ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "shtorm-7/sing-box-extended" задан по умолчанию. Значение задаётся в третьем пункте подменю 3-1 меню 'sbs update'.
 # Строка CORE_VERS - тут указывается какое ядро sing-box будет установлено. Значения "release", "pre_release" или "given" - соответствуют новейшему стабильному релизу, новейшему пре-релизу и заданной версии. Значение задаётся при выборе одного из первых трёх пунктов в подменю 3-2 меню 'sbs update'.
 # Строка GIVEN_VERS - тут указывается какая конкретно версия ядра sing-box может быть установлена, если значение строки CORE_VERS будет "given". Значение задаётся в пункте 3-2-4 меню 'sbs update'. Например "1.11.14" или "1.12.0-beta.32".
 # Строка NUM_RELEASES - тут указывается глубина поиска, т.е. количество последних релизов, среди которого будут искаться заданная версия ядра, новейший стабильный релиз или новейший пре-релиз ядра. Значение задаётся в пункте 3-2-5 меню 'sbs update'. Например "90".
-# Строка S_MEMLIM - тут указывается значение мягкого лимита в MiB, без указания единцы измерения, например "50". При отсутствии значения- лимит отключен. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек, либо вычисляется автоматически при настройке лимита в подменю простой настройки.
-# Строка H_MEMLIM - тут указывается значение жёсткого лимита в MiB, без указания единцы измерения, например "50". При отсутствии значения- лимит отключен. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек, либо в подменю простой настройки.
+# Строка S_MEMLIM - тут указывается значение мягкого лимита в MiB, без указания единицы измерения, например "50". При отсутствии значения- лимит отключен. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек, либо вычисляется автоматически при настройке лимита в подменю простой настройки.
+# Строка H_MEMLIM - тут указывается значение жёсткого лимита в MiB, без указания единицы измерения, например "50". При отсутствии значения- лимит отключен. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек, либо в подменю простой настройки.
 # Строка K_GOGC - тут указывается значение GOGC. При отсутствии значения- используется значение по умолчанию ядра sing-box. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек.
 # Строки TUN_INTERFACE, TPROXY_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
+# Строка USED_CONF - тут указывается имя конфига, который будет использоваться при запуске sing-box. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
+# Строка CHECKED_CONF - тут указывается имя конфига, который будет использоваться для редактирования, проверки и формата в меню 'sbs config'. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
+# Строки SUB1_ADDR и SUB2_ADDR - тут указываются адреса подписок.
+# Строки CONF_FOR_SUB1 и CONF_FOR_SUB2 - тут указывается имена конфигов, в которых будут сохраняться конфиги из подписок. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
 
 DEVICE_IPS=""
 EXC_DEVICE_IPS=""
@@ -91,6 +104,12 @@ FAKEIP_SUBNET=""
 S_MEMLIM=""
 H_MEMLIM=""
 K_GOGC=""
+USED_CONF="config-1.json"
+CHECKED_CONF="config-1.json"
+SUB1_ADDR=""
+SUB2_ADDR=""
+CONF_FOR_SUB1=""
+CONF_FOR_SUB2=""
 EOF
     chmod 664 "$1"
 }
@@ -98,18 +117,15 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.4.1
+# Создан в SBS 2.5.0
 
 SB_PATH="/opt/root/sing-box/sing-box"
-JFFS_SB_DIR="/jffs/addons/sing-box-script"
-SB_CONFIG="$JFFS_SB_DIR/config.json"
 NAT_SCRIPT="/jffs/scripts/nat-start"
-SBS_CONF="$JFFS_SB_DIR/sbs-conf"
-LANG_RU="$JFFS_SB_DIR/sbs-lang-ru"
-LANG_EN="$JFFS_SB_DIR/sbs-lang-en"
-SB_NAME="sing-box run"
+LANG_RU="/jffs/addons/sing-box-script/sbs-lang-ru"
+LANG_EN="/jffs/addons/sing-box-script/sbs-lang-en"
+source "/opt/root/sing-box/configs/sbs-conf"
+SB_CONFIG="/opt/root/sing-box/configs/$USED_CONF"
 
-source "$SBS_CONF"
 [ "$LANG" = "ru" ] && source "$LANG_RU"
 [ "$LANG" = "en" ] && source "$LANG_EN"
 
@@ -148,7 +164,7 @@ sbs_monitor_rr() {
             if ! ps | grep "[s]ing-box run" >/dev/null 2>&1; then
                 [ -n "$S_MEMLIM" ] && export GOMEMLIMIT=${S_MEMLIM}MiB
                 [ -n "$K_GOGC" ] && export GOGC=$K_GOGC
-                "$SB_PATH" run -c "$SB_CONFIG" &
+                $SB_PATH run -c $SB_CONFIG &
             fi
             if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$FW_MARK" ]; then
                 [ -f "$NAT_SCRIPT" ] && sed -i "/sing-box-script-mangle/d" "$NAT_SCRIPT"
@@ -323,7 +339,7 @@ if [ -n "$H_MEMLIM" ]; then
         while true; do
             hard_memlim=$(awk "{printf \"%.0f\n\", (\$2-\$3)*4096/1024/1024}" /proc/$(ps w | grep "[s]ing-box run" | awk "{print \$1}")/statm)
             if [ "$(printf "%.0f" "$hard_memlim")" -ge $H_MEMLIM ]; then
-                kill $(ps | grep -v grep | grep "$SB_NAME" | awk "{print \$1}") 2>/dev/null
+                kill $(ps | grep -v grep | grep "sing-box run" | awk "{print \$1}") 2>/dev/null
                 m_log_msg "$MESSAGE266"
             fi
             sleep 5
@@ -337,7 +353,7 @@ if [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
             if ! ps | grep "[s]ing-box run" >/dev/null 2>&1; then
                 [ -n "$S_MEMLIM" ] && export GOMEMLIMIT=${S_MEMLIM}MiB
                 [ -n "$K_GOGC" ] && export GOGC=$K_GOGC
-                "$SB_PATH" run -c "$SB_CONFIG" &
+                $SB_PATH run -c $SB_CONFIG &
             fi
             sleep 5
         done
@@ -434,10 +450,14 @@ check_copy_file() {
     fi
 }
 
-change_language() {
+load_conf_and_lang() {
     source "$SBS_CONF"
     [ "$LANG" = "ru" ] && source "$LANG_RU"
     [ "$LANG" = "en" ] && source "$LANG_EN"
+}
+
+change_language() {
+    load_conf_and_lang
     while true; do
         if [ "$LANG" = "ru" ]; then
             echo "Перейти на английский?"
@@ -748,6 +768,8 @@ is_valid_combs() {
 }
 
 check_wan_ports() {
+    source "$SBS_CONF"
+    SB_CONFIG="$CONFIGS_DIR/$USED_CONF"
     updated_ports=""
     for combination in $(echo "$WAN_PORTS" | tr ' ' '\n'); do
         if ! is_valid_combs "$combination"; then
@@ -764,7 +786,7 @@ check_wan_ports() {
 remove_duplicates() {
     local device_ips="$1"
     local exc_device_ips="$2"
-    local remove_massage="$3"
+    local remove_message="$3"
     local del_ips=""
 
     for ip in $device_ips; do
@@ -776,14 +798,13 @@ remove_duplicates() {
             fi
         done
     done
-    [ -n "$del_ips" ] && printf "$remove_massage\n" "$del_ips" >&2
+    [ -n "$del_ips" ] && printf "$remove_message\n" "$del_ips" >&2
     echo "$device_ips"
 }
 
 start_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
+    SB_CONFIG="$CONFIGS_DIR/$USED_CONF"
     echo
     is_running && { log_msg "$MESSAGE21"; exit 1; }
 
@@ -794,7 +815,7 @@ start_sing_box() {
         exit 1
     fi
 
-    log_msg "$MESSAGE200"
+    log_msg "$(printf "$MESSAGE200\n" "$USED_CONF")"
     update_tun_interface
     extract_listen_port TPROXY_PORT tproxy
     check_wan_ports
@@ -803,9 +824,9 @@ start_sing_box() {
 
     if [ -n "$TUN_INTERFACE" ]; then
         FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
-        FORWARD -o $TUN_INTERFACE -j ACCEPT
-        INPUT -i $TUN_INTERFACE -j ACCEPT
-        OUTPUT -o $TUN_INTERFACE -j ACCEPT"
+FORWARD -o $TUN_INTERFACE -j ACCEPT
+INPUT -i $TUN_INTERFACE -j ACCEPT
+OUTPUT -o $TUN_INTERFACE -j ACCEPT"
         lsmod | grep -q "^tun " || { log_msg "$MESSAGE22"; modprobe tun; sleep 3; }
     elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
         lsmod | grep -q "^xt_TPROXY " || { log_msg "$MESSAGE191"; modprobe xt_TPROXY; sleep 3; }
@@ -830,13 +851,13 @@ start_sing_box() {
         fi
     elif [ -n "$TPROXY_PORT" ] && [ -z "$TUN_INTERFACE" ]; then
         if lsmod | grep -q xt_TPROXY; then
-            log_msg "$(printf "$MESSAGE238" "$TPROXY_PORT")"
+            log_msg "$(printf "$MESSAGE238\n" "$TPROXY_PORT")"
         else
             log_msg "$MESSAGE239"
         fi
     fi
 # Добавление правил nat и обновление скрипта nat-start
-    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; }; then
+    if { [ -n "$TUN_INTERFACE" ] || [ -n "$TPROXY_PORT" ]; } && [ -n "$ROUTE_TABLE" ] && { [ -n "$DEVICE_IPS" ] || { [ -n "$FAKEIP_SUBNET" ] && [ -n "$DEVICE_FIPS" ]; }; } && [ -n "$FW_MARK" ]; then
         [ -f "$NAT_SCRIPT" ] && sed -i "/sing-box-script/d" "$NAT_SCRIPT"
         log_msg "$MESSAGE25"
         iptables -t nat -D PREROUTING -j SBS-NAT 2>/dev/null
@@ -1059,13 +1080,13 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
         for entry in $WAN_PORTS; do
             wan_port=$(echo "$entry" | cut -d ':' -f 2)
             if ! iptables-save | grep -q -- "-A INPUT -p tcp -m tcp --dport $wan_port -j ACCEPT"; then
-                iptables -I INPUT -p tcp --dport "$wan_port" -j ACCEPT
+                iptables -I INPUT -p tcp --dport $wan_port -j ACCEPT
             fi
             if ! iptables-save | grep -q -- "-A INPUT -p udp -m udp --dport $wan_port -j ACCEPT"; then
-                iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT
+                iptables -I INPUT -p udp --dport $wan_port -j ACCEPT
             fi
-            update_script "$FW_SCRIPT" "iptables -I INPUT -p tcp --dport "$wan_port" -j ACCEPT # sing-box-script
-iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
+            update_script "$FW_SCRIPT" "iptables -I INPUT -p tcp --dport $wan_port -j ACCEPT # sing-box-script
+iptables -I INPUT -p udp --dport $wan_port -j ACCEPT # sing-box-script"
         done
     fi
     $SBS_MON &
@@ -1075,17 +1096,15 @@ iptables -I INPUT -p udp --dport "$wan_port" -j ACCEPT # sing-box-script"
 }
 
 stop_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     echo
     kill $(ps | grep -v grep | grep "$SBS_MON_NAME" | awk '{print $1}') 2>/dev/null
     log_msg "$MESSAGE268"
     if [ -n "$TUN_INTERFACE" ]; then
         FW_RULES="FORWARD -i $TUN_INTERFACE -j ACCEPT
-        FORWARD -o $TUN_INTERFACE -j ACCEPT
-        INPUT -i $TUN_INTERFACE -j ACCEPT
-        OUTPUT -o $TUN_INTERFACE -j ACCEPT"
+FORWARD -o $TUN_INTERFACE -j ACCEPT
+INPUT -i $TUN_INTERFACE -j ACCEPT
+OUTPUT -o $TUN_INTERFACE -j ACCEPT"
     fi
     log_msg "$MESSAGE32"
 # Очистка системных скриптов
@@ -1548,8 +1567,7 @@ set_interface() {
         [ -n "$DEVICE_IPS" ] && echo "   $MESSAGE247: $DEVICE_IPS" || echo "   $MESSAGE247 $MESSAGE248"
         echo "2. $MESSAGE261"
         [ -n "$EXC_DEVICE_IPS" ] && echo "   $MESSAGE247: $EXC_DEVICE_IPS" || echo "   $MESSAGE247 $MESSAGE248"
-        read -p "$MESSAGE196
-: " si_choice
+        read -p "$MESSAGE196" si_choice
         if [ -z "$si_choice" ]; then
             echo "$MESSAGE199"; echo; return
         fi
@@ -1571,8 +1589,7 @@ set_finterface() {
         [ -n "$DEVICE_FIPS" ] && echo "   $MESSAGE247: $DEVICE_FIPS" || echo "   $MESSAGE247 $MESSAGE248"
         echo "2. $MESSAGE261"
         [ -n "$EXC_DEVICE_FIPS" ] && echo "   $MESSAGE247: $EXC_DEVICE_FIPS" || echo "   $MESSAGE247 $MESSAGE248"
-        read -p "$MESSAGE196
-: " sif_choice
+        read -p "$MESSAGE196" sif_choice
         if [ -z "$sif_choice" ]; then
             echo "$MESSAGE199"; echo; return
         fi
@@ -1613,11 +1630,10 @@ configure_fwmark() {
 }
 
 setup_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
+    SB_CONFIG="$CONFIGS_DIR/$USED_CONF"
     echo
-    echo "$MESSAGE200"
+    printf "$MESSAGE200\n" "$USED_CONF"
     update_tun_interface
     extract_listen_port TPROXY_PORT tproxy
     fakeip_check
@@ -1661,8 +1677,7 @@ setup_pro() {
         echo "   $MESSAGE49: $ROUTE_TABLE"
         echo "$MESSAGE195"
         echo "   $MESSAGE49: $FW_MARK"
-        read -p "$MESSAGE196
-: " pif_choice
+        read -p "$MESSAGE196" pif_choice
         [ -z "$pif_choice" ] && echo "$MESSAGE199" && echo && break
         case "$pif_choice" in
             1) is_running && stop_sing_box; echo; configure_table; source "$SBS_CONF" ;;
@@ -1761,9 +1776,7 @@ EOF
 }
 
 update_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     download_updates
     update_sing_box_menu
 }
@@ -1827,7 +1840,7 @@ change_repo_vers() {
         else
             printf "   $MESSAGE209\n" "30"
         fi
-        read -p "$MESSAGE196: " choice_repo_vers
+        read -p "$MESSAGE196" choice_repo_vers
         [ -z "$choice_repo_vers" ] && echo "$MESSAGE199" && return
         case "$choice_repo_vers" in
             1) change_sing_box_repo; source "$SBS_CONF"; continue ;;
@@ -1877,7 +1890,7 @@ change_sing_box_repo() {
         echo "2. $MESSAGE205"
         echo "3. $MESSAGE211"
         [ -n "$CUSTOM_REPO" ] && echo "   $MESSAGE214: $CUSTOM_REPO" || echo "   $MESSAGE249"
-        read -p "$MESSAGE196: " choice_repo
+        read -p "$MESSAGE196" choice_repo
         [ -z "$choice_repo" ] && echo "$MESSAGE199" && return
         case "$choice_repo" in
             1) sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" ;;
@@ -1907,7 +1920,7 @@ change_core_vers() {
         [ -n "$GIVEN_VERS" ] && echo "   $MESSAGE214: $GIVEN_VERS"
         echo "5. $MESSAGE233"
         [ -n "$NUM_RELEASES" ] && { echo "   $MESSAGE214: $NUM_RELEASES $MESSAGE215"; } || { echo "   $MESSAGE214: 30 $MESSAGE215"; }
-        read -p "$MESSAGE196: " choice_vers
+        read -p "$MESSAGE196" choice_vers
         [ -z "$choice_vers" ] && echo "$MESSAGE199" && return
         case "$choice_vers" in
             1) sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF" ;;
@@ -1956,15 +1969,20 @@ update_sbs() {
 exec $SCRIPT_PATH updmonandconf
 EOF
     chmod 775 $TEMP_UPDATE
-    # Удаляем файл, не используемый с версии 2.2.2
+    # Удаляем файл, созданный при обновлении с версии 2.2.1 и ниже, не используемый с версии 2.2.2
     rm -f $JFFS_SB_DIR/sbs-tmp
     exec $TEMP_UPDATE
 }
 
 updmonandconf_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    # С версии 2.5.0 создаём директорию CONFIGS_DIR, заменяем имя config.json на config-1.json и перемещаем его и SBS_CONF в директорию CONFIGS_DIR, туда же добавляем ещё 3 конфига, если их нет
+    [ ! -d "$CONFIGS_DIR" ] && mkdir -p $CONFIGS_DIR && chmod 775 $CONFIGS_DIR
+    [ -f "$JFFS_SB_DIR/sbs-conf" ] && mv "$JFFS_SB_DIR/sbs-conf" "$SBS_CONF"
+    [ -f "$JFFS_SB_DIR/config.json" ] && mv "$JFFS_SB_DIR/config.json" "$SB_CONFIG1"
+    [ ! -f "$SB_CONFIG2" ] && wget -q -O "$SB_CONFIG2" "$SB_CONFIG2_URL" && chmod 664 "$SB_CONFIG2"
+    [ ! -f "$SB_CONFIG3" ] && wget -q -O "$SB_CONFIG3" "$SB_CONFIG3_URL" && chmod 664 "$SB_CONFIG3"
+    [ ! -f "$SB_CONFIG4" ] && wget -q -O "$SB_CONFIG4" "$SB_CONFIG4_URL" && chmod 664 "$SB_CONFIG4"
+    load_conf_and_lang
     create_sbs_conf "$TEMP_SBS_CONF"
     comments=$(grep '^#' "$TEMP_SBS_CONF")
     vars_in_tmp=$(grep '^[A-Za-z0-9_]\+=' "$TEMP_SBS_CONF")
@@ -1997,18 +2015,17 @@ updcore_sing_box() {
 
 check_sing_box() {
     while true; do
-        echo; echo "$MESSAGE111"
-        if ! output=$($SB_PATH check -c $SB_CONFIG 2>&1); then
+        echo; printf "$MESSAGE111\n" "$CHECKED_CONF"
+        if ! output=$($SB_PATH check -c $CHECKED_SB_CONFIG 2>&1); then
             echo "$MESSAGE112"
             echo "$output"
-            echo
-            echo "$MESSAGE113"
-            is_running && echo "$MESSAGE114"
+            echo; printf "$MESSAGE113\n" "$CHECKED_CONF"
+            is_running && [ "$CHECKED_CONF" = "$USED_CONF" ] && echo "$MESSAGE114"
             while true; do
                 read -p "$MESSAGE18" choice
                 [ -z "$choice" ] && echo "$MESSAGE115" && break 2
                 case "$choice" in
-                    1) echo; is_running && stop_sing_box && echo; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE117"; break ;;
+                    1) echo; is_running && [ "$CHECKED_CONF" = "$USED_CONF" ] && stop_sing_box && echo; printf "$MESSAGE116\n" "$CHECKED_CONF"; nano $CHECKED_SB_CONFIG; echo "$MESSAGE117"; break ;;
                     *) echo "$MESSAGE6" ;;
                 esac
             done
@@ -2019,7 +2036,7 @@ check_sing_box() {
 }
 
 format_sing_box() {
-    if ! output=$($SB_PATH format -c $SB_CONFIG 2>&1); then
+    if ! output=$($SB_PATH format -c $CHECKED_SB_CONFIG 2>&1); then
         echo; echo "$MESSAGE112"
         echo "$output"
         echo "$MESSAGE119"
@@ -2027,11 +2044,11 @@ format_sing_box() {
         echo; echo "$MESSAGE120"
         echo "$output"
         while true; do
-            echo "$MESSAGE121"
+            printf "$MESSAGE121\n" "$CHECKED_CONF"
             read -p "$MESSAGE18" save_choice
             [ -z "$save_choice" ] && echo "$MESSAGE122" && break
             case "$save_choice" in
-                1) $SB_PATH format -w -c $SB_CONFIG; echo "$MESSAGE123"; break ;;
+                1) $SB_PATH format -w -c $CHECKED_SB_CONFIG; echo "$MESSAGE123"; break ;;
                 *) echo "$MESSAGE6" ;;
             esac
         done
@@ -2039,33 +2056,185 @@ format_sing_box() {
 }
 
 config_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
+    CHECKED_SB_CONFIG="$CONFIGS_DIR/$CHECKED_CONF"
+    SB_CONFIG="$CONFIGS_DIR/$USED_CONF"
     while true; do
-        echo
-        echo "$MESSAGE124"
-        echo
-        is_running && echo "$MESSAGE125" 
-        echo "$MESSAGE126"
-        echo "$MESSAGE127"
-        echo "$MESSAGE128"
+        echo; echo "$MESSAGE124"
+        echo; echo "1. $MESSAGE129"
+        echo "   $MESSAGE271 $USED_CONF"
+        echo "2. $MESSAGE276"
+        echo "3. $MESSAGE272"
         read -p "$MESSAGE99" choice
         [ -z "$choice" ] && echo "$MESSAGE95" && break
         case "$choice" in
-            1) is_running && stop_sing_box && echo; echo "$MESSAGE116"; nano $SB_CONFIG; echo "$MESSAGE129" ;;
-            2) check_sing_box ;;
-            3) format_sing_box ;;
+            1) config_choice ;;
+            2) config_sub ;;
+            3) config_check ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
     is_running || sing_box_start
 }
 
+config_choice() {
+    while true; do
+        source "$SBS_CONF"
+        echo; echo "$MESSAGE129"
+        is_running && echo "$MESSAGE103"
+        echo; echo "1. config-1.json"
+        echo "2. config-2.json"
+        echo "3. config-3.json"
+        echo "4. config-4.json"
+        read -p "$MESSAGE196" conchoice
+        [ -z "$conchoice" ] && break
+        case "$conchoice" in
+            1|2|3|4) is_running && stop_sing_box; sed -i "s/^USED_CONF=.*/USED_CONF=\"config-${conchoice}.json\"/" "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+config_sub() {
+    while true; do
+        source "$SBS_CONF"
+        echo; echo "$MESSAGE276"
+        is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && printf "$MESSAGE294\n" "$USED_CONF"
+        is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && printf "$MESSAGE295\n" "$USED_CONF"
+        echo
+        echo "$MESSAGE283"
+        [ -n "$SUB1_ADDR" ] && echo "   $MESSAGE277: $SUB1_ADDR"
+        [ -n "$CONF_FOR_SUB1" ] && printf "$MESSAGE278\n" "$CONF_FOR_SUB1"
+        echo "$MESSAGE284"
+        [ -n "$SUB2_ADDR" ] && echo "   $MESSAGE277: $SUB2_ADDR"
+        [ -n "$CONF_FOR_SUB2" ] && printf "$MESSAGE278\n" "$CONF_FOR_SUB2"
+        echo "$MESSAGE290"
+        echo "$MESSAGE291"
+        read -p "$MESSAGE196" consub
+        [ -z "$consub" ] && break
+        case "$consub" in
+            1) conf_set_sub "SUB1_ADDR" "CONF_FOR_SUB1" "$MESSAGE279" "$MESSAGE280" "$MESSAGE281" ;;
+            2) conf_set_sub "SUB2_ADDR" "CONF_FOR_SUB2" "$MESSAGE287" "$MESSAGE288" "$MESSAGE289" ;;
+            3) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB1" ] && stop_sing_box
+               if [ -n "$SUB1_ADDR" ] && [ -n "$CONF_FOR_SUB1" ]; then
+                   if wget -q --spider "$SUB1_ADDR" && wget -q -O "$CONFIGS_DIR/$CONF_FOR_SUB1" "$SUB1_ADDR"; then
+                       echo "$MESSAGE270"
+                   else
+                       echo "$MESSAGE285"
+                   fi
+               else
+                   echo "$MESSAGE292"
+               fi ;;
+            4) is_running && [ "$USED_CONF" = "$CONF_FOR_SUB2" ] && stop_sing_box
+               if [ -n "$SUB2_ADDR" ] && [ -n "$CONF_FOR_SUB2" ]; then
+                   if wget -q --spider "$SUB2_ADDR" && wget -q -O "$CONFIGS_DIR/$CONF_FOR_SUB2" "$SUB2_ADDR"; then
+                       echo "$MESSAGE270"
+                   else
+                       echo "$MESSAGE285"
+                   fi
+               else
+                   echo "$MESSAGE292"
+               fi ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+conf_set_sub() {
+    local sub_addr="$1" sub_conf="$2" msg_newaddr="$3" msg_addr="$4" msg_choose="$5"
+    echo
+    eval "current_sub_addr=\$$sub_addr"
+    if [ -n "$current_sub_addr" ]; then
+        read -p "$msg_newaddr" newsub
+        if [ -z "$newsub" ]; then
+            newsub="$current_sub_addr"
+            wget -q --spider "$newsub" && echo "$MESSAGE52" || { echo "$MESSAGE286"; return; }
+        elif [ "$newsub" = "0" ]; then
+            sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"\"|" "$SBS_CONF"
+            sed -i "s|^$sub_conf=\"[^\"]*\"|$sub_conf=\"\"|" "$SBS_CONF"
+            echo "$MESSAGE296"; return
+        else
+            wget -q --spider "$newsub" || { echo "$MESSAGE286"; return; }
+            sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"$newsub\"|" "$SBS_CONF"
+            echo "$MESSAGE297 $newsub"
+        fi
+    else
+        read -p "$msg_addr" newsub
+        if [ -z "$newsub" ]; then
+            echo "$MESSAGE52"; return
+        else
+            wget -q --spider "$newsub" || { echo "$MESSAGE286"; return; }
+            sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"$newsub\"|" "$SBS_CONF"
+            echo "$MESSAGE297 $newsub"
+        fi
+    fi
+    echo; echo "$msg_choose"
+    while true; do
+        eval "current_sub_conf=\$$sub_conf"
+        is_running && printf "$MESSAGE293\n" "$USED_CONF" "$USED_CONF"
+        echo
+        echo "1. config-1.json"
+        echo "2. config-2.json"
+        echo "3. config-3.json"
+        echo "4. config-4.json"
+        if [ -n "$current_sub_conf" ]; then
+            read -p "$MESSAGE298" confsub
+            [ -z "$confsub" ] && echo "$MESSAGE52" && break
+        else
+            read -p "$MESSAGE282: " confsub
+        fi
+        case "$confsub" in
+            1) is_running && [ "$USED_CONF" = "config-1.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG1" "$newsub" && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-1.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            2) is_running && [ "$USED_CONF" = "config-2.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG2" "$newsub" && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-2.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            3) is_running && [ "$USED_CONF" = "config-3.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG3" "$newsub" && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-3.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            4) is_running && [ "$USED_CONF" = "config-4.json" ] && stop_sing_box; wget -q -O "$SB_CONFIG4" "$newsub" && sed -i "s|^$sub_conf=.*|$sub_conf=\"config-4.json\"|" "$SBS_CONF" || echo "$MESSAGE286"; break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+config_check() {
+    while true; do
+        source "$SBS_CONF"
+        CHECKED_SB_CONFIG="$CONFIGS_DIR/$CHECKED_CONF"
+        echo; echo "$MESSAGE272"
+        is_running && [ "$CHECKED_CONF" = "$USED_CONF" ] && printf "$MESSAGE273\n" "$USED_CONF" "$CHECKED_CONF"
+        echo
+        echo "$MESSAGE274"
+        echo "   $MESSAGE271 $CHECKED_CONF"
+        printf "$MESSAGE126\n" "$CHECKED_CONF"
+        printf "$MESSAGE127\n" "$CHECKED_CONF"
+        printf "$MESSAGE128\n" "$CHECKED_CONF"
+        read -p "$MESSAGE196" confcheck
+        [ -z "$confcheck" ] && break
+        case "$confcheck" in
+            1) check_choice ;;
+            2) is_running && [ "$CHECKED_CONF" = "$USED_CONF" ] && stop_sing_box && echo; printf "$MESSAGE116\n" "$CHECKED_CONF"; nano $CHECKED_SB_CONFIG; echo "$MESSAGE117" ;;
+            3) check_sing_box ;;
+            4) format_sing_box ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
+check_choice() {
+    while true; do
+        echo; echo "$MESSAGE275"; echo
+        echo "1. config-1.json"
+        echo "2. config-2.json"
+        echo "3. config-3.json"
+        echo "4. config-4.json"
+        read -p "$MESSAGE196" checkchoice
+        [ -z "$checkchoice" ] && break
+        case "$checkchoice" in
+            1|2|3|4) sed -i "s/^CHECKED_CONF=.*/CHECKED_CONF=\"config-${checkchoice}.json\"/" "$SBS_CONF"; source "$SBS_CONF"; break ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+}
+
 status_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     echo
     if is_running; then
         pid=$(ps | grep -v grep | grep "$SB_NAME" | awk '{print $1}')
@@ -2125,10 +2294,9 @@ status_sing_box() {
 }
 
 server_sing_box() {
-    source "$SBS_CONF"
+    load_conf_and_lang
+    SB_CONFIG="$CONFIGS_DIR/$USED_CONF"
     check_wan_ports
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
     echo
     echo "$MESSAGE149"; echo
     echo "$MESSAGE150"
@@ -2216,9 +2384,7 @@ server_sing_box() {
 }
 
 memlim_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     while true; do
         echo
         echo "$MESSAGE241"
@@ -2282,8 +2448,7 @@ expert_memlim() {
         [ -n "$S_MEMLIM" ] && echo "   $MESSAGE49: $S_MEMLIM MiB" || echo "   $MESSAGE49 $MESSAGE76"
         echo "3. $MESSAGE137"
         [ -n "$K_GOGC" ] && echo "   $MESSAGE49: $K_GOGC" || echo "   $MESSAGE49 $MESSAGE76"
-        read -p "$MESSAGE196
-: " if_choice
+        read -p "$MESSAGE196" if_choice
         [ -z "$if_choice" ] && break
         case "$if_choice" in
             1) is_running && stop_sing_box; echo; set_h_memlim; source "$SBS_CONF" ;;
@@ -2393,6 +2558,7 @@ install_sing_box() {
     done
 
     create_or_use_existing "$SB_DIR"
+    create_or_use_existing "$CONFIGS_DIR"
     create_dir "$SB_DOWNLOAD_DIR" "$MESSAGE1"
     handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
     [ -f "$TEMP_LANG_RU" ] && sed -i "s|^LANG=\".*\"$|LANG=\"ru\"|" "$TEMP_SBS_CONF"
@@ -2403,8 +2569,10 @@ install_sing_box() {
     handle_existing_file "$SCRIPT_PATH" self_copy
     ln -sf $SCRIPT_PATH $LN_PATH
     handle_existing_file "$SBS_MON" create_sbs_monitor
-    check_file_existence_and_download "$SB_CONFIG" "$SB_CONFIG_URL"
-    chmod 664 "$SB_CONFIG"
+    check_file_existence_and_download "$SB_CONFIG1" "$SB_CONFIG1_URL" && chmod 664 "$SB_CONFIG1"
+    check_file_existence_and_download "$SB_CONFIG2" "$SB_CONFIG2_URL" && chmod 664 "$SB_CONFIG2"
+    check_file_existence_and_download "$SB_CONFIG3" "$SB_CONFIG3_URL" && chmod 664 "$SB_CONFIG3"
+    check_file_existence_and_download "$SB_CONFIG4" "$SB_CONFIG4_URL" && chmod 664 "$SB_CONFIG4"
     check_copy_file "$TEMP_SBS_CONF" "$SBS_CONF"
     check_copy_file "$TEMP_LANG_RU" "$LANG_RU"
     check_copy_file "$TEMP_LANG_EN" "$LANG_EN"
@@ -2459,9 +2627,7 @@ install_sing_box() {
 }
 
 remove_sing_box() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     echo "$MESSAGE172"
     while true; do
         read -p "$MESSAGE18" choice
@@ -2474,9 +2640,7 @@ remove_sing_box() {
 }
 
 show_menu() {
-    source "$SBS_CONF"
-    [ "$LANG" = "ru" ] && source "$LANG_RU"
-    [ "$LANG" = "en" ] && source "$LANG_EN"
+    load_conf_and_lang
     echo
     echo "$MESSAGE176"
     echo

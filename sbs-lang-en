@@ -1,8 +1,8 @@
-# For SBS version 2.4.1
+# For SBS version 2.5.0
 # English localization file.
 
 MESSAGE1="✓ Directory %s created."
-MESSAGE2="! ФFile %s already exists."
+MESSAGE2="! File %s already exists."
 MESSAGE3="Enter 1 to download and replace this file,
 or just press Enter to leave the existing file
 : "
@@ -36,7 +36,7 @@ MESSAGE26="Adding firewall rules."
 MESSAGE27="Adding routes and routing rules."
 MESSAGE28="Opening ports from WAN to router: %s"
 MESSAGE29="Adding the script to autostart."
-MESSAGE30="sing-box is started"
+MESSAGE30="sing-box has started"
 MESSAGE31="Stopping sing-box..."
 MESSAGE32="Removing the script from autostart."
 MESSAGE33="Closing ports from WAN to router: %s"
@@ -51,8 +51,8 @@ or simply press Enter to return to the menu"
 MESSAGE39="Enter the IP addresses of devices to add them to the list of routed via sing-box,
 or simply press Enter to return to the menu"
 MESSAGE40="Menu for setting up standard device routing via sing-box."
-MESSAGE41="sing-box is running, if you select option 1 or 2, it will be stopped."
-MESSAGE42="enter 0 to clear the current value,
+MESSAGE41="sing-box is running, if you select item 1 or 2, it will be stopped."
+MESSAGE42="enter '0' to clear the current value,
 or simply press Enter to return to the menu"
 MESSAGE43="IP addresses routed via sing-box"
 MESSAGE44="Enter the IP addresses of devices to add them to the list of routed using fakeip,
@@ -69,7 +69,7 @@ MESSAGE50="❌ The following IP addresses have been removed from the list of rou
 MESSAGE51="✓ The following IP addresses have been added to the list of routed via sing-box:"
 MESSAGE52="No changes."
 MESSAGE53="❌ The list of IP addresses routed via sing-box has been cleared."
-MESSAGE54="✓ All device IP addresses routed via sing-box have been replaced with the new ones."
+MESSAGE54="✓ All device IP addresses routed via sing-box have been replaced with the new ones"
 MESSAGE55="Enter a value (from 50 to 500) in MiB,
 to remove the limit, enter 0,
 or simply press Enter to leave the current value
@@ -105,7 +105,7 @@ MESSAGE75="The number must be from 50 to 500."
 MESSAGE76="not specified."
 MESSAGE77="Current IP addresses of devices from these subnets, excluded from fakeip:"
 MESSAGE78="These are expert settings.
-If you don't know what they do or what their values ​​might be, don't touch them."
+If you don't know what they do or what their values might be, don't touch them."
 MESSAGE79="❌ The following IP addresses have been removed from the fakeip exclusion list:"
 MESSAGE80="✓ The following IP addresses have been added to the fakeip exclusion list:"
 MESSAGE81="❌ The list of IP addresses excluded from fakeip has been cleared."
@@ -121,20 +121,20 @@ MESSAGE88="⛔ Your sing-box configuration file does not contain TUN or TPROXY i
 MESSAGE89="Set soft limit (GOMEMLIMIT) in MiB."
 MESSAGE90="✓ Custom repository changed to"
 MESSAGE91="Menu for setting up devices routing via sing-box."
-MESSAGE92="When setting up for the first time, it is mandatory to complete point 1 or 2."
+MESSAGE92="When setting up for the first time, it is mandatory to complete item 1 or 2."
 MESSAGE93="1. Configuring IP addresses of devices for standard routing via sing-box."
 MESSAGE94="Optional expert settings."
 MESSAGE95="Exit the menu."
 MESSAGE96="❌ The following IP addresses:\n%s\nhave been removed from the list of routed via sing-box, as they are on the excluded list."
 MESSAGE97="2. Configuring IP addresses of devices for routing via sing-box using fakeip."
 MESSAGE98="1. Change the routing table number for sing-box."
-MESSAGE99="Enter the number of the desired menu point,
+MESSAGE99="Enter the number of the desired menu item,
 or simply press Enter to exit
 : "
 MESSAGE100="Checking the versions of the script and sing-box core..."
 MESSAGE101="✓ Check completed successfully."
 MESSAGE102="Update menu."
-MESSAGE103="! sing-box is running, if you select any menu option, it will be stopped."
+MESSAGE103="! sing-box is running, if you select any menu item, it will be stopped."
 MESSAGE104="1. Update the script.
    Installed version %s, available version %s"
 MESSAGE105="2. Update the sing-box core.
@@ -144,25 +144,25 @@ MESSAGE107="Updating the script..."
 MESSAGE108="✓ Script successfully updated."
 MESSAGE109="Updating sing-box core..."
 MESSAGE110="✓ sing-box core updated successfully."
-MESSAGE111="Checking the sing-box configuration file for errors..."
+MESSAGE111="Checking the %s configuration file for errors..."
 MESSAGE112="! An error was found in the configuration file:"
-MESSAGE113="Edit the configuration file in the 'nano' editor?"
+MESSAGE113="Edit the %s configuration file in the 'nano' editor?"
 MESSAGE114="! sing-box is running, if you select 'Yes' it will be stopped."
 MESSAGE115="! Finishing the check without fixing errors."
-MESSAGE116="Opening the configuration file in the 'nano' editor..."
+MESSAGE116="Opening the %s configuration file in the 'nano' editor..."
 MESSAGE117="✓ Editing is complete."
 MESSAGE118="✓ No errors found in the configuration file."
-MESSAGE119="! First, perform an error check and correction by selecting point 2 in the sing-box configuration file setup menu."
+MESSAGE119="! First, perform an error check and correction by selecting item 3 in the \"Editing, checking and formatting configuration files.\" menu."
 MESSAGE120="The result of the 'format' function:"
-MESSAGE121="Save the result of the 'format' function to the sing-box configuration file?"
+MESSAGE121="Save the output of the 'format' function to the %s configuration file?"
 MESSAGE122="! You chose not to save the result."
 MESSAGE123="✓ The result has been saved."
-MESSAGE124="sing-box configuration file setup menu."
-MESSAGE125="! sing-box is running, if you select point 1 it will be stopped."
-MESSAGE126="1. Open the configuration file in the 'nano' editor."
-MESSAGE127="2. Check the configuration file for errors."
-MESSAGE128="3. Format the configuration file structure."
-MESSAGE129="✓ Editing is complete."
+MESSAGE124="Menu for settings of sing-box configuration files."
+MESSAGE125="! sing-box is running, if you select item 1 it will be stopped."
+MESSAGE126="2. Open the %s configuration file in the 'nano' editor."
+MESSAGE127="3. Check the %s configuration file for errors."
+MESSAGE128="4. Format the %s configuration file structure."
+MESSAGE129="Selecting a configuration file for sing-box run."
 MESSAGE130="Main script version: %s"
 MESSAGE131="! Main script version not found."
 MESSAGE132="sing-box core version: %s"
@@ -192,7 +192,7 @@ enter '0 <new_combinations>' to replace all combinations in the list with new on
 or simply press Enter to exit this menu without changes"
 MESSAGE153="Enter the combinations to add them to the list of ports to open,
 or simply press Enter to exit this menu without changes"
-MESSAGE154="! The sing-box is running, when you enter combinations, it will be stopped."
+MESSAGE154="! sing-box is running, when you enter combinations, it will be stopped."
 MESSAGE155="Setting a hard memory limit."
 MESSAGE156="Enter a value in MiB,
 to remove the limit, enter '0',
@@ -227,13 +227,13 @@ or simply press Enter to exit the menu: "
 MESSAGE178="1. start - start sing-box."
 MESSAGE179="2. stop - stop sing-box."
 MESSAGE180="3. restart - restart sing-box."
-MESSAGE181="5. config - open the menu for setting up the sing-box configuration file (config.json)."
+MESSAGE181="5. config - open the sing-box configuration files settings menu."
 MESSAGE182="6. setup - open the menu for setting up devices routing via sing-box."
 MESSAGE183="9. update - open the script and sing-box core update menu."
 MESSAGE184="4. status - view sing-box status."
 MESSAGE185="8. server - specify ports of inbound proxy servers to open them from WAN to the router."
 MESSAGE186="0. remove - !!!Remove sing-box completely!!!"
-MESSAGE187="Setting the soft memory limit (GOMEMLIMIT)"
+MESSAGE187="Setting the soft memory limit (GOMEMLIMIT)."
 MESSAGE188="✓ The menu and message language has been changed to English."
 MESSAGE189="The script opened the following ports from WAN: %s"
 MESSAGE190="! Warning: following duplicate IP addresses have been detected in the settings of devices routing via sing-box:\n%s
@@ -244,14 +244,15 @@ MESSAGE193="Removing MANGLE rules."
 MESSAGE194="These settings are for those who need them.
 If you don't know what they are for and what they should be, then don't touch them."
 MESSAGE195="2. Change fw-mark for sing-box."
-MESSAGE196="Enter the number of the desired menu point,
-or simply press Enter to return to the previous menu"
+MESSAGE196="Enter the number of the desired menu item,
+or simply press Enter to return to the previous menu
+: "
 MESSAGE197="Current fw-mark for sing-box:"
 MESSAGE198="Enter a new fw-mark in hex format to change it,
 or simply press Enter to return to the menu
 : "
 MESSAGE199="Returning to the previous menu."
-MESSAGE200="Parsing config.json configuration file..."
+MESSAGE200="Parsing %s configuration file..."
 MESSAGE201="! Launch failed."
 MESSAGE202="1. Select repository to download sing-box core.
    %s"
@@ -269,7 +270,7 @@ MESSAGE212="Enter a custom repository."
 MESSAGE213="Custom repository selected"
 MESSAGE214="Specified"
 MESSAGE215="latest releases."
-MESSAGE216="⛔ Item is not selectable. Custom repository %s is not specified."
+MESSAGE216="⛔ Item is not selectable. Custom repository is not specified."
 MESSAGE217="⛔ Invalid format. Please try again."
 MESSAGE218="Enter a value, for example '80',
 to delete a value, enter '0',
@@ -288,7 +289,7 @@ MESSAGE227="Selected latest pre-release."
 MESSAGE228="Selected specified version:"
 MESSAGE229="Select core version."
 MESSAGE230="No version specified."
-MESSAGE231="⛔ Item not selectable. No version specified."
+MESSAGE231="⛔ Item is not selectable. No version specified."
 MESSAGE232="Enter the desired version of the sing-box core, for example '1.11.14' or '1.12.0-beta.5'"
 MESSAGE233="Set search depth."
 MESSAGE234="Menu for settings and selecting the sing-box core repository and version."
@@ -310,11 +311,11 @@ MESSAGE249="Not set."
 MESSAGE250="⛔ The following IP addresses cannot be added because they are on the list of routed using fakeip:"
 MESSAGE251="⛔ The following IP addresses cannot be added because they are on the exception list from routed using fakeip:"
 MESSAGE252="If you want to add them here, please remove them from there first."
-MESSAGE253="⛔ The following IP addresses cannot be added because they are on the list of routed via sing-box"
+MESSAGE253="⛔ The following IP addresses cannot be added because they are on the list of routed via sing-box:"
 MESSAGE254="⛔ The following IP addresses cannot be added because they are on the exception list from routed via sing-box:"
 MESSAGE255="❌ Incorrect IP addresses were detected and removed:"
 MESSAGE256="❌ The following IP addresses:\n%s\nhave been removed from the exclusion list because they are not in any of the specified subnets:\n%s"
-MESSAGE257="✓ The following IP addresses:\n%s\nwere not added to the exclusion list because they are not in any of the specified subnets:\n%s"
+MESSAGE257="⛔ The following IP addresses:\n%s\nwere not added to the exclusion list because they are not in any of the specified subnets:\n%s"
 MESSAGE258="! Warning: duplicates of the following IP addresses were detected, added in circumvention of this menu:\n%s\nTo ensure the script works correctly, remove the duplicates."
 MESSAGE259="⛔ No correct IP addresses were found in the input. Please try again."
 MESSAGE260="Set IP addresses for routing via sing-box."
@@ -322,8 +323,49 @@ MESSAGE261="Set IP addresses to exclude from routing via sing-box."
 MESSAGE262="⛔ Not available because there are no subnets in the list of IP addresses routed via sing-box."
 MESSAGE263="TUN interface is used"
 MESSAGE264="TPROXY interface is used on port"
-MESSAGE265="and uses: unique memory- %s MiB | CPU- %s%%"
+MESSAGE265="and uses: private memory- %s MiB | CPU- %s%%"
 MESSAGE266="! The sing-box process was restarted because it reached its hard memory limit."
 MESSAGE267="The sbs-monitor script has started"
 MESSAGE268="The sbs-monitor script has stopped."
 MESSAGE269="Collecting and processing data"
+MESSAGE270="✓ Subscription updated."
+MESSAGE271="Currently selected"
+MESSAGE272="Editing, checking and formatting configuration files."
+MESSAGE273="! sing-box is running with the %s configuration file. Since %s is also selected in item 1 of this menu, selecting item 2 will stop sing-box."
+MESSAGE274="1. Selecting a configuration file for editing, checking, and formatting."
+MESSAGE275="Select a configuration file for editing, checking, and formatting."
+MESSAGE276="Subscriptions settings."
+MESSAGE277="Current subscription address"
+MESSAGE278="   The subscription is saved to the %s configuration file."
+MESSAGE279="Enter a new address of the first subscription to replace the current one,
+enter '0' to delete the current address,
+or simply press Enter to continue
+: "
+MESSAGE280="Enter the address of the first subscription,
+or simply press Enter to return to the menu
+: "
+MESSAGE281="Select a configuration file to save the first subscription to."
+MESSAGE282="Enter the item number"
+MESSAGE283="1. First subscription settings."
+MESSAGE284="2. Second subscription settings."
+MESSAGE285="⛔ The subscription address is currently unavailable."
+MESSAGE286="⛔ Subscription is not available at this address."
+MESSAGE287="Enter a new address of the second subscription to replace the current one,
+enter '0' to delete the current address,
+or simply press Enter to continue
+: "
+MESSAGE288="Enter the address of the second subscription,
+or simply press Enter to return to the menu
+: "
+MESSAGE289="Select a configuration file to save the second subscription to."
+MESSAGE290="3. Update the first subscription."
+MESSAGE291="4. Update the second subscription."
+MESSAGE292="⛔ Item is not selectable. The subscription is not configured."
+MESSAGE293="! sing-box is running with the %s configuration file. Selecting the %s item will stop sing-box."
+MESSAGE294="! sing-box is running with the %s configuration file. Since this configuration file is used for the first subscription, selecting item 3 will stop sing-box."
+MESSAGE295="! sing-box is running with the %s configuration file. Since this configuration file is used for the second subscription, selecting item 4 will stop sing-box."
+MESSAGE296="❌ Subscription address removed."
+MESSAGE297="✓ Subscription address changed to"
+MESSAGE298="Enter the item number
+or simply press Enter to return to the menu
+: "

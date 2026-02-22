@@ -163,3 +163,12 @@ Version 2.4.0 from 12/01/25
 10. Some changes and additions to the readme.
 11. Some changes to the menu structures.
 12. Improvements and optimizations of the old code.
+
+Version 2.5.0 from 02/22/26
+1. Added support for up to four configs with support for two subscriptions. Including:
+   1) Added their settings to the sbs config menu.
+   2) Redesigned the sbs config menu structure.
+   3) When installing or updating the script to version 2.5.0, three more configs are added if they don't already exist. These are "config-2.json," "config-3.json," and "config-4.json.". Initially, templates with the corresponding names from the project's GitHub page will be downloaded and saved into these configs.
+   4) When updating the script to version 2.5.0, config.json will be renamed to config-1.json.
+2. All configs (config-1.json, config-2.json, config-3.json, config-4.json, and sbs-conf) have been moved to the /opt/root/sing-box/configs directory.
+3. Typos, errors, and bugs have been fixed.
