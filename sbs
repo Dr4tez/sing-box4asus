@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.5.0
+# Version 2.5.1
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -59,7 +59,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.5.0
+# Создан в SBS 2.5.1
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -117,7 +117,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.5.0
+# Создан в SBS 2.5.1
 
 SB_PATH="/opt/root/sing-box/sing-box"
 NAT_SCRIPT="/jffs/scripts/nat-start"
@@ -1690,11 +1690,9 @@ setup_pro() {
 download_updates() {
     source "$SBS_CONF"
     if [ "$(uname -m)" = "aarch64" ]; then
-        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
-        ARCHIVE_SUFFIX="linux-arm64.tar.gz"
+        ARCH="linux-arm64"
     else
-        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
-        ARCHIVE_SUFFIX="linux-armv7.tar.gz"
+        ARCH="linux-armv7"
     fi
     if [ "$SB_REPO" = "custom" ] && [ -z "$CUSTOM_REPO" ]; then
         sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF"
@@ -1706,6 +1704,7 @@ download_updates() {
     fi
     UPD_SB_URL=$SB_URL
     [ "$SB_REPO" = "custom" ] && UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO|")
+
     echo
     echo "$MESSAGE100"
     rm -rf "$SB_DOWNLOAD_DIR"
@@ -1715,54 +1714,68 @@ download_updates() {
     MAX_RELEASES=${NUM_RELEASES:-30}
     MAX_PAGES=$(( (MAX_RELEASES + 29) / 30 ))
     SB_DOWNLOAD_URL=""
+    ARCHIVE_SUFFIX=""
     page=1
     while [ "$page" -le "$MAX_PAGES" ]; do
         json=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$UPD_SB_URL?page=$page")
         case "$CORE_VERS" in
-            release)
-                SB_DOWNLOAD_URL=$(awk -v suffix="$ARCHIVE_SUFFIX" '
-                    BEGIN { found=0 }
-                    /"prerelease": false/ { found=1 }
-                    found && /"browser_download_url":/ && $0 ~ suffix {
-                        gsub(/^.*"browser_download_url": *"/, "")
-                        gsub(/".*$/, "")
-                        print
-                        exit
-                    }
-                ' <<EOF
+            release|pre_release)
+                prerelease_val="false"
+                [ "$CORE_VERS" = "pre_release" ] && prerelease_val="true"
+                # Ищем сначала musl, затем обычный
+                for suffix in "$ARCH-musl.tar.gz" "$ARCH.tar.gz"; do
+                    SB_DOWNLOAD_URL=$(awk -v suffix="$suffix" -v pre="$prerelease_val" '
+                        BEGIN { found=0 }
+                        $0 ~ ("\"prerelease\": " pre) { found=1 }
+                        found && /"browser_download_url":/ && $0 ~ suffix {
+                            gsub(/^.*"browser_download_url": *"/, "")
+                            gsub(/".*$/, "")
+                            print
+                            exit
+                        }
+                    ' <<EOF
 $json
 EOF
-) ;;
-            pre_release)
-                SB_DOWNLOAD_URL=$(awk -v suffix="$ARCHIVE_SUFFIX" '
-                    BEGIN { found=0 }
-                    /"prerelease": true/ { found=1 }
-                    found && /"browser_download_url":/ && $0 ~ suffix {
-                        gsub(/^.*"browser_download_url": *"/, "")
-                        gsub(/".*$/, "")
-                        print
-                        exit
-                    }
-                ' <<EOF
-$json
-EOF
-) ;;
+)
+                    if [ -n "$SB_DOWNLOAD_URL" ]; then
+                        ARCHIVE_SUFFIX="$suffix"
+                        break 2
+                    fi
+                done ;;
             given)
-                SB_DOWNLOAD_URL=$(awk -v search="$GIVEN_VERS" -v suffix="$ARCHIVE_SUFFIX" '
-                    index($0, "\"browser_download_url\"") && index($0, suffix) && index($0, search) {
-                        gsub(/^.*"browser_download_url": *"/, "")
-                        gsub(/".*$/, "")
-                        print
-                        exit
-                    }
-                ' <<EOF
+                for suffix in "$ARCH-musl.tar.gz" "$ARCH.tar.gz"; do
+                    SB_DOWNLOAD_URL=$(awk -v search="$GIVEN_VERS" -v suffix="$suffix" '
+                        index($0, "\"browser_download_url\"") && index($0, suffix) && index($0, search) {
+                            gsub(/^.*"browser_download_url": *"/, "")
+                            gsub(/".*$/, "")
+                            print
+                            exit
+                        }
+                    ' <<EOF
 $json
 EOF
-) ;;
+)
+                    if [ -n "$SB_DOWNLOAD_URL" ]; then
+                        ARCHIVE_SUFFIX="$suffix"
+                        break 2
+                    fi
+                done
+                if [ -z "$SB_DOWNLOAD_URL" ]; then
+                    VERS_FOUND=$(awk -v vers="$GIVEN_VERS" '
+                        index($0, vers) { found=1; exit }
+                        END { print found+0 }
+                    ' <<EOF
+$json
+EOF
+)
+                    [ "$VERS_FOUND" -gt 0 ] && break
+                fi
+                ;;
         esac
-        [ -n "$SB_DOWNLOAD_URL" ] && break
         page=$((page + 1))
     done
+
+    SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-$ARCHIVE_SUFFIX"
     ARCHIVE_PATH="$SB_ARCHIVE_PATH"
     DOWNLOAD_URL="$SB_DOWNLOAD_URL"
 
@@ -1969,7 +1982,7 @@ update_sbs() {
 exec $SCRIPT_PATH updmonandconf
 EOF
     chmod 775 $TEMP_UPDATE
-    # Удаляем файл, созданный при обновлении с версии 2.2.1 и ниже, не используемый с версии 2.2.2
+    # Удаляем файл, созданный при обновлении с версии 2.2.1 и ниже, не используемый с версии 2.2.2. Через пару версий этот код будет удалён.
     rm -f $JFFS_SB_DIR/sbs-tmp
     exec $TEMP_UPDATE
 }
@@ -2578,11 +2591,11 @@ install_sing_box() {
     check_copy_file "$TEMP_LANG_EN" "$LANG_EN"
 
     if [ "$(uname -m)" = "aarch64" ]; then
-        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64.tar.gz"
-        ARCHIVE_SUFFIX="linux-arm64.tar.gz"
+        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64-musl.tar.gz"
+        ARCHIVE_SUFFIX="linux-arm64-musl.tar.gz"
     else
-        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7.tar.gz"
-        ARCHIVE_SUFFIX="linux-armv7.tar.gz"
+        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7-musl.tar.gz"
+        ARCHIVE_SUFFIX="linux-armv7-musl.tar.gz"
     fi
     SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | \
     awk -v suffix="$ARCHIVE_SUFFIX" '
@@ -2615,7 +2628,7 @@ install_sing_box() {
                 esac
             done
         else
-            cp "$sing_box_file" "$SB_DIR"; printf "$MESSAGE168\n" "$SB_DIR"
+            cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; printf "$MESSAGE168\n" "$SB_DIR"
         fi
     else
         [ -f "$SB_PATH" ] && echo "$MESSAGE167 $MESSAGE13" || echo "$MESSAGE167 $MESSAGE220"
