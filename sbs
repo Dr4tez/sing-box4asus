@@ -243,6 +243,10 @@ iptables -t mangle -I SBS-MANGLE -d 169.254.0.0/16 -j RETURN # sing-box-script-m
 iptables -t mangle -I SBS-MANGLE -d 224.0.0.0/24 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -d 255.255.255.255 -j RETURN # sing-box-script-mangle"
                 for ip in $WAN_IPS; do
+                    case $ip in
+                        10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*|100.6[4-9].*|100.[7-9][0-9].*|100.1[0-1][0-9].*|100.12[0-7].*|127.*|169.254.*)
+                            continue ;;
+                    esac
                     iptables -t mangle -I SBS-MANGLE -d $ip -j RETURN
                     m_update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -d $ip -j RETURN # sing-box-script-mangle"
                 done
@@ -992,6 +996,10 @@ iptables -t mangle -I SBS-MANGLE -d 169.254.0.0/16 -j RETURN # sing-box-script-m
 iptables -t mangle -I SBS-MANGLE -d 224.0.0.0/24 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -d 255.255.255.255 -j RETURN # sing-box-script-mangle"
         for ip in $WAN_IPS; do
+            case $ip in
+                10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*|100.6[4-9].*|100.[7-9][0-9].*|100.1[0-1][0-9].*|100.12[0-7].*|127.*|169.254.*)
+                    continue ;;
+            esac
             iptables -t mangle -I SBS-MANGLE -d $ip -j RETURN
             update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -d $ip -j RETURN # sing-box-script-mangle"
         done
