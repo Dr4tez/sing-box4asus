@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.5.1
+# Version 2.5.2
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -42,6 +42,7 @@ SS_SCRIPT="/jffs/scripts/services-start"
 SS_LINES="(sleep 45 && $SCRIPT_PATH start) &"
 LN_PATH="/opt/bin/sbs"
 BR0_ADDRESS=$(ip -4 addr show dev br0 | awk "/inet /{print \$2}" | cut -d/ -f1)
+WAN_IPS=$(nvram show 2>/dev/null | grep -E ^wan[0-9]_ipaddr=[1-9] | grep -v _x= | cut -d= -f2)
 DNAT_DNS="1.1.1.1:53"
 
 # Функции
@@ -59,7 +60,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.5.1
+# Создан в SBS 2.5.2
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -117,7 +118,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.5.1
+# Создан в SBS 2.5.2
 
 SB_PATH="/opt/root/sing-box/sing-box"
 NAT_SCRIPT="/jffs/scripts/nat-start"
@@ -125,6 +126,7 @@ LANG_RU="/jffs/addons/sing-box-script/sbs-lang-ru"
 LANG_EN="/jffs/addons/sing-box-script/sbs-lang-en"
 source "/opt/root/sing-box/configs/sbs-conf"
 SB_CONFIG="/opt/root/sing-box/configs/$USED_CONF"
+WAN_IPS=$(nvram show 2>/dev/null | grep -E ^wan[0-9]_ipaddr=[1-9] | grep -v _x= | cut -d= -f2)
 
 [ "$LANG" = "ru" ] && source "$LANG_RU"
 [ "$LANG" = "en" ] && source "$LANG_EN"
@@ -227,6 +229,7 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
                         m_update_script $NAT_SCRIPT "iptables -t mangle -I SBS-MANGLE -d $FAKEIP_SUBNET -j MARK --set-mark $FW_MARK # sing-box-script-mangle"
                     fi
                 fi
+
                 m_get_main_ips | while read mainip; do
                     iptables -t mangle -I SBS-MANGLE -d $mainip -j RETURN
                     m_update_script $NAT_SCRIPT "iptables -t mangle -I SBS-MANGLE -d $mainip -j RETURN # sing-box-script-mangle"
@@ -239,6 +242,10 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
 iptables -t mangle -I SBS-MANGLE -d 169.254.0.0/16 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -d 224.0.0.0/24 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -d 255.255.255.255 -j RETURN # sing-box-script-mangle"
+                for ip in $WAN_IPS; do
+                    iptables -t mangle -I SBS-MANGLE -d $ip -j RETURN
+                    m_update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -d $ip -j RETURN # sing-box-script-mangle"
+                done
 
                 if [ -n "$m_sorted_subnets" ]; then
                     echo "$m_sorted_subnets" | while read -r subnet; do
@@ -971,6 +978,7 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
                 update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -d $FAKEIP_SUBNET -j MARK --set-mark $FW_MARK # sing-box-script-mangle"
             fi
         fi
+
         get_main_ips | while read mainip; do
             iptables -t mangle -I SBS-MANGLE -d $mainip -j RETURN
             update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -d $mainip -j RETURN # sing-box-script-mangle"
@@ -983,6 +991,10 @@ iptables -t mangle -I SBS-MANGLE -p udp -d $FAKEIP_SUBNET -j TPROXY --on-port $T
 iptables -t mangle -I SBS-MANGLE -d 169.254.0.0/16 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -d 224.0.0.0/24 -j RETURN # sing-box-script-mangle
 iptables -t mangle -I SBS-MANGLE -d 255.255.255.255 -j RETURN # sing-box-script-mangle"
+        for ip in $WAN_IPS; do
+            iptables -t mangle -I SBS-MANGLE -d $ip -j RETURN
+            update_script "$NAT_SCRIPT" "iptables -t mangle -I SBS-MANGLE -d $ip -j RETURN # sing-box-script-mangle"
+        done
 
         if [ -n "$sorted_subnets" ]; then
             echo "$sorted_subnets" | while read -r subnet; do
