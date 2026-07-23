@@ -45,8 +45,8 @@ install_sing_box() {
         read -p "Введите номер пункта / Enter item number: " platform_choice
         [ -z "$platform_choice" ] && { echo "Пустой ввод. Отмена установки. / Empty input. Cancel installation."; del_if_notcurrent; exit 0; }
         case "$platform_choice" in
-            1) BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test"; break ;;
-            2) BRANCH_URL="https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test"; break ;;
+            1) BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main"; break ;;
+            2) BRANCH_URL="https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/main"; break ;;
             *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
         esac
     done
@@ -128,7 +128,7 @@ install_sing_box() {
         ARCHIVE_SUFFIX="linux-armv7-musl.tar.gz"
     fi
 
-    if [ "$BRANCH_URL" = "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test" ]; then
+    if [ "$BRANCH_URL" = "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main" ]; then
         SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
         SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | \
         awk -v suffix="$ARCHIVE_SUFFIX" '
@@ -142,7 +142,7 @@ install_sing_box() {
                 exit
             }
         ')
-    elif [ "$BRANCH_URL" = "https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test" ]; then
+    elif [ "$BRANCH_URL" = "https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/main" ]; then
         SB_URL="https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases"
         SB_DOWNLOAD_URL=$(wget --quiet -O - "$SB_URL?limit=50" | sed 's/},{/}\n{/g; s/\[{/{/; s/}\]/}/' | \
         awk -v suffix="$ARCHIVE_SUFFIX" '
@@ -264,7 +264,7 @@ SUB1_ADDR=""
 SUB2_ADDR=""
 CONF_FOR_SUB1=""
 CONF_FOR_SUB2=""
-BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test"
+BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main"
 SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
 EOF
     chmod 664 "$1"
@@ -2089,8 +2089,8 @@ update_sing_box_menu() {
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
         printf "$MESSAGE105\n" "${sb_vers:-$MESSAGE169}" "${sb_vers_new:-$MESSAGE169.}"
         echo "$MESSAGE235"
-        [ "$BRANCH_URL" = "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test" ] && printf "   $MESSAGE300\n" "GitHub"
-        [ "$BRANCH_URL" = "https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test" ] && printf "   $MESSAGE300\n" "Codeberg"
+        [ "$BRANCH_URL" = "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main" ] && printf "   $MESSAGE300\n" "GitHub"
+        [ "$BRANCH_URL" = "https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/main" ] && printf "   $MESSAGE300\n" "Codeberg"
         printf "   %s\n" "$additionally"
         printf "   %s\n" "$given_value"
         if [ -n "$NUM_RELEASES" ]; then
@@ -2162,7 +2162,7 @@ platform_change() {
         1) is_running && stop_sing_box && echo
         if [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ]; then
             SB_URL="https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases"
-            BRANCH_URL="https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test"
+            BRANCH_URL="https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/main"
             if [ -n "$CUSTOM_REPO" ]; then
                 if [ "$CUSTOM_REPO" = "shtorm-7/sing-box-extended" ]; then
                     CUSTOM_REPO="Dr4tez/sbe-cores"
@@ -2174,7 +2174,7 @@ platform_change() {
             fi
         elif [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ]; then
             SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
-            BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test"
+            BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main"
             if [ -n "$CUSTOM_REPO" ]; then
                 if [ "$CUSTOM_REPO" = "Dr4tez/sbe-cores" ]; then
                     CUSTOM_REPO="shtorm-7/sing-box-extended"
@@ -2656,8 +2656,8 @@ status_sing_box() {
     else
         echo "$MESSAGE268"
     fi
-    [ "$BRANCH_URL" = "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test" ] && printf "$MESSAGE300\n" "GitHub"
-    [ "$BRANCH_URL" = "https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test" ] && printf "$MESSAGE300\n" "Codeberg"
+    [ "$BRANCH_URL" = "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main" ] && printf "$MESSAGE300\n" "GitHub"
+    [ "$BRANCH_URL" = "https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/main" ] && printf "$MESSAGE300\n" "Codeberg"
     sbs_version=$(get_sbs_version $SCRIPT_PATH)
     if [ -n "$sbs_version" ]; then
         printf "$MESSAGE130\n" "$sbs_version"
