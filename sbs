@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 2.5.2
+# Version 2.6.0
 # Скрипт для запуска sing-box на роутерах Asus с прошивкой Мерлина и установленным на USB носителе Entware.
 
 # Переменные
@@ -10,14 +10,6 @@ LANG_RU="$JFFS_SB_DIR/sbs-lang-ru"
 LANG_EN="$JFFS_SB_DIR/sbs-lang-en"
 SBS_MON="$JFFS_SB_DIR/sbs-monitor"
 SBS_MON_NAME="sbs-monitor"
-BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/main"
-SCRIPT_URL="$BRANCH_URL/sbs"
-SB_CONFIG1_URL="$BRANCH_URL/config-1.json"
-SB_CONFIG2_URL="$BRANCH_URL/config-2.json"
-SB_CONFIG3_URL="$BRANCH_URL/config-3.json"
-SB_CONFIG4_URL="$BRANCH_URL/config-4.json"
-LANG_RU_URL="$BRANCH_URL/sbs-lang-ru"
-LANG_EN_URL="$BRANCH_URL/sbs-lang-en"
 ROOT_DIR="/opt/root"
 SB_DIR="$ROOT_DIR/sing-box"
 CONFIGS_DIR="$SB_DIR/configs"
@@ -29,7 +21,6 @@ SB_CONFIG3="$CONFIGS_DIR/config-3.json"
 SB_CONFIG4="$CONFIGS_DIR/config-4.json"
 SB_PATH="$SB_DIR/sing-box"
 SB_NAME="sing-box run"
-SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
 SB_DOWNLOAD_DIR="$SB_DIR/sing-box-download"
 TEMP_UPDATE="$SB_DOWNLOAD_DIR/temp-update"
 TEMP_SCRIPT_PATH="$SB_DOWNLOAD_DIR/sbs"
@@ -45,10 +36,170 @@ BR0_ADDRESS=$(ip -4 addr show dev br0 | awk "/inet /{print \$2}" | cut -d/ -f1)
 WAN_IPS=$(nvram show 2>/dev/null | grep -E ^wan[0-9]_ipaddr=[1-9] | grep -v _x= | cut -d= -f2)
 DNAT_DNS="1.1.1.1:53"
 
+# Установка
+install_sing_box() {
+    echo "Выбор платформы / Platform select:"
+    while true; do
+        echo " 1. GitHub"
+        echo " 2. Codeberg"
+        read -p "Введите номер пункта / Enter item number: " platform_choice
+        [ -z "$platform_choice" ] && { echo "Пустой ввод. Отмена установки. / Empty input. Cancel installation."; del_if_notcurrent; exit 0; }
+        case "$platform_choice" in
+            1) BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test"; break ;;
+            2) BRANCH_URL="https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test"; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
+        esac
+    done
+
+    LANG_RU_URL="$BRANCH_URL/sbs-lang-ru"
+    LANG_EN_URL="$BRANCH_URL/sbs-lang-en"
+    echo
+    rm -f $TEMP_LANG_RU $TEMP_LANG_EN
+    echo "Выбор языка / Select language:"
+    while true; do
+        echo " 1. Русский."
+        echo " 2. English."
+        read -p "Введите номер пункта / Enter item number: " language_choice
+        [ -z "$language_choice" ] && { echo "Пустой ввод. Отмена установки. / Empty input. Cancel installation."; del_if_notcurrent; exit 0; }
+        case "$language_choice" in
+            1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; break ;;
+            2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; break ;;
+            *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
+        esac
+    done
+    echo
+    uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
+    { set -- $(uname -r | cut -d. -f1,2 | tr . ' '); [ "$1" -gt 4 ] || { [ "$1" -eq 4 ] && [ "$2" -ge 1 ]; }; } || { echo "$MESSAGE237"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
+    [ -d "$ROOT_DIR" ] || { printf "$MESSAGE162\n" "$ROOT_DIR"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
+
+    echo "$MESSAGE158"
+    while true; do
+        read -p "$MESSAGE18" choice
+        [ -z "$choice" ] && { del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
+        case $choice in
+            1) if is_running; then
+                echo "$MESSAGE160"
+                while true; do
+                   read -p "$MESSAGE18" continue_choice
+                   [ -z "$continue_choice" ] && { del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
+                   case "$continue_choice" in
+                       1) stop_sing_box; echo; break 2 ;;
+                       *) echo "$MESSAGE6" ;;
+                   esac
+                done
+               else
+                   break
+               fi ;;
+            *) echo "$MESSAGE6" ;;
+        esac
+    done
+
+    create_or_use_existing "$SB_DIR"
+    create_or_use_existing "$CONFIGS_DIR"
+    create_dir "$SB_DOWNLOAD_DIR" "$MESSAGE1"
+    handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
+    [ -f "$TEMP_LANG_RU" ] && sed -i "s|^LANG=\".*\"$|LANG=\"ru\"|" "$TEMP_SBS_CONF"
+    [ -f "$TEMP_LANG_EN" ] && sed -i "s|^LANG=\".*\"$|LANG=\"en\"|" "$TEMP_SBS_CONF"
+    sed -i "s|^BRANCH_URL=\".*\"$|BRANCH_URL=\"$BRANCH_URL\"|" "$TEMP_SBS_CONF"
+
+    SB_CONFIG1_URL="$BRANCH_URL/config-1.json"
+    SB_CONFIG2_URL="$BRANCH_URL/config-2.json"
+    SB_CONFIG3_URL="$BRANCH_URL/config-3.json"
+    SB_CONFIG4_URL="$BRANCH_URL/config-4.json"
+
+    echo "$MESSAGE161"
+    create_or_use_existing "$JFFS_SB_DIR"
+    handle_existing_file "$SCRIPT_PATH" self_copy
+    ln -sf $SCRIPT_PATH $LN_PATH
+    handle_existing_file "$SBS_MON" create_sbs_monitor
+    check_file_existence_and_download "$SB_CONFIG1" "$SB_CONFIG1_URL" && chmod 664 "$SB_CONFIG1"
+    check_file_existence_and_download "$SB_CONFIG2" "$SB_CONFIG2_URL" && chmod 664 "$SB_CONFIG2"
+    check_file_existence_and_download "$SB_CONFIG3" "$SB_CONFIG3_URL" && chmod 664 "$SB_CONFIG3"
+    check_file_existence_and_download "$SB_CONFIG4" "$SB_CONFIG4_URL" && chmod 664 "$SB_CONFIG4"
+    check_copy_file "$TEMP_SBS_CONF" "$SBS_CONF"
+    check_copy_file "$TEMP_LANG_RU" "$LANG_RU"
+    check_copy_file "$TEMP_LANG_EN" "$LANG_EN"
+
+    if [ "$(uname -m)" = "aarch64" ]; then
+        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64-musl.tar.gz"
+        ARCHIVE_SUFFIX="linux-arm64-musl.tar.gz"
+    else
+        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7-musl.tar.gz"
+        ARCHIVE_SUFFIX="linux-armv7-musl.tar.gz"
+    fi
+
+    if [ "$BRANCH_URL" = "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test" ]; then
+        SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
+        SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | \
+        awk -v suffix="$ARCHIVE_SUFFIX" '
+            BEGIN { found=0 }
+            index($0, "\"prerelease\": false") { found=1 }
+            index($0, "\"prerelease\": true")  { found=0 }
+            found && index($0, "\"browser_download_url\"") && index($0, suffix) {
+                gsub(/^.*"browser_download_url": *"/, "")
+                gsub(/".*$/, "")
+                print
+                exit
+            }
+        ')
+    elif [ "$BRANCH_URL" = "https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test" ]; then
+        SB_URL="https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases"
+        SB_DOWNLOAD_URL=$(wget --quiet -O - "$SB_URL?limit=50" | sed 's/},{/}\n{/g; s/\[{/{/; s/}\]/}/' | \
+        awk -v suffix="$ARCHIVE_SUFFIX" '
+            BEGIN { found=0 }
+            index($0, "\"prerelease\":false") { found=1 }
+            index($0, "\"prerelease\":true")  { found=0 }
+            found && index($0, "\"browser_download_url\"") && index($0, suffix) {
+                gsub(/^.*"browser_download_url": *"/, "")
+                gsub(/".*$/, "")
+                print
+                exit
+            }
+        ')
+    fi
+    sed -i "s|^SB_URL=\".*\"$|SB_URL=\"$SB_URL\"|" "$SBS_CONF"
+    sed -i "s|^BRANCH_URL=\".*\"$|BRANCH_URL=\"$BRANCH_URL\"|" "$SBS_CONF"
+
+    DOWNLOAD_URL="$SB_DOWNLOAD_URL"
+    ARCHIVE_PATH="$SB_ARCHIVE_PATH"
+
+    echo "$MESSAGE163"
+    if wget --spider -q "$DOWNLOAD_URL"; then
+        wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
+        echo "$MESSAGE164"
+        tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
+        sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
+        if [ -f "$SB_PATH" ]; then
+            echo "$MESSAGE165"
+            while true; do
+                read -p "$MESSAGE12" choice
+                [ -z "$choice" ] && { echo "$MESSAGE13"; break; }
+                case $choice in
+                    1) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; printf "$MESSAGE166\n" "$SB_PATH"; break ;;
+                    *) echo "$MESSAGE6" ;;
+                esac
+            done
+        else
+            cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; printf "$MESSAGE168\n" "$SB_DIR"
+        fi
+    else
+        [ -f "$SB_PATH" ] && echo "$MESSAGE167 $MESSAGE13" || echo "$MESSAGE167 $MESSAGE220"
+    fi
+    del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_LANG_RU $TEMP_LANG_EN
+    printf "$MESSAGE170\n" "$SB_DOWNLOAD_DIR"
+    echo
+    echo "$MESSAGE171"
+}
+
 # Функции
 log_msg() {
     echo "$1"
     logger -t "sbs" "$1"
+}
+
+ # Следующая функция экранирует \, & и | перед подстановкой значения в правую часть sed 's|...|...|', чтобы URL/строки с этими символами (напр. "?a=1&b=2") не портили sbs-conf
+sed_escape_repl() {
+    printf '%s' "$1" | sed 's/[\&|]/\\&/g'
 }
 
 create_dir() {
@@ -60,7 +211,7 @@ create_dir() {
 
 create_sbs_conf() {
     cat << EOF > "$1"
-# Создан в SBS 2.5.2
+# Создан в SBS 2.6.0
 # Этот файл создаётся автоматически и значения в него вводятся через консоль роутера при выполнении определённых пунктов в меню, вызываемых командами 'sbs setup', 'sbs update', 'sbs server', 'sbs limit' или 'sbs lang'. Не рекомендуется изменять значения в нём напрямую, в обход перечисленных команд.
 # Если вы всё же хотите изменить здесь значения напрямую, то перед этим обязательно остановите sing-box с помощью команды 'sbs stop' в консоли роутера, иначе вам не избежать неприятных багов, от которых без специальных познаний будет сложно избавиться.
 #
@@ -73,18 +224,20 @@ create_sbs_conf() {
 # Строка WAN_PORTS - при старте sing-box указанные в ней порты будут открыты для доступа из WAN в роутер. Не открывайте порты из интернета в свой роутер без осознанной необходимости. Открытие не тех портов может привести к потере всех данных в вашей домашней сети. Значения задаются в меню 'sbs server', но будут приняты, только если в файле конфигурации sing-box действительно присутствуют указанные типы inbound proxy с указанными портами.
 # Строка LANG - если указать значение "ru", то все сообщения от скрипта будут на русском языке, а если "en"- на английском. Значение задаётся в меню 'sbs lang'.
 # Строка SB_REPO - тут указывается какой репозиторий использовать для загрузки ядра sing-box. Возможные значения "original" и "custom" соответствуют официальному и кастомному репозиториям. Значение задаётся при выборе одного из первых двух пунктов в подменю 3-1 меню 'sbs update'.
-# Строка CUSTOM_REPO - тут указывается кастомный репозиторий ядра sing-box в формате "имя_github_профиля/наименование_репозитория", например "shtorm-7/sing-box-extended" задан по умолчанию. Значение задаётся в третьем пункте подменю 3-1 меню 'sbs update'.
+# Строка CUSTOM_REPO - тут указывается кастомный репозиторий ядра sing-box в формате "имя_github_или_codeberg_профиля/наименование_репозитория", например "shtorm-7/sing-box-extended". Значение задаётся в третьем пункте подменю 3-1 меню 'sbs update'.
 # Строка CORE_VERS - тут указывается какое ядро sing-box будет установлено. Значения "release", "pre_release" или "given" - соответствуют новейшему стабильному релизу, новейшему пре-релизу и заданной версии. Значение задаётся при выборе одного из первых трёх пунктов в подменю 3-2 меню 'sbs update'.
 # Строка GIVEN_VERS - тут указывается какая конкретно версия ядра sing-box может быть установлена, если значение строки CORE_VERS будет "given". Значение задаётся в пункте 3-2-4 меню 'sbs update'. Например "1.11.14" или "1.12.0-beta.32".
 # Строка NUM_RELEASES - тут указывается глубина поиска, т.е. количество последних релизов, среди которого будут искаться заданная версия ядра, новейший стабильный релиз или новейший пре-релиз ядра. Значение задаётся в пункте 3-2-5 меню 'sbs update'. Например "90".
-# Строка S_MEMLIM - тут указывается значение мягкого лимита в MiB, без указания единицы измерения, например "50". При отсутствии значения- лимит отключен. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек, либо вычисляется автоматически при настройке лимита в подменю простой настройки.
-# Строка H_MEMLIM - тут указывается значение жёсткого лимита в MiB, без указания единицы измерения, например "50". При отсутствии значения- лимит отключен. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек, либо в подменю простой настройки.
+# Строка S_MEMLIM - тут указывается значение мягкого лимита в MiB, без указания единицы измерения, например "77". При отсутствии значения- лимит отключен. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек, либо вычисляется автоматически при настройке лимита в подменю простой настройки.
+# Строка H_MEMLIM - тут указывается значение жёсткого лимита в MiB, без указания единицы измерения, например "70". При отсутствии значения- лимит отключен. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек, либо в подменю простой настройки.
 # Строка K_GOGC - тут указывается значение GOGC. При отсутствии значения- используется значение по умолчанию ядра sing-box. Значение задаётся в меню 'sbs limit' в подменю необязательных экспертных настроек.
 # Строки TUN_INTERFACE, TPROXY_PORT и FAKEIP_SUBNET - их значения автоматически извлекаются из конфигурационного файла sing-box и записываются сюда.
 # Строка USED_CONF - тут указывается имя конфига, который будет использоваться при запуске sing-box. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
 # Строка CHECKED_CONF - тут указывается имя конфига, который будет использоваться для редактирования, проверки и формата в меню 'sbs config'. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
 # Строки SUB1_ADDR и SUB2_ADDR - тут указываются адреса подписок.
 # Строки CONF_FOR_SUB1 и CONF_FOR_SUB2 - тут указывается имена конфигов, в которых будут сохраняться конфиги из подписок. Возможные значения: "config-1.json", "config-2.json", "config-3.json" и "config-4.json".
+# Строка BRANCH_URL - тут указывается URL адрес репозитория со скриптом sbs. Значение задаётся автоматически при установке скрипта, либо при смене платформы через меню обновлений скрипта.
+# Строка SB_URL - тут указывается URL адрес api репозитория по умолчанию с ядром sing-box. Значение задаётся автоматически при установке скрипта, либо при смене платформы через меню обновлений скрипта.
 
 DEVICE_IPS=""
 EXC_DEVICE_IPS=""
@@ -95,7 +248,7 @@ FW_MARK="0x4d3c2b1a"
 WAN_PORTS=""
 LANG=""
 SB_REPO="original"
-CUSTOM_REPO="shtorm-7/sing-box-extended"
+CUSTOM_REPO=""
 CORE_VERS="release"
 GIVEN_VERS=""
 NUM_RELEASES=""
@@ -111,6 +264,8 @@ SUB1_ADDR=""
 SUB2_ADDR=""
 CONF_FOR_SUB1=""
 CONF_FOR_SUB2=""
+BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test"
+SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
 EOF
     chmod 664 "$1"
 }
@@ -118,7 +273,7 @@ EOF
 create_sbs_monitor() {
     script_path="$1"
     script_content='#!/bin/sh
-# Создан в SBS 2.5.2
+# Создан в SBS 2.6.0
 
 SB_PATH="/opt/root/sing-box/sing-box"
 NAT_SCRIPT="/jffs/scripts/nat-start"
@@ -468,6 +623,9 @@ load_conf_and_lang() {
 }
 
 change_language() {
+    source "$SBS_CONF"
+    LANG_RU_URL="$BRANCH_URL/sbs-lang-ru"
+    LANG_EN_URL="$BRANCH_URL/sbs-lang-en"
     load_conf_and_lang
     while true; do
         if [ "$LANG" = "ru" ]; then
@@ -686,7 +844,8 @@ EOF
 
 mask_bits_to_int() {
     bits="$1"
-    echo $(( 0xFFFFFFFF << (32 - bits) & 0xFFFFFFFF ))
+    [ "$bits" -eq 0 ] && { echo 0; return; }
+    echo $(( (0xFFFFFFFF << (32 - bits)) & 0xFFFFFFFF ))
 }
 
 parse_cidr() {
@@ -1722,78 +1881,157 @@ download_updates() {
         sed -i 's|^CORE_VERS="[^"]*"|CORE_VERS="release"|' "$SBS_CONF"
         CORE_VERS="release"
     fi
-    UPD_SB_URL=$SB_URL
-    [ "$SB_REPO" = "custom" ] && UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO|")
 
     echo
     echo "$MESSAGE100"
     rm -rf "$SB_DOWNLOAD_DIR"
     create_dir "$SB_DOWNLOAD_DIR"
+    SCRIPT_URL="$BRANCH_URL/sbs"
     wget -q -O $TEMP_SCRIPT_PATH "$SCRIPT_URL"
 
-    MAX_RELEASES=${NUM_RELEASES:-30}
-    MAX_PAGES=$(( (MAX_RELEASES + 29) / 30 ))
-    SB_DOWNLOAD_URL=""
-    ARCHIVE_SUFFIX=""
-    page=1
-    while [ "$page" -le "$MAX_PAGES" ]; do
-        json=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$UPD_SB_URL?page=$page")
-        case "$CORE_VERS" in
-            release|pre_release)
-                prerelease_val="false"
-                [ "$CORE_VERS" = "pre_release" ] && prerelease_val="true"
-                # Ищем сначала musl, затем обычный
-                for suffix in "$ARCH-musl.tar.gz" "$ARCH.tar.gz"; do
-                    SB_DOWNLOAD_URL=$(awk -v suffix="$suffix" -v pre="$prerelease_val" '
-                        BEGIN { found=0 }
-                        $0 ~ ("\"prerelease\": " pre) { found=1 }
-                        found && /"browser_download_url":/ && $0 ~ suffix {
-                            gsub(/^.*"browser_download_url": *"/, "")
-                            gsub(/".*$/, "")
-                            print
-                            exit
-                        }
-                    ' <<EOF
+    UPD_SB_URL=$SB_URL
+    if [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ]; then
+        [ "$SB_REPO" = "custom" ] && UPD_SB_URL=$(echo "$SB_URL" | sed "s|SagerNet/sing-box|$CUSTOM_REPO|")
+        MAX_RELEASES=${NUM_RELEASES:-30}
+        MAX_PAGES=$(( (MAX_RELEASES + 29) / 30 ))
+        SB_DOWNLOAD_URL=""
+        ARCHIVE_SUFFIX=""
+        page=1
+        while [ "$page" -le "$MAX_PAGES" ]; do
+            json=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$UPD_SB_URL?page=$page&per_page=30")
+            wget_rc=$?
+            if [ "$wget_rc" -ne 0 ]; then
+                printf "$MESSAGE299\n" "GitHub" >&2
+                break
+            fi
+            case "$json" in
+                "") printf "$MESSAGE299\n" "GitHub" >&2; break ;;
+            esac
+            case "$CORE_VERS" in
+                release|pre_release)
+                    prerelease_val="false"
+                    [ "$CORE_VERS" = "pre_release" ] && prerelease_val="true"
+                    # Ищем сначала musl, затем обычный
+                    for suffix in "$ARCH-musl.tar.gz" "$ARCH.tar.gz"; do
+                        SB_DOWNLOAD_URL=$(awk -v suffix="$suffix" -v pre="$prerelease_val" '
+                            BEGIN { found=0; if (pre == "false") anti="true"; else anti="false" }
+                            $0 ~ ("\"prerelease\": " pre) { found=1 }
+                            $0 ~ ("\"prerelease\": " anti) { found=0 }
+                            found && index($0, "\"browser_download_url\"") && index($0, suffix) {
+                                gsub(/^.*"browser_download_url": *"/, "")
+                                gsub(/".*$/, "")
+                                print
+                                exit
+                            }
+                        ' <<EOF
 $json
 EOF
 )
-                    if [ -n "$SB_DOWNLOAD_URL" ]; then
-                        ARCHIVE_SUFFIX="$suffix"
-                        break 2
-                    fi
-                done ;;
-            given)
-                for suffix in "$ARCH-musl.tar.gz" "$ARCH.tar.gz"; do
-                    SB_DOWNLOAD_URL=$(awk -v search="$GIVEN_VERS" -v suffix="$suffix" '
-                        index($0, "\"browser_download_url\"") && index($0, suffix) && index($0, search) {
-                            gsub(/^.*"browser_download_url": *"/, "")
-                            gsub(/".*$/, "")
-                            print
-                            exit
-                        }
-                    ' <<EOF
+                        if [ -n "$SB_DOWNLOAD_URL" ]; then
+                            ARCHIVE_SUFFIX="$suffix"
+                            break 2
+                        fi
+                    done ;;
+                given)
+                    for suffix in "$ARCH-musl.tar.gz" "$ARCH.tar.gz"; do
+                        SB_DOWNLOAD_URL=$(awk -v search="$GIVEN_VERS" -v suffix="$suffix" '
+                            index($0, "\"browser_download_url\"") && index($0, suffix) && index($0, search) {
+                                gsub(/^.*"browser_download_url": *"/, "")
+                                gsub(/".*$/, "")
+                                print
+                                exit
+                            }
+                        ' <<EOF
 $json
 EOF
 )
-                    if [ -n "$SB_DOWNLOAD_URL" ]; then
-                        ARCHIVE_SUFFIX="$suffix"
-                        break 2
-                    fi
-                done
-                if [ -z "$SB_DOWNLOAD_URL" ]; then
-                    VERS_FOUND=$(awk -v vers="$GIVEN_VERS" '
-                        index($0, vers) { found=1; exit }
-                        END { print found+0 }
-                    ' <<EOF
+                        if [ -n "$SB_DOWNLOAD_URL" ]; then
+                            ARCHIVE_SUFFIX="$suffix"
+                            break 2
+                        fi
+                    done
+                    if [ -z "$SB_DOWNLOAD_URL" ]; then
+                        VERS_FOUND=$(awk -v vers="$GIVEN_VERS" '
+                            index($0, "\"tag_name\"") && index($0, vers) { found=1; exit }
+                            END { print found+0 }
+                        ' <<EOF
 $json
 EOF
 )
-                    [ "$VERS_FOUND" -gt 0 ] && break
-                fi
-                ;;
-        esac
-        page=$((page + 1))
-    done
+                        [ "$VERS_FOUND" -gt 0 ] && break
+                    fi ;;
+            esac
+            page=$((page + 1))
+        done
+    elif [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ]; then
+        [ "$SB_REPO" = "custom" ] && UPD_SB_URL=$(echo "$SB_URL" | sed "s|Dr4tez/sb-cores|$CUSTOM_REPO|")
+        MAX_RELEASES=${NUM_RELEASES:-50}
+        MAX_PAGES=$(( (MAX_RELEASES + 49) / 50 ))
+        SB_DOWNLOAD_URL=""
+        ARCHIVE_SUFFIX=""
+        page=1
+        while [ "$page" -le "$MAX_PAGES" ]; do
+            json=$(wget --quiet -O - "$UPD_SB_URL?page=$page&limit=50" | sed 's/},{/}\n{/g; s/\[{/{/; s/}\]/}/')
+            case "$json" in
+                "") printf "$MESSAGE299\n" "Codeberg" >&2; break ;;
+            esac
+            case "$CORE_VERS" in
+                release|pre_release)
+                    prerelease_val="false"
+                    [ "$CORE_VERS" = "pre_release" ] && prerelease_val="true"
+                    # Ищем сначала musl, затем обычный
+                    for suffix in "$ARCH-musl.tar.gz" "$ARCH.tar.gz"; do
+                        SB_DOWNLOAD_URL=$(awk -v suffix="$suffix" -v pre="$prerelease_val" '
+                            BEGIN { found=0; if (pre == "false") anti="true"; else anti="false" }
+                            index($0, "\"prerelease\":" pre)  { found=1 }
+                            index($0, "\"prerelease\":" anti) { found=0 }
+                            found && index($0, "\"browser_download_url\"") && index($0, suffix) {
+                                gsub(/^.*"browser_download_url": *"/, "")
+                                gsub(/".*$/, "")
+                                print
+                                exit
+                            }
+                        ' <<EOF
+$json
+EOF
+)
+                        if [ -n "$SB_DOWNLOAD_URL" ]; then
+                            ARCHIVE_SUFFIX="$suffix"
+                            break 2
+                        fi
+                    done ;;
+                given)
+                    for suffix in "$ARCH-musl.tar.gz" "$ARCH.tar.gz"; do
+                        SB_DOWNLOAD_URL=$(awk -v search="$GIVEN_VERS" -v suffix="$suffix" '
+                            index($0, "\"browser_download_url\"") && index($0, suffix) && index($0, search) {
+                                gsub(/^.*"browser_download_url": *"/, "")
+                                gsub(/".*$/, "")
+                                print
+                                exit
+                            }
+                        ' <<EOF
+$json
+EOF
+)
+                        if [ -n "$SB_DOWNLOAD_URL" ]; then
+                            ARCHIVE_SUFFIX="$suffix"
+                            break 2
+                        fi
+                    done
+                    if [ -z "$SB_DOWNLOAD_URL" ]; then
+                        VERS_FOUND=$(awk -v vers="$GIVEN_VERS" '
+                            index($0, "\"tag_name\"") && index($0, vers) { found=1; exit }
+                            END { print found+0 }
+                        ' <<EOF
+$json
+EOF
+)
+                        [ "$VERS_FOUND" -gt 0 ] && break
+                    fi ;;
+            esac
+            page=$((page + 1))
+        done
+    fi
 
     SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-$ARCHIVE_SUFFIX"
     ARCHIVE_PATH="$SB_ARCHIVE_PATH"
@@ -1815,10 +2053,16 @@ update_sing_box() {
 }
 
 update_sing_box_menu() {
+    source "$SBS_CONF"
     while true; do
         case "$SB_REPO" in
-          original) additionally="$MESSAGE207" ;;
-          custom) additionally="$MESSAGE213: $CUSTOM_REPO" ;;
+            original)
+                if [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ]; then
+                  additionally="$(printf "$MESSAGE207" "SagerNet/sing-box")"
+                elif [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ]; then
+                  additionally="$(printf "$MESSAGE207" "Dr4tez/sb-cores")"
+                fi ;;
+            custom) additionally="$MESSAGE213: $CUSTOM_REPO" ;;
         esac
         case "$CORE_VERS" in
           release) given_value="$MESSAGE226" ;;
@@ -1844,11 +2088,16 @@ update_sing_box_menu() {
         is_running && echo "$MESSAGE41"
         printf "$MESSAGE104\n" "$sbs_vers" "$sbs_vers_new"
         printf "$MESSAGE105\n" "${sb_vers:-$MESSAGE169}" "${sb_vers_new:-$MESSAGE169.}"
-        printf "$MESSAGE235\n" "$additionally" "$given_value"
+        echo "$MESSAGE235"
+        [ "$BRANCH_URL" = "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test" ] && printf "   $MESSAGE300\n" "GitHub"
+        [ "$BRANCH_URL" = "https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test" ] && printf "   $MESSAGE300\n" "Codeberg"
+        printf "   %s\n" "$additionally"
+        printf "   %s\n" "$given_value"
         if [ -n "$NUM_RELEASES" ]; then
             printf "   $MESSAGE209\n" "$NUM_RELEASES"
         else
-            printf "   $MESSAGE209\n" "30"
+            [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ] && printf "   $MESSAGE209\n" "30"
+            [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ] && printf "   $MESSAGE209\n" "50"
         fi
         read -p "$MESSAGE99" choice
         [ -z "$choice" ] && { rm -rf "$SB_DOWNLOAD_DIR"; echo "$MESSAGE95"; is_running || sing_box_start; exit 0; }
@@ -1863,29 +2112,90 @@ update_sing_box_menu() {
 
 change_repo_vers() {
     while true; do
+        case "$SB_REPO" in
+            original)
+                if [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ]; then
+                    additionally="$(printf "$MESSAGE207" "SagerNet/sing-box")"
+                elif [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ]; then
+                    additionally="$(printf "$MESSAGE207" "Dr4tez/sb-cores")"
+                fi ;;
+            custom) additionally="$MESSAGE213: $CUSTOM_REPO" ;;
+        esac
+        case "$CORE_VERS" in
+            release) given_value="$MESSAGE226" ;;
+            pre_release) given_value="$MESSAGE227" ;;
+            given) given_value="$MESSAGE228 $GIVEN_VERS" ;;
+        esac
         echo
         echo "$MESSAGE234"
         echo
+        [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ] && printf "$MESSAGE301\n" "GitHub"
+        [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ] && printf "$MESSAGE301\n" "Codeberg"
         printf "$MESSAGE202\n" "$additionally"
         printf "$MESSAGE221\n" "$given_value"
         if [ -n "$NUM_RELEASES" ]; then
             printf "   $MESSAGE209\n" "$NUM_RELEASES"
         else
-            printf "   $MESSAGE209\n" "30"
+            [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ] && printf "   $MESSAGE209\n" "30"
+            [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ] && printf "   $MESSAGE209\n" "50"
         fi
         read -p "$MESSAGE196" choice_repo_vers
         [ -z "$choice_repo_vers" ] && echo "$MESSAGE199" && return
         case "$choice_repo_vers" in
-            1) change_sing_box_repo; source "$SBS_CONF"; continue ;;
-            2) change_core_vers; source "$SBS_CONF"; continue ;;
+            1) platform_change; source "$SBS_CONF"; continue ;;
+            2) change_sing_box_repo; source "$SBS_CONF"; continue ;;
+            3) change_core_vers; source "$SBS_CONF"; continue ;;
             *) echo "$MESSAGE6" ;;
         esac
     done
 }
 
+platform_change() {
+    echo
+    source "$SBS_CONF"
+    [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ] && printf "$MESSAGE300" "GitHub" && printf " $MESSAGE302\n" "Codeberg" 
+    [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ] && printf "$MESSAGE300" "Codeberg" && printf " $MESSAGE302\n" "GitHub"
+    is_running && echo "$MESSAGE114"
+    read -p "$MESSAGE18" platform_choices
+    [ -z "$platform_choices" ] && echo "$MESSAGE52" && return 
+    case "$platform_choices" in
+        1) is_running && stop_sing_box && echo
+        if [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ]; then
+            SB_URL="https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases"
+            BRANCH_URL="https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test"
+            if [ -n "$CUSTOM_REPO" ]; then
+                if [ "$CUSTOM_REPO" = "shtorm-7/sing-box-extended" ]; then
+                    CUSTOM_REPO="Dr4tez/sbe-cores"
+                elif [ "$CUSTOM_REPO" = "Leadaxe/sing-box-lx" ]; then
+                    CUSTOM_REPO="Dr4tez/sbl-cores"
+                else
+                    printf "$MESSAGE303\n" "Codeberg"
+                fi
+            fi
+        elif [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ]; then
+            SB_URL="https://api.github.com/repos/SagerNet/sing-box/releases"
+            BRANCH_URL="https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test"
+            if [ -n "$CUSTOM_REPO" ]; then
+                if [ "$CUSTOM_REPO" = "Dr4tez/sbe-cores" ]; then
+                    CUSTOM_REPO="shtorm-7/sing-box-extended"
+                elif [ "$CUSTOM_REPO" = "Dr4tez/sbl-cores" ]; then
+                    CUSTOM_REPO="Leadaxe/sing-box-lx"
+                else
+                    printf "$MESSAGE303\n" "GitHub"
+                fi
+            fi
+        fi
+        sed -i "s|^SB_URL=\".*\"$|SB_URL=\"$SB_URL\"|" "$SBS_CONF"
+        sed -i "s|^BRANCH_URL=\".*\"$|BRANCH_URL=\"$BRANCH_URL\"|" "$SBS_CONF"
+        sed -i "s|^CUSTOM_REPO=\".*\"$|CUSTOM_REPO=\"$CUSTOM_REPO\"|" "$SBS_CONF" ;;
+        *) echo "$MESSAGE6" ;;
+    esac
+}
+
 change_custom_repo() {
     echo
-    echo "$MESSAGE210"
+    [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ] && printf "$MESSAGE210\n" "github" "shtorm-7/sing-box-extended"
+    [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ] && printf "$MESSAGE210\n" "codeberg" "Dr4tez/sbe-cores"
     while true; do
         echo
         read -p "$MESSAGE212,
@@ -1897,10 +2207,11 @@ $MESSAGE42
             if [ "$newrepo" = "0" ]; then
                 sed -i "s|^CUSTOM_REPO=\"[^\"]*\"|CUSTOM_REPO=\"\"|" "$SBS_CONF"
                 echo "$MESSAGE106"
-            elif echo "$newrepo" | grep -Eqv '^[^[:space:]/]+/[^[:space:]/]+$'; then
+            elif echo "$newrepo" | grep -Eqv '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$'; then
                 echo "$MESSAGE217"; continue
             else
-                sed -i "s|^CUSTOM_REPO=\"[^\"]*\"|CUSTOM_REPO=\"$newrepo\"|" "$SBS_CONF"
+                esc_newrepo=$(sed_escape_repl "$newrepo")
+                sed -i "s|^CUSTOM_REPO=\"[^\"]*\"|CUSTOM_REPO=\"$esc_newrepo\"|" "$SBS_CONF"
                 echo "$MESSAGE90 $newrepo"
             fi
         fi
@@ -1913,13 +2224,19 @@ change_sing_box_repo() {
         source "$SBS_CONF"
         [ "$SB_REPO" = "custom" ] && [ -z "$CUSTOM_REPO" ] && sed -i 's|^SB_REPO="[^"]*"|SB_REPO="original"|' "$SBS_CONF" && SB_REPO="original"
         case "$SB_REPO" in
-          original) additionally="$MESSAGE207" ;;
-          custom) additionally="$MESSAGE213: $CUSTOM_REPO" ;;
+            original)
+                if [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ]; then
+                  additionally="$(printf "$MESSAGE207" "SagerNet/sing-box")"
+                elif [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ]; then
+                  additionally="$(printf "$MESSAGE207" "Dr4tez/sb-cores")"
+                fi ;;
+            custom) additionally="$MESSAGE213: $CUSTOM_REPO" ;;
         esac
         echo
         echo "$MESSAGE203"
         echo "$additionally"
-        echo "1. $MESSAGE204"
+        [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ] && printf "1. $MESSAGE204\n" "SagerNet/sing-box"
+        [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ] && printf "1. $MESSAGE204\n" "Dr4tez/sb-cores"
         echo "2. $MESSAGE205"
         echo "3. $MESSAGE211"
         [ -n "$CUSTOM_REPO" ] && echo "   $MESSAGE214: $CUSTOM_REPO" || echo "   $MESSAGE249"
@@ -1952,7 +2269,7 @@ change_core_vers() {
         echo "4. $MESSAGE225"
         [ -n "$GIVEN_VERS" ] && echo "   $MESSAGE214: $GIVEN_VERS"
         echo "5. $MESSAGE233"
-        [ -n "$NUM_RELEASES" ] && { echo "   $MESSAGE214: $NUM_RELEASES $MESSAGE215"; } || { echo "   $MESSAGE214: 30 $MESSAGE215"; }
+        [ -n "$NUM_RELEASES" ] && echo "   $MESSAGE214: $NUM_RELEASES $MESSAGE215" || { [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ] && echo "   $MESSAGE214: 30 $MESSAGE215" || echo "   $MESSAGE214: 50 $MESSAGE215"; }
         read -p "$MESSAGE196" choice_vers
         [ -z "$choice_vers" ] && echo "$MESSAGE199" && return
         case "$choice_vers" in
@@ -1974,7 +2291,9 @@ $MESSAGE42
                fi ;;
             5) while true; do
                    echo
-                   read -p "$MESSAGE208,
+                   [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ] && msg208="$(printf "$MESSAGE208" "90")"
+                   [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ] && msg208="$(printf "$MESSAGE208" "100")"
+                   read -p "$msg208,
 $MESSAGE42
 : " new_num_releases
                    if [ -z "$new_num_releases" ]; then
@@ -1991,6 +2310,9 @@ $MESSAGE42
 }
 
 update_sbs() {
+    source "$SBS_CONF"
+    LANG_RU_URL="$BRANCH_URL/sbs-lang-ru"
+    LANG_EN_URL="$BRANCH_URL/sbs-lang-en"
     echo "$MESSAGE107"
     cp $TEMP_SCRIPT_PATH $SCRIPT_PATH
     chmod 775 $SCRIPT_PATH
@@ -2009,12 +2331,32 @@ EOF
 
 updmonandconf_sing_box() {
     # С версии 2.5.0 создаём директорию CONFIGS_DIR, заменяем имя config.json на config-1.json и перемещаем его и SBS_CONF в директорию CONFIGS_DIR, туда же добавляем ещё 3 конфига, если их нет
+    source "$SBS_CONF"
+    SB_CONFIG2_URL="$BRANCH_URL/config-2.json"
+    SB_CONFIG3_URL="$BRANCH_URL/config-3.json"
+    SB_CONFIG4_URL="$BRANCH_URL/config-4.json"
     [ ! -d "$CONFIGS_DIR" ] && mkdir -p $CONFIGS_DIR && chmod 775 $CONFIGS_DIR
     [ -f "$JFFS_SB_DIR/sbs-conf" ] && mv "$JFFS_SB_DIR/sbs-conf" "$SBS_CONF"
     [ -f "$JFFS_SB_DIR/config.json" ] && mv "$JFFS_SB_DIR/config.json" "$SB_CONFIG1"
     [ ! -f "$SB_CONFIG2" ] && wget -q -O "$SB_CONFIG2" "$SB_CONFIG2_URL" && chmod 664 "$SB_CONFIG2"
     [ ! -f "$SB_CONFIG3" ] && wget -q -O "$SB_CONFIG3" "$SB_CONFIG3_URL" && chmod 664 "$SB_CONFIG3"
     [ ! -f "$SB_CONFIG4" ] && wget -q -O "$SB_CONFIG4" "$SB_CONFIG4_URL" && chmod 664 "$SB_CONFIG4"
+    # Обновление с версии ниже 2.6.0: в sbs-conf ещё нет BRANCH_URL и SB_URL, поэтому итоговые значения по умолчанию после слияния станут для GitHub, о чем предупреждаем пользователя. Если задан неизвестный кастомный репозиторий, то дополнительно предупреждаем и об этом.
+    platform_change_warning1=""
+    platform_change_warning2=""
+    if ! grep -q '^BRANCH_URL=' "$SBS_CONF" || ! grep -q '^SB_URL=' "$SBS_CONF"; then
+        platform_change_warning1=1
+        if [ -n "$CUSTOM_REPO" ]; then
+            if [ "$CUSTOM_REPO" = "Dr4tez/sbe-cores" ]; then
+                CUSTOM_REPO="shtorm-7/sing-box-extended"
+            elif [ "$CUSTOM_REPO" = "Dr4tez/sbl-cores" ]; then
+                CUSTOM_REPO="Leadaxe/sing-box-lx"
+            else
+                platform_change_warning2=1
+            fi
+            sed -i "s|^CUSTOM_REPO=\".*\"$|CUSTOM_REPO=\"$CUSTOM_REPO\"|" "$SBS_CONF"
+        fi
+    fi
     load_conf_and_lang
     create_sbs_conf "$TEMP_SBS_CONF"
     comments=$(grep '^#' "$TEMP_SBS_CONF")
@@ -2037,6 +2379,10 @@ updmonandconf_sing_box() {
 
     create_sbs_monitor "$SBS_MON"
     echo "$MESSAGE108"
+    [ -n "$platform_change_warning1" ] && echo "$MESSAGE305"
+    [ -n "$platform_change_warning2" ] && echo "$MESSAGE306"
+    [ -n "$platform_change_warning1" ] && echo "$MESSAGE307"
+
     exec $SCRIPT_PATH update
 }
 
@@ -2188,7 +2534,8 @@ conf_set_sub() {
             echo "$MESSAGE296"; return
         else
             wget -q --spider "$newsub" || { echo "$MESSAGE286"; return; }
-            sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"$newsub\"|" "$SBS_CONF"
+            esc_newsub=$(sed_escape_repl "$newsub")
+            sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"$esc_newsub\"|" "$SBS_CONF"
             echo "$MESSAGE297 $newsub"
         fi
     else
@@ -2197,7 +2544,8 @@ conf_set_sub() {
             echo "$MESSAGE52"; return
         else
             wget -q --spider "$newsub" || { echo "$MESSAGE286"; return; }
-            sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"$newsub\"|" "$SBS_CONF"
+            esc_newsub=$(sed_escape_repl "$newsub")
+            sed -i "s|^$sub_addr=\"[^\"]*\"|$sub_addr=\"$esc_newsub\"|" "$SBS_CONF"
             echo "$MESSAGE297 $newsub"
         fi
     fi
@@ -2308,18 +2656,24 @@ status_sing_box() {
     else
         echo "$MESSAGE268"
     fi
+    [ "$BRANCH_URL" = "https://raw.githubusercontent.com/Dr4tez/sing-box4asus/test" ] && printf "$MESSAGE300\n" "GitHub"
+    [ "$BRANCH_URL" = "https://codeberg.org/Dr4tez/sing-box4asus/raw/branch/test" ] && printf "$MESSAGE300\n" "Codeberg"
     sbs_version=$(get_sbs_version $SCRIPT_PATH)
     if [ -n "$sbs_version" ]; then
         printf "$MESSAGE130\n" "$sbs_version"
     else
         echo "$MESSAGE131"
     fi
+    [ "$SB_REPO" = "original" ] && [ "$SB_URL" = "https://api.github.com/repos/SagerNet/sing-box/releases" ] && printf "$MESSAGE207\n" "SagerNet/sing-box"
+    [ "$SB_REPO" = "original" ] && [ "$SB_URL" = "https://codeberg.org/api/v1/repos/Dr4tez/sb-cores/releases" ] && printf "$MESSAGE207\n" "Dr4tez/sb-cores"
+    [ "$SB_REPO" = "custom" ] && echo "$MESSAGE213: $CUSTOM_REPO"
     sb_versplat=$(get_sb_versplat $SB_PATH)
     if [ -n "$sb_versplat" ]; then
         printf "$MESSAGE132\n" "$sb_versplat"
     else
         echo "$MESSAGE133"
     fi
+    printf "$MESSAGE304\n" "$USED_CONF"
     echo "$MESSAGE134"
     echo "$MESSAGE135"
     is_running && [ -n "$WAN_PORTS" ] && printf "$MESSAGE189\n" "$WAN_PORTS"
@@ -2549,116 +2903,6 @@ set_gogc() {
     done
 }
 
-install_sing_box() {
-    rm -f $TEMP_LANG_RU $TEMP_LANG_EN
-    echo "Выбор языка / Select language:"
-    while true; do
-        echo " 1. Русский."
-        echo " 2. English."
-        read -p "Введите номер пункта / Enter item number: " language_choice
-        [ -z "$language_choice" ] && { echo "Пустой ввод. Отмена установки. / Empty input. Cancel installation."; del_if_notcurrent; exit 0; }
-        case "$language_choice" in
-            1) wget -q -O $TEMP_LANG_RU $LANG_RU_URL && chmod 664 $TEMP_LANG_RU; source "$TEMP_LANG_RU"; break ;;
-            2) wget -q -O $TEMP_LANG_EN $LANG_EN_URL && chmod 664 $TEMP_LANG_EN; source "$TEMP_LANG_EN"; break ;;
-            *) echo "Некорректный ввод. Попробуйте ещё раз. / Invalid input. Please try again." ;;
-        esac
-    done
-
-    uname -m | grep -Eq 'arm|aarch' || { echo "$MESSAGE236"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
-    { set -- $(uname -r | cut -d. -f1,2 | tr . ' '); [ "$1" -gt 4 ] || [ "$1" -eq 4 -a "$2" -ge 1 ]; } || { echo "$MESSAGE237"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
-    [ -d "$ROOT_DIR" ] || { printf "$MESSAGE162\n" "$ROOT_DIR"; del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; exit 1; }
-
-    echo "$MESSAGE158"
-    while true; do
-        read -p "$MESSAGE18" choice
-        [ -z "$choice" ] && { del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
-        case $choice in
-            1) if is_running; then
-                echo "$MESSAGE160"
-                while true; do
-                   read -p "$MESSAGE18" continue_choice
-                   [ -z "$continue_choice" ] && { del_if_notcurrent; rm -f $TEMP_LANG_RU $TEMP_LANG_EN; echo "$MESSAGE159"; exit 0; }
-                   case "$continue_choice" in
-                       1) stop_sing_box; echo; break 2 ;;
-                       *) echo "$MESSAGE6" ;;
-                   esac
-                done
-               else
-                   break
-               fi ;;
-            *) echo "$MESSAGE6" ;;
-        esac
-    done
-
-    create_or_use_existing "$SB_DIR"
-    create_or_use_existing "$CONFIGS_DIR"
-    create_dir "$SB_DOWNLOAD_DIR" "$MESSAGE1"
-    handle_existing_file "$TEMP_SBS_CONF" create_sbs_conf
-    [ -f "$TEMP_LANG_RU" ] && sed -i "s|^LANG=\".*\"$|LANG=\"ru\"|" "$TEMP_SBS_CONF"
-    [ -f "$TEMP_LANG_EN" ] && sed -i "s|^LANG=\".*\"$|LANG=\"en\"|" "$TEMP_SBS_CONF"
-
-    echo "$MESSAGE161"
-    create_or_use_existing "$JFFS_SB_DIR"
-    handle_existing_file "$SCRIPT_PATH" self_copy
-    ln -sf $SCRIPT_PATH $LN_PATH
-    handle_existing_file "$SBS_MON" create_sbs_monitor
-    check_file_existence_and_download "$SB_CONFIG1" "$SB_CONFIG1_URL" && chmod 664 "$SB_CONFIG1"
-    check_file_existence_and_download "$SB_CONFIG2" "$SB_CONFIG2_URL" && chmod 664 "$SB_CONFIG2"
-    check_file_existence_and_download "$SB_CONFIG3" "$SB_CONFIG3_URL" && chmod 664 "$SB_CONFIG3"
-    check_file_existence_and_download "$SB_CONFIG4" "$SB_CONFIG4_URL" && chmod 664 "$SB_CONFIG4"
-    check_copy_file "$TEMP_SBS_CONF" "$SBS_CONF"
-    check_copy_file "$TEMP_LANG_RU" "$LANG_RU"
-    check_copy_file "$TEMP_LANG_EN" "$LANG_EN"
-
-    if [ "$(uname -m)" = "aarch64" ]; then
-        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-arm64-musl.tar.gz"
-        ARCHIVE_SUFFIX="linux-arm64-musl.tar.gz"
-    else
-        SB_ARCHIVE_PATH="$SB_DOWNLOAD_DIR/sing-box-linux-armv7-musl.tar.gz"
-        ARCHIVE_SUFFIX="linux-armv7-musl.tar.gz"
-    fi
-    SB_DOWNLOAD_URL=$(wget --quiet --header="Accept: application/vnd.github.v3+json" -O - "$SB_URL" | \
-    awk -v suffix="$ARCHIVE_SUFFIX" '
-        BEGIN { found=0 }
-        /"prerelease": false/ { found=1 }
-        found && /"browser_download_url":/ && $0 ~ suffix {
-            gsub(/^.*"browser_download_url": *"/, "")
-            gsub(/".*$/, "")
-            print
-            exit
-        }
-    ')
-    DOWNLOAD_URL="$SB_DOWNLOAD_URL"
-    ARCHIVE_PATH="$SB_ARCHIVE_PATH"
-
-    echo "$MESSAGE163"
-    if wget --spider -q "$DOWNLOAD_URL"; then
-        wget -q -O "$ARCHIVE_PATH" "$DOWNLOAD_URL"
-        echo "$MESSAGE164"
-        tar -xzvf "$ARCHIVE_PATH" -C "$SB_DOWNLOAD_DIR"
-        sing_box_file=$(find "$SB_DOWNLOAD_DIR" -name "sing-box" -exec test -f {} \; -print)
-        if [ -f "$SB_PATH" ]; then
-            echo "$MESSAGE165"
-            while true; do
-                read -p "$MESSAGE12" choice
-                [ -z "$choice" ] && { echo "$MESSAGE13"; break; }
-                case $choice in
-                    1) cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; printf "$MESSAGE166\n" "$SB_PATH"; break ;;
-                    *) echo "$MESSAGE6" ;;
-                esac
-            done
-        else
-            cp "$sing_box_file" "$SB_DIR"; chmod 775 "$SB_PATH"; printf "$MESSAGE168\n" "$SB_DIR"
-        fi
-    else
-        [ -f "$SB_PATH" ] && echo "$MESSAGE167 $MESSAGE13" || echo "$MESSAGE167 $MESSAGE220"
-    fi
-    del_if_notcurrent; rm -rf $SB_DOWNLOAD_DIR $TEMP_LANG_RU $TEMP_LANG_EN
-    printf "$MESSAGE170\n" "$SB_DOWNLOAD_DIR"
-    echo
-    echo "$MESSAGE171"
-}
-
 remove_sing_box() {
     load_conf_and_lang
     echo "$MESSAGE172"
@@ -2726,5 +2970,5 @@ case "$1" in
     done ;;
 esac
 
-# The developer of script is Dr4tez dr4tez@gmail.com https://github.com/Dr4tez/sing-box4asus
+# The developer of script is Dr4tez dr4tez@gmail.com https://github.com/Dr4tez https://codeberg.org/Dr4tez
 # The sing-box core is used for work https://github.com/SagerNet/sing-box

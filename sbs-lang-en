@@ -1,4 +1,4 @@
-# For SBS version 2.5.2
+# For SBS version 2.6.0
 # English localization file.
 
 MESSAGE1="✓ Directory %s created."
@@ -254,17 +254,17 @@ or simply press Enter to return to the menu
 MESSAGE199="Returning to the previous menu."
 MESSAGE200="Parsing %s configuration file..."
 MESSAGE201="! Launch failed."
-MESSAGE202="1. Select repository to download sing-box core.
+MESSAGE202="2. Select repository to download sing-box core.
    %s"
 MESSAGE203="Selecting a repository."
-MESSAGE204="Select original repository: SagerNet/sing-box"
+MESSAGE204="Select default repository: %s"
 MESSAGE205="Select a custom repository."
 MESSAGE206="Setting the GOGC value."
-MESSAGE207="Original repository selected: SagerNet/sing-box"
-MESSAGE208="Enter the desired depth of release search. For example '90'"
+MESSAGE207="The default repository is selected: %s"
+MESSAGE208="Enter the desired depth of release search. For example '%s'"
 MESSAGE209="Specified search depth: %s latest releases."
-MESSAGE210="Specify the repository in the format 'github_profile_name/repository_name'.
-For example 'shtorm-7/sing-box-extended'"
+MESSAGE210="Specify the repository in the format '%s_profile_name/repository_name'.
+For example '%s'"
 MESSAGE211="Set a custom repository."
 MESSAGE212="Enter a custom repository."
 MESSAGE213="Custom repository selected"
@@ -278,7 +278,7 @@ or simply press Enter to keep the current value
 : "
 MESSAGE219="! No sing-box core available for update was found."
 MESSAGE220="! Core is not installed."
-MESSAGE221="2. Select sing-box core version.
+MESSAGE221="3. Select sing-box core version.
    %s"
 MESSAGE222="Select latest stable release."
 MESSAGE223="Select latest pre-release."
@@ -292,8 +292,8 @@ MESSAGE230="No version specified."
 MESSAGE231="⛔ Item is not selectable. No version specified."
 MESSAGE232="Enter the desired version of the sing-box core, for example '1.11.14' or '1.12.0-beta.5'"
 MESSAGE233="Set search depth."
-MESSAGE234="Menu for settings and selecting the sing-box core repository and version."
-MESSAGE235="3. Settings and selection of the sing-box core repository and version.\n   %s\n   %s"
+MESSAGE234="Menu of settings and platform, repository and sing-box core version selecting."
+MESSAGE235="3. Settings and selection of platform, repository and sing-box core version."
 MESSAGE236="⛔ The CPU architecture of this router is not supported. Installation cancelled."
 MESSAGE237="⛔ System core version is lower than 4.1. Installation cancelled."
 MESSAGE238="TPROXY interface on port %s detected."
@@ -369,3 +369,12 @@ MESSAGE297="✓ Subscription address changed to"
 MESSAGE298="Enter the item number
 or simply press Enter to return to the menu
 : "
+MESSAGE299="⛔ The %s API is not responding. Please try again later or change platform."
+MESSAGE300="Selected platform: %s"
+MESSAGE301="1. Platform selecting.\n %s selected."
+MESSAGE302="Change to %s?"
+MESSAGE303="! The platform has changed to %s. Make sure that the custom repository you specified exists on this platform and, if necessary, change it in the settings of the 2nd item of this menu."
+MESSAGE304="Selected configuration file: %s"
+MESSAGE305="! Since you upgraded from a script version prior to 2.6.0, the GitHub platform is used by default."
+MESSAGE306="Therefore, please ensure that the custom repository you specified exists on the Codeberg platform and change it if necessary."
+MESSAGE307="If you want to change the platform to Codeberg, you can do so in the settings under item 3 of this menu. Then, make sure the custom repository you specified exists on the Codeberg platform and change it if necessary."

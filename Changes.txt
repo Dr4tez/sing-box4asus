@@ -172,3 +172,7 @@ Version 2.5.0 from 02/22/26
    4) When updating the script to version 2.5.0, config.json will be renamed to config-1.json.
 2. All configs (config-1.json, config-2.json, config-3.json, config-4.json, and sbs-conf) have been moved to the /opt/root/sing-box/configs directory.
 3. Typos, errors, and bugs have been fixed.
+
+Version 2.6.0 from 07/25/26
+1. Platform selection (GitHub or Codeberg) has been added during installation and in the update menu.
+2. Information about the platform, repository, and configuration file used has been added to the "sbs status" command output.
