@@ -23,12 +23,11 @@
     "rules": [
       {
         "query_type": "A",
-        "rule_set": "my-ruleset",
+        "rule_set": "domains_only-ruleset",
         "server": "dns-fakeip"
       }
     ],
-    "reverse_mapping": true,
-    "strategy": "ipv4_only"
+    "reverse_mapping": true
   },
   "inbounds": [
     {
@@ -74,16 +73,20 @@
         "action": "hijack-dns"
       },
       {
-        "rule_set": "my-ruleset",
+        "rule_set": "mixed-ruleset",
         "outbound": "My-VLESS"
       }
     ],
     "rule_set": [
       {
         "type": "remote",
-        "tag": "my-ruleset",
-        "format": "binary",
-        "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs"
+        "tag": "domains_only-ruleset",
+        "url": "https://github.com/Dr4tez/my_domains/raw/main/selected_domains.srs"
+      },
+      {
+        "type": "remote",
+        "tag": "mixed-ruleset",
+        "url": "https://codeberg.org/Dr4tez/my_domains/raw/branch/main/my_domains.srs"
       }
     ],
     "default_domain_resolver": "dns-direct"

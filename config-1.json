@@ -27,14 +27,17 @@
     ],
     "rules": [
       {
-        "rule_set": "my-ruleset",
+        "rule_set": "my-domains_only-ruleset",
         "server": "dns-remote"
       }
     ],
-    "strategy": "ipv4_only",
-    "reverse_mapping": true,
-    "independent_cache": true
+    "reverse_mapping": true
   },
+  "http_clients": [
+    {
+      "tag": "default"
+    }
+  ],
   "inbounds": [
     {
       "type": "tproxy",
@@ -79,16 +82,20 @@
         "action": "hijack-dns"
       },
       {
-        "rule_set": "my-ruleset",
+        "rule_set": "my-all-ruleset",
         "outbound": "My-VLESS"
       }
     ],
     "rule_set": [
       {
         "type": "remote",
-        "tag": "my-ruleset",
-        "format": "binary",
-        "url": "https://github.com/Dr4tez/my_domains/raw/main/my_domains.srs"
+        "tag": "my-domains_only-ruleset",
+        "url": "https://github.com/Dr4tez/my_domains/raw/main/selected_domains.srs"
+      },
+      {
+        "type": "remote",
+        "tag": "my-all-ruleset",
+        "url": "https://codeberg.org/Dr4tez/my_domains/raw/branch/main/my_domains.srs"
       }
     ],
     "default_domain_resolver": "dns-direct"
